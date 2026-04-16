@@ -1,0 +1,23 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Launch API",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build-api",
+      "program": "${workspaceFolder}/backend/src/OnsiteMonday.Api/bin/Debug/net8.0/OnsiteMonday.Api.dll",
+      "args": [],
+      "cwd": "${workspaceFolder}/backend/src/OnsiteMonday.Api",
+      "stopAtEntry": false,
+      "env": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      }
+    },
+    {
+      "name": "Attach to API",
+      "type": "coreclr",
+      "request": "attach"
+    }
+  ]
+}

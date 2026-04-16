@@ -1,0 +1,838 @@
+{
+  "info": {
+    "_postman_id": "om-api-collection-v1",
+    "name": "Ônsite Monday API",
+    "description": "Full API collection for the Ônsite Monday backend (.NET 8 / ASP.NET Core). Base URL: http://localhost:5236/api (dev) or https://api.onsitemonday.co.uk/api (prod).\n\nAuthentication: Firebase JWT. Set {{firebaseToken}} in the collection variables or environment.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{firebaseToken}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:5236/api",
+      "type": "string",
+      "description": "API base URL. Change to https://api.onsitemonday.co.uk/api for production."
+    },
+    {
+      "key": "firebaseApiKey",
+      "value": "",
+      "type": "string",
+      "description": "Firebase Web API key. Found in Firebase Console → Project Settings → General → Web API Key."
+    },
+    {
+      "key": "firebaseToken",
+      "value": "",
+      "type": "string",
+      "description": "Firebase ID token. Populated automatically by the Sign Up / Sign In test scripts."
+    },
+    {
+      "key": "userId",
+      "value": "",
+      "type": "string",
+      "description": "A target user's ID (GUID). Set after fetching /users/me or /users/tradespeople."
+    },
+    {
+      "key": "jobId",
+      "value": "",
+      "type": "string",
+      "description": "A job ID (GUID). Set after creating or listing jobs."
+    },
+    {
+      "key": "conversationId",
+      "value": "",
+      "type": "string",
+      "description": "A conversation ID (GUID). Set after creating or listing conversations."
+    },
+    {
+      "key": "notificationId",
+      "value": "",
+      "type": "string",
+      "description": "A notification ID (GUID). Set after listing notifications."
+    }
+  ],
+  "item": [
+    {
+      "name": "Auth (Firebase)",
+      "description": "Firebase Identity Toolkit REST API calls for sign-up and sign-in. These hit Google's servers directly — not the Ônsite Monday backend. The test scripts automatically copy the returned idToken into the {{firebaseToken}} collection variable so all subsequent requests are authenticated.",
+      "item": [
+        {
+          "name": "Sign Up (Email & Password)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.idToken) {",
+                  "    pm.collectionVariables.set('firebaseToken', json.idToken);",
+                  "    console.log('firebaseToken set from sign-up response.');",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"james@hartleyelectrical.co.uk\",\n  \"password\": \"Password1!\",\n  \"returnSecureToken\": true\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "https://identitytoolkit.googleapis.com/v1/accounts:signUp?key={{firebaseApiKey}}",
+              "protocol": "https",
+              "host": ["identitytoolkit", "googleapis", "com"],
+              "path": ["v1", "accounts:signUp"],
+              "query": [
+                {
+                  "key": "key",
+                  "value": "{{firebaseApiKey}}"
+                }
+              ]
+            },
+            "description": "Creates a new Firebase account with email and password.\n\nThe **Tests** script automatically saves the returned `idToken` to `{{firebaseToken}}` so all backend requests are immediately authenticated.\n\nAfter a successful sign-up, call **Get Current User** (`GET /users/me`) — the backend will auto-create the user record on first call using the Firebase UID."
+          },
+          "response": [
+            {
+              "name": "200 OK — Account Created",
+              "originalRequest": {
+                "auth": { "type": "noauth" },
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"james@hartleyelectrical.co.uk\",\n  \"password\": \"Password1!\",\n  \"returnSecureToken\": true\n}"
+                },
+                "url": {
+                  "raw": "https://identitytoolkit.googleapis.com/v1/accounts:signUp?key={{firebaseApiKey}}"
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"kind\": \"identitytoolkit#SignupNewUserResponse\",\n  \"localId\": \"abc123uid\",\n  \"email\": \"james@hartleyelectrical.co.uk\",\n  \"idToken\": \"<Firebase ID token — valid for 1 hour>\",\n  \"refreshToken\": \"<Firebase refresh token>\",\n  \"expiresIn\": \"3600\"\n}"
+            },
+            {
+              "name": "400 Bad Request — Email Already In Use",
+              "originalRequest": {
+                "auth": { "type": "noauth" },
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"james@hartleyelectrical.co.uk\",\n  \"password\": \"Password1!\",\n  \"returnSecureToken\": true\n}"
+                },
+                "url": {
+                  "raw": "https://identitytoolkit.googleapis.com/v1/accounts:signUp?key={{firebaseApiKey}}"
+                }
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"error\": {\n    \"code\": 400,\n    \"message\": \"EMAIL_EXISTS\",\n    \"errors\": [\n      {\n        \"message\": \"EMAIL_EXISTS\",\n        \"domain\": \"global\",\n        \"reason\": \"invalid\"\n      }\n    ]\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Sign In (Email & Password)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.idToken) {",
+                  "    pm.collectionVariables.set('firebaseToken', json.idToken);",
+                  "    console.log('firebaseToken set from sign-in response.');",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"james@hartleyelectrical.co.uk\",\n  \"password\": \"Password1!\",\n  \"returnSecureToken\": true\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key={{firebaseApiKey}}",
+              "protocol": "https",
+              "host": ["identitytoolkit", "googleapis", "com"],
+              "path": ["v1", "accounts:signInWithPassword"],
+              "query": [
+                {
+                  "key": "key",
+                  "value": "{{firebaseApiKey}}"
+                }
+              ]
+            },
+            "description": "Signs in an existing Firebase account with email and password. The **Tests** script automatically saves the returned `idToken` to `{{firebaseToken}}`.\n\nID tokens expire after 1 hour. Use **Refresh Token** to get a new one without signing in again."
+          },
+          "response": [
+            {
+              "name": "200 OK — Signed In",
+              "originalRequest": {
+                "auth": { "type": "noauth" },
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"james@hartleyelectrical.co.uk\",\n  \"password\": \"Password1!\",\n  \"returnSecureToken\": true\n}"
+                },
+                "url": {
+                  "raw": "https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key={{firebaseApiKey}}"
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"kind\": \"identitytoolkit#VerifyPasswordResponse\",\n  \"localId\": \"abc123uid\",\n  \"email\": \"james@hartleyelectrical.co.uk\",\n  \"displayName\": \"\",\n  \"idToken\": \"<Firebase ID token — valid for 1 hour>\",\n  \"registered\": true,\n  \"refreshToken\": \"<Firebase refresh token>\",\n  \"expiresIn\": \"3600\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Refresh Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.id_token) {",
+                  "    pm.collectionVariables.set('firebaseToken', json.id_token);",
+                  "    console.log('firebaseToken refreshed.');",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/x-www-form-urlencoded" }
+            ],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                { "key": "grant_type", "value": "refresh_token" },
+                { "key": "refresh_token", "value": "<paste refreshToken from sign-in response>" }
+              ]
+            },
+            "url": {
+              "raw": "https://securetoken.googleapis.com/v1/token?key={{firebaseApiKey}}",
+              "protocol": "https",
+              "host": ["securetoken", "googleapis", "com"],
+              "path": ["v1", "token"],
+              "query": [
+                {
+                  "key": "key",
+                  "value": "{{firebaseApiKey}}"
+                }
+              ]
+            },
+            "description": "Exchanges a Firebase refresh token for a new ID token. Use this when the `idToken` has expired (after 1 hour) rather than signing in again. Paste the `refreshToken` value from the sign-in response into the body."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": ["{{baseUrl}}"],
+              "path": ["health"]
+            },
+            "description": "Unauthenticated liveness check. Returns 200 OK when the API is running."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "url": { "raw": "{{baseUrl}}/health" }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "body": "{ \"status\": \"healthy\" }"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Users",
+      "item": [
+        {
+          "name": "Get Current User",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/users/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "me"]
+            },
+            "description": "Returns the authenticated user's profile. Auto-creates a new user record on first call (using the Firebase UID from the JWT)."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "url": { "raw": "{{baseUrl}}/users/me" }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"id\": \"3fa85f64-5717-4562-b3fc-2c963f66afa6\",\n  \"firstName\": \"James\",\n  \"lastName\": \"Hartley\",\n  \"businessName\": \"Hartley Electrical Ltd\",\n  \"email\": \"james@hartleyelectrical.co.uk\",\n  \"phone\": \"07712345678\",\n  \"trade\": \"Electrician\",\n  \"skills\": [\"18th Edition\", \"EV Charging\"],\n  \"accreditations\": [\"NICEIC\", \"Part P\"],\n  \"dayRate\": 320,\n  \"dayRateVisible\": true,\n  \"location\": \"Manchester\",\n  \"travelRadius\": 30,\n  \"rating\": 4.8,\n  \"reviewCount\": 12,\n  \"profileImageUrl\": null,\n  \"gallery\": [],\n  \"isOnboarded\": true,\n  \"subscription\": \"silver\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Update Current User",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"James\",\n  \"lastName\": \"Hartley\",\n  \"businessName\": \"Hartley Electrical Ltd\",\n  \"phone\": \"07712345678\",\n  \"trade\": \"Electrician\",\n  \"skills\": [\"18th Edition\", \"EV Charging\", \"Solar PV\"],\n  \"accreditations\": [\"NICEIC\", \"Part P\"],\n  \"dayRate\": 350,\n  \"dayRateVisible\": true,\n  \"location\": \"Manchester\",\n  \"travelRadius\": 40,\n  \"profileImageUrl\": null,\n  \"gallery\": []\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/users/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "me"]
+            },
+            "description": "Updates any combination of profile fields for the authenticated user. All fields are optional."
+          }
+        },
+        {
+          "name": "Complete Onboarding",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Prerequisite: the user's profile must have the required fields filled in",
+                  "// before calling this endpoint. Run 'Update Current User' first if needed.",
+                  "//",
+                  "// Typical onboarding sequence:",
+                  "//   1. Sign Up  →  creates Firebase account, sets {{firebaseToken}}",
+                  "//   2. Get Current User (GET /users/me)  →  auto-creates DB record",
+                  "//   3. Update Current User (PUT /users/me)  →  fills profile fields",
+                  "//   4. Complete Onboarding (POST /users/me/onboard)  →  sets isOnboarded = true"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/users/me/onboard",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "me", "onboard"]
+            },
+            "description": "Marks the authenticated user's profile as onboarded (`isOnboarded = true`). Called at the end of the slide-by-slide onboarding flow.\n\n**Testing sequence:**\n1. Sign Up → get `{{firebaseToken}}`\n2. `GET /users/me` → auto-creates the DB record\n3. `PUT /users/me` → fill in all profile fields (trade, location, dayRate, etc.)\n4. Call this endpoint → `isOnboarded` flips to `true`\n\nReturns the full updated user profile."
+          },
+          "response": [
+            {
+              "name": "200 OK — Onboarding Complete",
+              "originalRequest": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/users/me/onboard"
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"id\": \"3fa85f64-5717-4562-b3fc-2c963f66afa6\",\n  \"firstName\": \"James\",\n  \"lastName\": \"Hartley\",\n  \"businessName\": \"Hartley Electrical Ltd\",\n  \"email\": \"james@hartleyelectrical.co.uk\",\n  \"phone\": \"07712345678\",\n  \"trade\": \"Electrician\",\n  \"skills\": [\"18th Edition\", \"EV Charging\", \"Solar PV\"],\n  \"accreditations\": [\"NICEIC\", \"Part P\"],\n  \"dayRate\": 320,\n  \"dayRateVisible\": true,\n  \"location\": \"Manchester\",\n  \"travelRadius\": 30,\n  \"rating\": 0,\n  \"reviewCount\": 0,\n  \"profileImageUrl\": null,\n  \"gallery\": [],\n  \"isOnboarded\": true,\n  \"subscription\": \"bronze\"\n}"
+            },
+            {
+              "name": "409 Conflict — Already Onboarded",
+              "originalRequest": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/users/me/onboard"
+                }
+              },
+              "status": "Conflict",
+              "code": 409,
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"error\": \"User is already onboarded.\"\n}"
+            },
+            {
+              "name": "401 Unauthorized — Missing or Expired Token",
+              "originalRequest": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/users/me/onboard"
+                }
+              },
+              "status": "Unauthorized",
+              "code": 401,
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"error\": \"Unauthorized\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "List Tradespeople",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/users/tradespeople?trade=Electrician&location=Manchester",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "tradespeople"],
+              "query": [
+                {
+                  "key": "trade",
+                  "value": "Electrician",
+                  "description": "Filter by trade (e.g. Electrician, Plumber, Carpenter)"
+                },
+                {
+                  "key": "location",
+                  "value": "Manchester",
+                  "description": "Filter by location string"
+                }
+              ]
+            },
+            "description": "Returns a list of tradesperson profiles. Both query parameters are optional."
+          }
+        },
+        {
+          "name": "Get User by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/users/{{userId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "{{userId}}"]
+            },
+            "description": "Returns a public profile for any user by their GUID."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Jobs",
+      "item": [
+        {
+          "name": "List Jobs",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/jobs?trade=Electrician&location=Manchester&status=open&page=1&pageSize=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["jobs"],
+              "query": [
+                {
+                  "key": "trade",
+                  "value": "Electrician",
+                  "description": "Filter by trade"
+                },
+                {
+                  "key": "location",
+                  "value": "Manchester",
+                  "description": "Filter by location string"
+                },
+                {
+                  "key": "status",
+                  "value": "open",
+                  "description": "Filter by status: open | applied | accepted | in_progress | completed"
+                },
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "Page number (1-based)"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "20",
+                  "description": "Results per page"
+                }
+              ]
+            },
+            "description": "Returns the jobs board feed. The isInterested flag on each job reflects whether the authenticated user has expressed interest. All query parameters are optional."
+          }
+        },
+        {
+          "name": "Create Job",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Consumer Unit Upgrade\",\n  \"trade\": \"Electrician\",\n  \"location\": \"Manchester\",\n  \"postcode\": \"M1 2AB\",\n  \"duration\": 2,\n  \"days\": [\"Monday\", \"Tuesday\"],\n  \"startDate\": \"2026-05-01\",\n  \"endDate\": \"2026-05-02\",\n  \"startTime\": \"08:00\",\n  \"endTime\": \"17:00\",\n  \"dayRate\": 300,\n  \"description\": \"Replace existing fuseboard with a 24-way consumer unit and install SPD.\",\n  \"paymentTerms\": \"14 days after completion\",\n  \"photos\": []\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/jobs",
+              "host": ["{{baseUrl}}"],
+              "path": ["jobs"]
+            },
+            "description": "Creates a new job posting. The authenticated user becomes the job poster. Returns the created job with status 'open'."
+          }
+        },
+        {
+          "name": "Get Job by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/jobs/{{jobId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["jobs", "{{jobId}}"]
+            },
+            "description": "Returns full detail for a single job including applicant count and whether the current user has expressed interest."
+          }
+        },
+        {
+          "name": "My Posted Jobs",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/jobs/my/posted",
+              "host": ["{{baseUrl}}"],
+              "path": ["jobs", "my", "posted"]
+            },
+            "description": "Returns all jobs posted by the authenticated user regardless of status."
+          }
+        },
+        {
+          "name": "My Accepted Jobs",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/jobs/my/accepted",
+              "host": ["{{baseUrl}}"],
+              "path": ["jobs", "my", "accepted"]
+            },
+            "description": "Returns all jobs the authenticated tradesperson has been accepted for (status = accepted or in_progress)."
+          }
+        },
+        {
+          "name": "Toggle Interest (Apply / Withdraw)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/jobs/{{jobId}}/interest",
+              "host": ["{{baseUrl}}"],
+              "path": ["jobs", "{{jobId}}", "interest"]
+            },
+            "description": "Toggles the authenticated tradesperson's interest in a job. Creates a JobApplication if none exists; deletes it if one already exists. Returns the updated job."
+          }
+        },
+        {
+          "name": "Accept Applicant",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"applicantId\": \"{{userId}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/jobs/{{jobId}}/accept",
+              "host": ["{{baseUrl}}"],
+              "path": ["jobs", "{{jobId}}", "accept"]
+            },
+            "description": "Job poster accepts a tradesperson for the job. Transitions job status from open → accepted. Triggers fund-hold via Stripe stub."
+          }
+        },
+        {
+          "name": "Complete Job",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/jobs/{{jobId}}/complete",
+              "host": ["{{baseUrl}}"],
+              "path": ["jobs", "{{jobId}}", "complete"]
+            },
+            "description": "Marks a job as completed (accepted/in_progress → completed). After this, a mandatory review must be submitted to trigger payout release."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Reviews",
+      "item": [
+        {
+          "name": "Get Reviews for User",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/users/{{userId}}/reviews",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "{{userId}}", "reviews"]
+            },
+            "description": "Returns all reviews submitted for the given user, ordered by most recent first."
+          }
+        },
+        {
+          "name": "Submit Review",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"jobId\": \"{{jobId}}\",\n  \"rating\": 5,\n  \"text\": \"James was fantastic — arrived on time, clean job, and sorted the EICR too. Highly recommended.\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/users/{{userId}}/reviews",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "{{userId}}", "reviews"]
+            },
+            "description": "Submits a mandatory review for a completed job. Recalculates the reviewee's average rating. Creates a notification for the reviewee. Triggers the Stripe payout stub. Rating must be 1–5."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Notifications",
+      "item": [
+        {
+          "name": "Get Notifications",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/notifications",
+              "host": ["{{baseUrl}}"],
+              "path": ["notifications"]
+            },
+            "description": "Returns all notifications for the authenticated user, ordered by most recent first."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "url": { "raw": "{{baseUrl}}/notifications" }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "body": "[\n  {\n    \"id\": \"3fa85f64-5717-4562-b3fc-2c963f66afa6\",\n    \"type\": \"job_accepted\",\n    \"title\": \"Application Accepted\",\n    \"description\": \"Your application for Consumer Unit Upgrade has been accepted.\",\n    \"isRead\": false,\n    \"linkedId\": \"{{jobId}}\",\n    \"createdAt\": \"2026-04-14T09:00:00Z\"\n  }\n]"
+            }
+          ]
+        },
+        {
+          "name": "Mark Notification Read",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/notifications/{{notificationId}}/read",
+              "host": ["{{baseUrl}}"],
+              "path": ["notifications", "{{notificationId}}", "read"]
+            },
+            "description": "Marks a single notification as read."
+          }
+        },
+        {
+          "name": "Mark All Notifications Read",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/notifications/read-all",
+              "host": ["{{baseUrl}}"],
+              "path": ["notifications", "read-all"]
+            },
+            "description": "Marks all unread notifications as read for the authenticated user."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Conversations",
+      "item": [
+        {
+          "name": "List Conversations",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/conversations",
+              "host": ["{{baseUrl}}"],
+              "path": ["conversations"]
+            },
+            "description": "Returns all conversations the authenticated user is a participant in, ordered by most recent activity."
+          }
+        },
+        {
+          "name": "Get or Create Conversation",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"participantId\": \"{{userId}}\",\n  \"relatedJobId\": \"{{jobId}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/conversations",
+              "host": ["{{baseUrl}}"],
+              "path": ["conversations"]
+            },
+            "description": "Upserts a conversation between the authenticated user and participantId. Returns the existing conversation if the pair already have one, otherwise creates and returns a new one. relatedJobId is optional."
+          }
+        },
+        {
+          "name": "Get Conversation by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/conversations/{{conversationId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["conversations", "{{conversationId}}"]
+            },
+            "description": "Returns a conversation with its full message history."
+          }
+        },
+        {
+          "name": "Send Message",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"text\": \"Hi James, I can start Monday — does 8am work for you?\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/conversations/{{conversationId}}/messages",
+              "host": ["{{baseUrl}}"],
+              "path": ["conversations", "{{conversationId}}", "messages"]
+            },
+            "description": "Sends a message in the specified conversation. Returns the created message object."
+          }
+        },
+        {
+          "name": "Mark Conversation Read",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/conversations/{{conversationId}}/read",
+              "host": ["{{baseUrl}}"],
+              "path": ["conversations", "{{conversationId}}", "read"]
+            },
+            "description": "Marks all messages in the conversation as read for the authenticated user (resets unreadCount to 0)."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Subscriptions",
+      "item": [
+        {
+          "name": "Get Current Subscription",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/subscriptions/current",
+              "host": ["{{baseUrl}}"],
+              "path": ["subscriptions", "current"]
+            },
+            "description": "Returns the authenticated user's active subscription tier and payout timing.",
+            "response": [
+              {
+                "name": "200 OK",
+                "originalRequest": {
+                  "method": "GET",
+                  "url": { "raw": "{{baseUrl}}/subscriptions/current" }
+                },
+                "status": "OK",
+                "code": 200,
+                "_postman_previewlanguage": "json",
+                "body": "{\n  \"id\": \"3fa85f64-5717-4562-b3fc-2c963f66afa6\",\n  \"tier\": \"silver\",\n  \"payoutDays\": 14,\n  \"isActive\": true,\n  \"startedAt\": \"2026-01-10T00:00:00Z\"\n}"
+              }
+            ]
+          }
+        },
+        {
+          "name": "Update Subscription",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tier\": \"gold\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/subscriptions",
+              "host": ["{{baseUrl}}"],
+              "path": ["subscriptions"]
+            },
+            "description": "Changes the authenticated user's subscription tier. Deactivates the existing subscription and creates a new active one. Valid tiers: bronze (£29/mo, 30-day payout), silver (£59/mo, 14-day), gold (£129/mo, 7-day)."
+          }
+        }
+      ]
+    }
+  ]
+}
