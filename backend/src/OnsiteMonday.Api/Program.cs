@@ -82,6 +82,10 @@ builder.Services.AddCors(opts =>
             "http://localhost:3000")
          .AllowAnyMethod()
          .AllowAnyHeader());
+    opts.AddPolicy("AllowAll", p =>
+        p.AllowAnyOrigin()
+         .AllowAnyMethod()
+         .AllowAnyHeader());
 });
 
 var app = builder.Build();
@@ -92,7 +96,7 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.UseCors("LocalDev");
+app.UseCors(app.Environment.IsDevelopment() ? "LocalDev" : "AllowAll");
 app.UseMiddleware<ErrorHandlingMiddleware>();
 app.UseAuthentication();
 app.UseAuthorization();
@@ -101,11 +105,11 @@ app.MapControllers();
 // Health check (no auth required)
 app.MapGet("/api/health", () => Results.Ok(new { status = "healthy", timestamp = DateTime.UtcNow }));
 
-// Seed development data
-if (app.Environment.IsDevelopment())
+// Run migrations and seed on startup
+using (var scope = app.Services.CreateScope())
 {
-    using var scope = app.Services.CreateScope();
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    await db.Database.MigrateAsync();
     await DataSeeder.SeedAsync(db);
 }
 

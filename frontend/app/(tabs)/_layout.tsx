@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { Tabs, router } from 'expo-router';
 import { TouchableOpacity, View, Text, StyleSheet } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useApp } from '@/context/AppContext';
 import { colors } from '@/constants/colors';
@@ -37,6 +38,7 @@ function MessagesTabIcon({ color, size }: { color: string; size: number }) {
 
 export default function TabLayout() {
   const { isAuthenticated } = useApp();
+  const insets = useSafeAreaInsets();
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -55,8 +57,8 @@ export default function TabLayout() {
           backgroundColor: colors.white,
           borderTopColor: colors.border,
           borderTopWidth: 1,
-          height: 60,
-          paddingBottom: 8,
+          height: 60 + insets.bottom,
+          paddingBottom: 8 + insets.bottom,
         },
         tabBarLabelStyle: { fontSize: 11, fontWeight: '600' },
         headerStyle: { backgroundColor: colors.primary },

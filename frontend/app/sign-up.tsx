@@ -78,7 +78,7 @@ export default function SignUpScreen() {
       const nameParts = fullName.trim().split(' ');
       await updateCurrentUser({
         firstName: nameParts[0] || 'User',
-        lastName: nameParts.slice(1).join(' ') || '',
+        lastName: nameParts.slice(1).join(' ') || undefined,
         email,
         trade: selectedTrade,
         skills: selectedSkills,

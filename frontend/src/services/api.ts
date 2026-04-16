@@ -10,9 +10,9 @@ function devHost(): string {
   return 'localhost';
 }
 
-const BASE_URL = __DEV__
-  ? `http://${devHost()}:5236/api`
-  : 'https://api.onsitemonday.co.uk/api';
+const BASE_URL =
+  process.env.EXPO_PUBLIC_API_URL ??
+  (__DEV__ ? `http://${devHost()}:5236/api` : 'https://api.onsitemonday.co.uk/api');
 
 export class ApiError extends Error {
   constructor(public status: number, message: string) {
