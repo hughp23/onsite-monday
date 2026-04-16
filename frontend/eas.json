@@ -7,6 +7,16 @@
       "distribution": "internal",
       "android": {
         "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_FIREBASE_API_KEY": "AIzaSyD5x3wj3oBPRuf6LaMW96a444EiHgpUj3I",
+        "EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN": "onsite-monday.firebaseapp.com",
+        "EXPO_PUBLIC_FIREBASE_PROJECT_ID": "onsite-monday",
+        "EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET": "onsite-monday.firebasestorage.app",
+        "EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID": "838911528327",
+        "EXPO_PUBLIC_FIREBASE_APP_ID": "1:838911528327:web:130d4af07418a4bf9dd722",
+        "EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID": "G-52FHRTKP4D",
+        "EXPO_PUBLIC_API_URL": "https://onsite-monday-production.up.railway.app/api"
       }
     }
   }
