@@ -24,6 +24,7 @@ interface AppContextType {
   acceptJob: (jobId: string, applicantId: string) => Promise<void>;
   markJobComplete: (jobId: string) => Promise<void>;
   submitReview: (tradespersonId: string, review: { rating: number; text: string; jobId: string }) => Promise<void>;
+  startConversation: (participantId: string, relatedJobId?: string) => Promise<string>;
   sendMessage: (conversationId: string, text: string) => Promise<void>;
   markConversationRead: (conversationId: string) => Promise<void>;
   markNotificationRead: (notificationId: string) => Promise<void>;
@@ -33,6 +34,7 @@ interface AppContextType {
   getUnreadMessageCount: () => number;
   getJob: (id: string) => Job | undefined;
   getConversation: (id: string) => Conversation | undefined;
+  fetchConversation: (id: string) => Promise<void>;
 }
 
 const AppContext = createContext<AppContextType | null>(null);
@@ -180,6 +182,14 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
     await reviewService.submitReview(tradespersonId, review);
   }, []);
 
+  const startConversation = useCallback(async (participantId: string, relatedJobId?: string): Promise<string> => {
+    const existing = conversations.find(c => c.participantId === participantId);
+    if (existing) return existing.id;
+    const conv = await conversationService.getOrCreate(participantId, relatedJobId);
+    setConversations(prev => prev.some(c => c.id === conv.id) ? prev : [conv, ...prev]);
+    return conv.id;
+  }, [conversations]);
+
   const sendMessage = useCallback(async (conversationId: string, text: string) => {
     const message = await conversationService.sendMessage(conversationId, text);
     setConversations(prev => prev.map(conv =>
@@ -248,6 +258,11 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
     [conversations]
   );
 
+  const fetchConversation = useCallback(async (id: string) => {
+    const conv = await conversationService.getById(id);
+    setConversations(prev => prev.map(c => c.id === id ? conv : c));
+  }, []);
+
   return (
     <AppContext.Provider value={{
       currentUser,
@@ -264,6 +279,7 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
       acceptJob,
       markJobComplete,
       submitReview,
+      startConversation,
       sendMessage,
       markConversationRead,
       markNotificationRead,
@@ -273,6 +289,7 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
       getUnreadMessageCount,
       getJob,
       getConversation,
+      fetchConversation,
     }}>
       {children}
     </AppContext.Provider>

@@ -4,6 +4,7 @@ import { router } from 'expo-router';
 import { useApp } from '@/context/AppContext';
 import NotificationItem from '@/components/NotificationItem';
 import EmptyState from '@/components/EmptyState';
+import AnimatedListItem from '@/components/AnimatedListItem';
 import { colors } from '@/constants/colors';
 
 export default function NotificationsScreen() {
@@ -34,11 +35,13 @@ export default function NotificationsScreen() {
       <FlatList
         data={sorted}
         keyExtractor={item => item.id}
-        renderItem={({ item }) => (
-          <NotificationItem
-            notification={item}
-            onPress={() => handlePress(item.id, item.linkedId, item.type)}
-          />
+        renderItem={({ item, index }) => (
+          <AnimatedListItem index={index}>
+            <NotificationItem
+              notification={item}
+              onPress={() => handlePress(item.id, item.linkedId, item.type)}
+            />
+          </AnimatedListItem>
         )}
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={

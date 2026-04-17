@@ -4,6 +4,7 @@ import { router } from 'expo-router';
 import { useApp } from '@/context/AppContext';
 import ConversationItem from '@/components/ConversationItem';
 import EmptyState from '@/components/EmptyState';
+import AnimatedListItem from '@/components/AnimatedListItem';
 import { colors } from '@/constants/colors';
 
 export default function MessagesScreen() {
@@ -18,14 +19,16 @@ export default function MessagesScreen() {
       <FlatList
         data={sorted}
         keyExtractor={item => item.id}
-        renderItem={({ item }) => (
-          <ConversationItem
-            conversation={item}
-            onPress={() => {
-              markConversationRead(item.id);
-              router.push(`/chat/${item.id}`);
-            }}
-          />
+        renderItem={({ item, index }) => (
+          <AnimatedListItem index={index}>
+            <ConversationItem
+              conversation={item}
+              onPress={() => {
+                markConversationRead(item.id);
+                router.push(`/chat/${item.id}`);
+              }}
+            />
+          </AnimatedListItem>
         )}
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={

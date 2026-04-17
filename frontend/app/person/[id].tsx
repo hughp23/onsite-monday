@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
-  View, Text, ScrollView, TouchableOpacity, StyleSheet,
+  View, Text, ScrollView, TouchableOpacity, StyleSheet, Image,
 } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
@@ -11,18 +11,22 @@ import ReviewCard from '@/components/ReviewCard';
 import EmptyState from '@/components/EmptyState';
 import { colors } from '@/constants/colors';
 
-function Avatar({ name, size = 80 }: { name: string; size?: number }) {
+function Avatar({ name, size = 80, imageUri }: { name: string; size?: number; imageUri?: string | null }) {
   const initials = name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2);
   return (
     <View style={[styles.avatar, { width: size, height: size, borderRadius: size / 2 }]}>
-      <Text style={[styles.avatarText, { fontSize: size * 0.35 }]}>{initials}</Text>
+      {imageUri ? (
+        <Image source={{ uri: imageUri }} style={{ width: size, height: size, borderRadius: size / 2 }} />
+      ) : (
+        <Text style={[styles.avatarText, { fontSize: size * 0.35 }]}>{initials}</Text>
+      )}
     </View>
   );
 }
 
 export default function PersonDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { tradespeople, conversations } = useApp();
+  const { tradespeople, startConversation } = useApp();
   const person = tradespeople.find(t => t.id === id);
   const insets = useSafeAreaInsets();
 
@@ -35,13 +39,16 @@ export default function PersonDetailScreen() {
   }
 
   const name = `${person.firstName} ${person.lastName}`;
+  const [startingConv, setStartingConv] = useState(false);
 
-  const handleMessage = () => {
-    const existing = conversations.find(c => c.participantId === person.id);
-    if (existing) {
-      router.push(`/chat/${existing.id}`);
-    } else {
-      router.push('/messages');
+  const handleMessage = async () => {
+    if (startingConv) return;
+    setStartingConv(true);
+    try {
+      const convId = await startConversation(person.id);
+      router.push(`/chat/${convId}`);
+    } finally {
+      setStartingConv(false);
     }
   };
 
@@ -77,7 +84,7 @@ export default function PersonDetailScreen() {
                 <Text style={styles.metaText}>{person.location} + {person.travelRadius} miles</Text>
               </View>
             </View>
-            <Avatar name={name} />
+            <Avatar name={name} imageUri={person.profileImage} />
           </View>
         </View>
 
@@ -151,7 +158,7 @@ export default function PersonDetailScreen() {
           <MaterialCommunityIcons name="account-check" size={18} color={colors.white} />
           <Text style={styles.hireBtnText}>Hire {person.firstName}</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.messageBtn} onPress={handleMessage} activeOpacity={0.85}>
+        <TouchableOpacity style={[styles.messageBtn, startingConv && { opacity: 0.6 }]} onPress={handleMessage} activeOpacity={0.85} disabled={startingConv}>
           <Ionicons name="chatbubble-outline" size={18} color={colors.primary} />
           <Text style={styles.messageBtnText}>Message</Text>
         </TouchableOpacity>

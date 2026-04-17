@@ -9,6 +9,7 @@ import { useApp } from '@/context/AppContext';
 import PersonCard from '@/components/PersonCard';
 import EmptyState from '@/components/EmptyState';
 import Toast from '@/components/Toast';
+import AnimatedListItem from '@/components/AnimatedListItem';
 import { colors } from '@/constants/colors';
 
 const FILTER_TRADES = ['All', 'Labourer', 'Joiner', 'Plumber', 'Electrician', 'Bricklayer', 'Roofer', 'Plasterer'];
@@ -87,12 +88,14 @@ export default function PeopleScreen() {
       <FlatList
         data={filtered}
         keyExtractor={item => item.id}
-        renderItem={({ item }) => (
-          <PersonCard
-            person={item}
-            onPress={() => router.push(`/person/${item.id}`)}
-            onHire={() => setHireModalPerson(item.id)}
-          />
+        renderItem={({ item, index }) => (
+          <AnimatedListItem index={index}>
+            <PersonCard
+              person={item}
+              onPress={() => router.push(`/person/${item.id}`)}
+              onHire={() => setHireModalPerson(item.id)}
+            />
+          </AnimatedListItem>
         )}
         contentContainerStyle={styles.list}
         showsVerticalScrollIndicator={false}

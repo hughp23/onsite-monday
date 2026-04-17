@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
 import { Conversation } from '@/constants/types';
 import { colors } from '@/constants/colors';
 
@@ -29,28 +30,43 @@ function timeAgo(timestamp: string): string {
   return `${days}d ago`;
 }
 
+const SPRING = { damping: 20, stiffness: 320 };
+
 export default function ConversationItem({ conversation, onPress }: ConversationItemProps) {
+  const scale = useSharedValue(1);
+  const animStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
+
   return (
-    <TouchableOpacity style={styles.item} onPress={onPress} activeOpacity={0.7}>
-      <View style={styles.avatarWrap}>
-        <Avatar name={conversation.participantName} />
-        {conversation.unreadCount > 0 && <View style={styles.unreadDot} />}
-      </View>
-      <View style={styles.content}>
-        <View style={styles.row}>
-          <Text style={[styles.name, conversation.unreadCount > 0 && styles.nameBold]}>
-            {conversation.participantName}
-          </Text>
-          <Text style={styles.time}>{timeAgo(conversation.lastMessageTime)}</Text>
+    <Animated.View style={animStyle}>
+      <TouchableOpacity
+        style={styles.item}
+        onPress={onPress}
+        onPressIn={() => { scale.value = withSpring(0.98, SPRING); }}
+        onPressOut={() => { scale.value = withSpring(1, SPRING); }}
+        activeOpacity={0.92}
+      >
+        <View style={styles.avatarWrap}>
+          <Avatar name={conversation.participantName} />
+          {conversation.unreadCount > 0 && <View style={styles.unreadDot} />}
         </View>
-        <Text
-          style={[styles.preview, conversation.unreadCount > 0 && styles.previewBold]}
-          numberOfLines={1}
-        >
-          {conversation.lastMessage}
-        </Text>
-      </View>
-    </TouchableOpacity>
+        <View style={styles.content}>
+          <View style={styles.row}>
+            <Text style={[styles.name, conversation.unreadCount > 0 && styles.nameBold]}>
+              {conversation.participantName}
+            </Text>
+            <Text style={styles.time}>{timeAgo(conversation.lastMessageTime)}</Text>
+          </View>
+          <Text
+            style={[styles.preview, conversation.unreadCount > 0 && styles.previewBold]}
+            numberOfLines={1}
+          >
+            {conversation.lastMessage}
+          </Text>
+        </View>
+      </TouchableOpacity>
+    </Animated.View>
   );
 }
 
@@ -63,6 +79,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
     gap: 12,
+    backgroundColor: colors.white,
   },
   avatarWrap: { position: 'relative' },
   avatar: {

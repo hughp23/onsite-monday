@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet,
-  KeyboardAvoidingView, Platform, Switch,
+  KeyboardAvoidingView, Platform, Switch, Image, ActivityIndicator, Alert,
 } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
@@ -11,6 +11,7 @@ import ChipSelector from '@/components/ChipSelector';
 import Toast from '@/components/Toast';
 import { colors } from '@/constants/colors';
 import { TRADES, SKILLS_BY_TRADE, ACCREDITATIONS } from '@/constants/trades';
+import { pickAndUploadProfileImage, CANCELLED } from '@/src/services/imageService';
 
 export default function EditProfileScreen() {
   const { currentUser, updateCurrentUser } = useApp();
@@ -26,10 +27,27 @@ export default function EditProfileScreen() {
   const [dayRateVisible, setDayRateVisible] = useState(currentUser?.dayRateVisible ?? true);
   const [location, setLocation] = useState(currentUser?.location ?? '');
   const [travelRadius, setTravelRadius] = useState(currentUser?.travelRadius ?? 25);
+  const [profileImageUri, setProfileImageUri] = useState<string | null>(currentUser?.profileImage ?? null);
+  const [isUploading, setIsUploading] = useState(false);
 
   if (!currentUser) return null;
   const [showTradePicker, setShowTradePicker] = useState(false);
   const [toastVisible, setToastVisible] = useState(false);
+
+  const handleChangePhoto = async () => {
+    setIsUploading(true);
+    try {
+      const result = await pickAndUploadProfileImage();
+      if (result !== CANCELLED) {
+        setProfileImageUri(result);
+      }
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'Could not upload photo.';
+      Alert.alert('Photo upload failed', msg);
+    } finally {
+      setIsUploading(false);
+    }
+  };
 
   const handleSave = async () => {
     try {
@@ -45,6 +63,7 @@ export default function EditProfileScreen() {
         dayRateVisible,
         location,
         travelRadius,
+        profileImage: profileImageUri ?? undefined,
       });
       setToastVisible(true);
       setTimeout(() => router.back(), 1600);
@@ -65,15 +84,36 @@ export default function EditProfileScreen() {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        {/* Photo placeholder */}
+        {/* Photo section */}
         <View style={styles.photoSection}>
-          <View style={styles.photoCircle}>
-            <Text style={styles.photoInitials}>
-              {firstName.charAt(0)}{lastName.charAt(0)}
+          <TouchableOpacity onPress={handleChangePhoto} disabled={isUploading} activeOpacity={0.75}>
+            <View style={styles.photoCircle}>
+              {profileImageUri ? (
+                <Image
+                  source={{ uri: profileImageUri }}
+                  style={styles.photoImage}
+                />
+              ) : (
+                <Text style={styles.photoInitials}>
+                  {firstName.charAt(0)}{lastName.charAt(0)}
+                </Text>
+              )}
+              {/* Upload overlay */}
+              {isUploading && (
+                <View style={styles.uploadOverlay}>
+                  <ActivityIndicator color={colors.white} size="small" />
+                </View>
+              )}
+              {/* Camera badge */}
+              <View style={styles.cameraBadge}>
+                <MaterialCommunityIcons name="camera" size={14} color={colors.white} />
+              </View>
+            </View>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.changePhotoBtn} onPress={handleChangePhoto} disabled={isUploading}>
+            <Text style={styles.changePhotoText}>
+              {isUploading ? 'Uploading…' : profileImageUri ? 'Change Photo' : 'Add Photo'}
             </Text>
-          </View>
-          <TouchableOpacity style={styles.changePhotoBtn}>
-            <Text style={styles.changePhotoText}>Change Photo</Text>
           </TouchableOpacity>
         </View>
 
@@ -197,19 +237,47 @@ export default function EditProfileScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   content: { padding: 20 },
+
   photoSection: { alignItems: 'center', marginBottom: 24 },
   photoCircle: {
-    width: 90,
-    height: 90,
-    borderRadius: 45,
+    width: 96,
+    height: 96,
+    borderRadius: 48,
     backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 10,
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  photoImage: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
   },
   photoInitials: { color: colors.white, fontSize: 32, fontWeight: '800' },
+  uploadOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cameraBadge: {
+    position: 'absolute',
+    bottom: 4,
+    right: 4,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: colors.primaryLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: colors.white,
+  },
   changePhotoBtn: { paddingVertical: 6 },
   changePhotoText: { color: colors.primary, fontWeight: '600', fontSize: 14 },
+
   sectionHeader: { fontSize: 16, fontWeight: '700', color: colors.text, marginBottom: 12, marginTop: 8 },
   row: { flexDirection: 'row' },
   inputGroup: { marginBottom: 14 },

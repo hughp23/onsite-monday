@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
+import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
 import { Job } from '@/constants/types';
 import { colors } from '@/constants/colors';
 
@@ -27,56 +28,71 @@ const STATUS_LABELS: Record<string, string> = {
   applied: 'Applied',
 };
 
+const SPRING = { damping: 20, stiffness: 320 };
+
 export default function JobCard({ job, onPress, onInterest, showStatus = false }: JobCardProps) {
+  const scale = useSharedValue(1);
+  const animStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
+
   return (
-    <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.7}>
-      <View style={styles.row}>
-        <View style={styles.iconBox}>
-          <MaterialCommunityIcons name="briefcase" size={28} color={colors.primary} />
-        </View>
-        <View style={styles.content}>
-          <View style={styles.topRow}>
-            <Text style={styles.title} numberOfLines={1}>{job.title}</Text>
-            {showStatus && (
-              <View style={[styles.statusBadge, { backgroundColor: STATUS_COLORS[job.status] + '20' }]}>
-                <Text style={[styles.statusText, { color: STATUS_COLORS[job.status] }]}>
-                  {STATUS_LABELS[job.status]}
-                </Text>
-              </View>
-            )}
+    <Animated.View style={animStyle}>
+      <TouchableOpacity
+        style={styles.card}
+        onPress={onPress}
+        onPressIn={() => { scale.value = withSpring(0.97, SPRING); }}
+        onPressOut={() => { scale.value = withSpring(1, SPRING); }}
+        activeOpacity={0.92}
+      >
+        <View style={styles.row}>
+          <View style={styles.iconBox}>
+            <MaterialCommunityIcons name="briefcase" size={28} color={colors.primary} />
           </View>
-          <View style={styles.metaRow}>
-            <MaterialCommunityIcons name="hammer-wrench" size={13} color={colors.textLight} />
-            <Text style={styles.metaText}>{job.trade}</Text>
-            <Text style={styles.dot}>·</Text>
-            <Ionicons name="location-outline" size={13} color={colors.textLight} />
-            <Text style={styles.metaText} numberOfLines={1}>{job.location}</Text>
-          </View>
-          <View style={styles.bottomRow}>
-            <View style={styles.daysRow}>
-              <MaterialCommunityIcons name="calendar" size={13} color={colors.textLight} />
-              <Text style={styles.metaText}>{job.duration} Day{job.duration > 1 ? 's' : ''} · </Text>
-              {job.days.map(d => (
-                <Text key={d} style={styles.dayChip}>{d}</Text>
-              ))}
+          <View style={styles.content}>
+            <View style={styles.topRow}>
+              <Text style={styles.title} numberOfLines={1}>{job.title}</Text>
+              {showStatus && (
+                <View style={[styles.statusBadge, { backgroundColor: STATUS_COLORS[job.status] + '20' }]}>
+                  <Text style={[styles.statusText, { color: STATUS_COLORS[job.status] }]}>
+                    {STATUS_LABELS[job.status]}
+                  </Text>
+                </View>
+              )}
             </View>
-            <Text style={styles.rate}>£{job.dayRate}/d</Text>
+            <View style={styles.metaRow}>
+              <MaterialCommunityIcons name="hammer-wrench" size={13} color={colors.textLight} />
+              <Text style={styles.metaText}>{job.trade}</Text>
+              <Text style={styles.dot}>·</Text>
+              <Ionicons name="location-outline" size={13} color={colors.textLight} />
+              <Text style={styles.metaText} numberOfLines={1}>{job.location}</Text>
+            </View>
+            <View style={styles.bottomRow}>
+              <View style={styles.daysRow}>
+                <MaterialCommunityIcons name="calendar" size={13} color={colors.textLight} />
+                <Text style={styles.metaText}>{job.duration} Day{job.duration > 1 ? 's' : ''} · </Text>
+                {job.days.map(d => (
+                  <Text key={d} style={styles.dayChip}>{d}</Text>
+                ))}
+              </View>
+              <Text style={styles.rate}>£{job.dayRate}/d</Text>
+            </View>
           </View>
+          {onInterest && (
+            <TouchableOpacity onPress={onInterest} style={styles.thumbBtn} activeOpacity={0.7}>
+              <MaterialCommunityIcons
+                name={job.isInterested ? 'thumb-up' : 'thumb-up-outline'}
+                size={20}
+                color={job.isInterested ? colors.accent : colors.textLight}
+              />
+              <Text style={[styles.thumbCount, job.isInterested && { color: colors.accent }]}>
+                {job.interestedCount}
+              </Text>
+            </TouchableOpacity>
+          )}
         </View>
-        {onInterest && (
-          <TouchableOpacity onPress={onInterest} style={styles.thumbBtn} activeOpacity={0.7}>
-            <MaterialCommunityIcons
-              name={job.isInterested ? 'thumb-up' : 'thumb-up-outline'}
-              size={20}
-              color={job.isInterested ? colors.accent : colors.textLight}
-            />
-            <Text style={[styles.thumbCount, job.isInterested && { color: colors.accent }]}>
-              {job.interestedCount}
-            </Text>
-          </TouchableOpacity>
-        )}
-      </View>
-    </TouchableOpacity>
+      </TouchableOpacity>
+    </Animated.View>
   );
 }
 

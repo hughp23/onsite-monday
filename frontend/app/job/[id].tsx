@@ -12,12 +12,13 @@ import { colors } from '@/constants/colors';
 
 export default function JobDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { getJob, toggleJobInterest, currentUser, conversations } = useApp();
+  const { getJob, toggleJobInterest, currentUser, startConversation } = useApp();
   const job = getJob(id);
   const insets = useSafeAreaInsets();
   const [showInterestModal, setShowInterestModal] = useState(false);
   const [toastVisible, setToastVisible] = useState(false);
   const [toastMsg, setToastMsg] = useState('');
+  const [startingConv, setStartingConv] = useState(false);
 
   if (!job) {
     return (
@@ -41,13 +42,14 @@ export default function JobDetailScreen() {
     setToastVisible(true);
   };
 
-  const handleMessage = () => {
-    // Find or navigate to conversation with poster
-    const existing = conversations.find(c => c.participantName.includes(job.postedByName.split(' ')[0]));
-    if (existing) {
-      router.push(`/chat/${existing.id}`);
-    } else {
-      router.push('/messages');
+  const handleMessage = async () => {
+    if (startingConv) return;
+    setStartingConv(true);
+    try {
+      const convId = await startConversation(job.postedById, job.id);
+      router.push(`/chat/${convId}`);
+    } finally {
+      setStartingConv(false);
     }
   };
 
@@ -156,7 +158,7 @@ export default function JobDetailScreen() {
         </View>
 
         {/* Message poster */}
-        <TouchableOpacity style={styles.messageSection} onPress={handleMessage} activeOpacity={0.7}>
+        <TouchableOpacity style={[styles.messageSection, startingConv && { opacity: 0.6 }]} onPress={handleMessage} activeOpacity={0.7} disabled={startingConv}>
           <MaterialCommunityIcons name="chat-question-outline" size={22} color={colors.primary} />
           <View style={styles.messageSectionContent}>
             <Text style={styles.messageSectionTitle}>Got a question?</Text>

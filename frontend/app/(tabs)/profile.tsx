@@ -1,7 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
-  View, Text, ScrollView, TouchableOpacity, StyleSheet, Modal, Pressable,
+  View, Text, ScrollView, TouchableOpacity, StyleSheet, Modal, Pressable, Image,
 } from 'react-native';
+import Animated, {
+  useSharedValue, useAnimatedStyle, withTiming, withDelay, withSpring, Easing,
+} from 'react-native-reanimated';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
@@ -13,11 +16,15 @@ import { colors } from '@/constants/colors';
 const TIER_LABELS = { bronze: 'Bronze', silver: 'Silver', gold: 'Gold' };
 const TIER_COLORS = { bronze: '#CD7F32', silver: '#A8A9AD', gold: colors.accent };
 
-function Avatar({ name, size = 72 }: { name: string; size?: number }) {
+function Avatar({ name, size = 72, imageUri }: { name: string; size?: number; imageUri?: string | null }) {
   const initials = name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
   return (
     <View style={[styles.avatar, { width: size, height: size, borderRadius: size / 2 }]}>
-      <Text style={[styles.avatarText, { fontSize: size * 0.35 }]}>{initials}</Text>
+      {imageUri ? (
+        <Image source={{ uri: imageUri }} style={{ width: size, height: size, borderRadius: size / 2 }} />
+      ) : (
+        <Text style={[styles.avatarText, { fontSize: size * 0.35 }]}>{initials}</Text>
+      )}
     </View>
   );
 }
@@ -27,6 +34,28 @@ export default function ProfileScreen() {
   const { signOut } = useAuth();
   const insets = useSafeAreaInsets();
   const [showSignOutModal, setShowSignOutModal] = useState(false);
+
+  const headerTranslY = useSharedValue(-24);
+  const headerOpacity = useSharedValue(0);
+  const bodyTranslY   = useSharedValue(20);
+  const bodyOpacity   = useSharedValue(0);
+
+  useEffect(() => {
+    const tc = { duration: 380, easing: Easing.out(Easing.cubic) };
+    headerOpacity.value = withTiming(1, tc);
+    headerTranslY.value = withTiming(0, tc);
+    bodyOpacity.value   = withDelay(160, withTiming(1, tc));
+    bodyTranslY.value   = withDelay(160, withTiming(0, tc));
+  }, []);
+
+  const headerAnimStyle = useAnimatedStyle(() => ({
+    opacity: headerOpacity.value,
+    transform: [{ translateY: headerTranslY.value }],
+  }));
+  const bodyAnimStyle = useAnimatedStyle(() => ({
+    opacity: bodyOpacity.value,
+    transform: [{ translateY: bodyTranslY.value }],
+  }));
 
   if (!currentUser) {
     return (
@@ -45,7 +74,7 @@ export default function ProfileScreen() {
     <View style={[styles.container, { paddingBottom: insets.bottom }]}>
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Profile header */}
-        <View style={styles.profileHeader}>
+        <Animated.View style={[styles.profileHeader, headerAnimStyle]}>
           <View style={styles.headerTop}>
             <View style={styles.headerInfo}>
               <Text style={styles.name}>{name}</Text>
@@ -67,7 +96,7 @@ export default function ProfileScreen() {
                 </Text>
               </View>
             </View>
-            <Avatar name={name} />
+            <Avatar name={name} imageUri={currentUser.profileImage} />
           </View>
           <View style={styles.contactRow}>
             <Ionicons name="call-outline" size={14} color="rgba(255,255,255,0.8)" />
@@ -76,9 +105,9 @@ export default function ProfileScreen() {
             <Ionicons name="location-outline" size={14} color="rgba(255,255,255,0.8)" />
             <Text style={styles.metaText}>{currentUser.location}</Text>
           </View>
-        </View>
+        </Animated.View>
 
-        <View style={styles.body}>
+        <Animated.View style={[styles.body, bodyAnimStyle]}>
           {/* Incomplete profile banner */}
           {isProfileIncomplete && (
             <TouchableOpacity
@@ -188,7 +217,7 @@ export default function ProfileScreen() {
             <Ionicons name="log-out-outline" size={18} color={colors.error} />
             <Text style={styles.signOutText}>Sign Out</Text>
           </TouchableOpacity>
-        </View>
+        </Animated.View>
       </ScrollView>
 
       {/* Sign out confirmation */}

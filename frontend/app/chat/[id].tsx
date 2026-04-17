@@ -6,10 +6,40 @@ import {
 import { useLocalSearchParams, useNavigation } from 'expo-router';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Animated, {
+  useSharedValue, useAnimatedStyle, withDelay, withTiming, withSpring, Easing,
+} from 'react-native-reanimated';
 import { useApp } from '@/context/AppContext';
 import { colors } from '@/constants/colors';
 import { Message } from '@/constants/types';
 import { useLayoutEffect } from 'react';
+
+// Per-bubble entrance animation: slides in from the sender's side
+function AnimatedBubble({
+  index,
+  isMine,
+  children,
+}: {
+  index: number;
+  isMine: boolean;
+  children: React.ReactNode;
+}) {
+  const translateX = useSharedValue(isMine ? 30 : -30);
+  const opacity = useSharedValue(0);
+
+  useEffect(() => {
+    const delay = Math.min(index * 35, 200);
+    translateX.value = withDelay(delay, withSpring(0, { damping: 20, stiffness: 200 }));
+    opacity.value = withDelay(delay, withTiming(1, { duration: 280, easing: Easing.out(Easing.cubic) }));
+  }, []);
+
+  const style = useAnimatedStyle(() => ({
+    opacity: opacity.value,
+    transform: [{ translateX: translateX.value }],
+  }));
+
+  return <Animated.View style={style}>{children}</Animated.View>;
+}
 
 function Avatar({ name }: { name: string }) {
   const initials = name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2);
@@ -37,7 +67,7 @@ function formatDateGroup(timestamp: string): string {
 
 export default function ChatScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { getConversation, sendMessage } = useApp();
+  const { getConversation, sendMessage, currentUser, fetchConversation } = useApp();
   const conversation = getConversation(id);
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
@@ -52,6 +82,10 @@ export default function ChatScreen() {
       });
     }
   }, [conversation]);
+
+  useEffect(() => {
+    fetchConversation(id);
+  }, [id]);
 
   useEffect(() => {
     if (conversation?.messages.length) {
@@ -77,27 +111,29 @@ export default function ChatScreen() {
   const messages = conversation.messages;
 
   const renderMessage = ({ item, index }: { item: Message; index: number }) => {
-    const isMine = item.senderId === 'user-1';
+    const isMine = item.senderId === currentUser?.id;
     const prevMsg = messages[index - 1];
     const showDateGroup =
       !prevMsg ||
       formatDateGroup(item.timestamp) !== formatDateGroup(prevMsg.timestamp);
 
     return (
-      <>
-        {showDateGroup && (
-          <View style={styles.dateGroup}>
-            <Text style={styles.dateGroupText}>{formatDateGroup(item.timestamp)}</Text>
-          </View>
-        )}
-        <View style={[styles.messageRow, isMine && styles.messageRowMine]}>
-          {!isMine && <Avatar name={conversation.participantName} />}
-          <View style={[styles.bubble, isMine ? styles.bubbleMine : styles.bubbleTheirs]}>
-            <Text style={[styles.bubbleText, isMine && styles.bubbleTextMine]}>{item.text}</Text>
-            <Text style={[styles.bubbleTime, isMine && styles.bubbleTimeMine]}>{formatTime(item.timestamp)}</Text>
+      <AnimatedBubble index={index} isMine={isMine}>
+        <View>
+          {showDateGroup && (
+            <View style={styles.dateGroup}>
+              <Text style={styles.dateGroupText}>{formatDateGroup(item.timestamp)}</Text>
+            </View>
+          )}
+          <View style={[styles.messageRow, isMine && styles.messageRowMine]}>
+            {!isMine && <Avatar name={conversation.participantName} />}
+            <View style={[styles.bubble, isMine ? styles.bubbleMine : styles.bubbleTheirs]}>
+              <Text style={[styles.bubbleText, isMine && styles.bubbleTextMine]}>{item.text}</Text>
+              <Text style={[styles.bubbleTime, isMine && styles.bubbleTimeMine]}>{formatTime(item.timestamp)}</Text>
+            </View>
           </View>
         </View>
-      </>
+      </AnimatedBubble>
     );
   };
 

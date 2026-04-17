@@ -9,6 +9,7 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useApp } from '@/context/AppContext';
 import JobCard from '@/components/JobCard';
 import EmptyState from '@/components/EmptyState';
+import AnimatedListItem from '@/components/AnimatedListItem';
 import { colors } from '@/constants/colors';
 import { Job } from '@/constants/types';
 
@@ -63,12 +64,14 @@ export default function JobsScreen() {
       <FlatList
         data={sorted}
         keyExtractor={item => item.id}
-        renderItem={({ item }) => (
-          <JobCard
-            job={item}
-            onPress={() => router.push(`/job/${item.id}`)}
-            onInterest={() => toggleJobInterest(item.id)}
-          />
+        renderItem={({ item, index }) => (
+          <AnimatedListItem index={index}>
+            <JobCard
+              job={item}
+              onPress={() => router.push(`/job/${item.id}`)}
+              onInterest={() => toggleJobInterest(item.id)}
+            />
+          </AnimatedListItem>
         )}
         contentContainerStyle={styles.list}
         showsVerticalScrollIndicator={false}
