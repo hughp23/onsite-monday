@@ -30,7 +30,8 @@ public class UserService : IUserService
 
     public async Task<UserDto> UpdateCurrentUserAsync(string firebaseUid, string email, UpdateUserRequest request)
     {
-        var user = await _repo.GetOrCreateByFirebaseUidAsync(firebaseUid, email);
+        var user = await _repo.GetByFirebaseUidAsync(firebaseUid)
+            ?? throw new KeyNotFoundException("User not found.");
 
         if (request.FirstName != null) user.FirstName = request.FirstName;
         if (request.LastName != null) user.LastName = request.LastName;
