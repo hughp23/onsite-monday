@@ -39,8 +39,19 @@ export async function apiRequest<T>(
   });
 
   if (!response.ok) {
-    const errorBody = await response.json().catch(() => ({ error: 'Request failed' }));
-    throw new ApiError(response.status, errorBody.error ?? 'Request failed');
+    const errorBody = await response.json().catch(() => ({}));
+    // Handle both { error: "..." } (custom errors) and
+    // { title: "...", errors: { Field: ["msg"] } } (ASP.NET Core validation)
+    const message: string =
+      errorBody.error ??
+      (errorBody.errors
+        ? Object.values(errorBody.errors as Record<string, string[]>)
+            .flat()
+            .join('; ')
+        : null) ??
+      errorBody.title ??
+      'Request failed';
+    throw new ApiError(response.status, message);
   }
 
   // Handle 204 No Content
