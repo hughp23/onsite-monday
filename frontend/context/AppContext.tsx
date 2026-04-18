@@ -22,6 +22,7 @@ interface AppContextType {
   toggleJobInterest: (jobId: string) => Promise<void>;
   addJob: (job: Omit<Job, 'id' | 'createdAt' | 'status' | 'interestedCount' | 'isInterested' | 'applicantCount'>) => Promise<void>;
   acceptJob: (jobId: string, applicantId: string) => Promise<void>;
+  startJob: (jobId: string) => Promise<void>;
   markJobComplete: (jobId: string) => Promise<void>;
   submitReview: (tradespersonId: string, review: { rating: number; text: string; jobId: string }) => Promise<void>;
   startConversation: (participantId: string, relatedJobId?: string) => Promise<string>;
@@ -99,17 +100,22 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
   }, [firebaseUser]);
 
   const updateCurrentUser = useCallback(async (updates: Partial<User>) => {
+    // Treat empty strings as undefined so they are omitted from the JSON body
+    // and don't trigger backend NotEmpty() validation.
+    const str = (v: string | undefined): string | undefined =>
+      v !== undefined && v !== '' ? v : undefined;
+
     const updated = await userService.updateMe({
-      firstName: updates.firstName,
-      lastName: updates.lastName,
-      businessName: updates.businessName,
-      phone: updates.phone,
-      trade: updates.trade,
+      firstName: str(updates.firstName),
+      lastName: str(updates.lastName),
+      businessName: str(updates.businessName),
+      phone: str(updates.phone),
+      trade: str(updates.trade),
       skills: updates.skills,
       accreditations: updates.accreditations,
       dayRate: updates.dayRate,
       dayRateVisible: updates.dayRateVisible,
-      location: updates.location,
+      location: str(updates.location),
       travelRadius: updates.travelRadius,
       profileImageUrl: updates.profileImage ?? undefined,
       gallery: updates.gallery,
@@ -166,6 +172,14 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
       accepted: prev.accepted.some(j => j.id === jobId)
         ? prev.accepted.map(j => j.id === jobId ? updated : j)
         : [...prev.accepted, updated],
+    }));
+  }, []);
+
+  const startJob = useCallback(async (jobId: string) => {
+    const updated = await jobService.startJob(jobId);
+    setMyJobs(prev => ({
+      ...prev,
+      posted: prev.posted.map(j => j.id === jobId ? updated : j),
     }));
   }, []);
 
@@ -277,6 +291,7 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
       toggleJobInterest,
       addJob,
       acceptJob,
+      startJob,
       markJobComplete,
       submitReview,
       startConversation,
