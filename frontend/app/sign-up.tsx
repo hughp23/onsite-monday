@@ -119,11 +119,11 @@ export default function SignUpScreen() {
   };
 
   const handleComplete = async () => {
+    setIsCompleting(true);
     try {
       await updateCurrentUser({
         firstName: firstName.trim() || 'User',
         lastName: lastName.trim() || undefined,
-        email,
         trade: selectedTrade,
         skills: selectedSkills,
         accreditations: selectedAccreditations,
@@ -132,9 +132,15 @@ export default function SignUpScreen() {
         location,
         travelRadius,
       });
+      await completeOnboarding();
+      if (selectedTier && selectedTier !== 'bronze') {
+        await updateSubscription(selectedTier);
+      }
       router.replace('/(tabs)/jobs');
     } catch {
       Alert.alert('Profile setup failed', 'Could not save your profile. Please try again.');
+    } finally {
+      setIsCompleting(false);
     }
   };
 
@@ -378,9 +384,16 @@ export default function SignUpScreen() {
           <Text style={styles.summaryRow}>🎓 {selectedAccreditations.length} accreditation(s)</Text>
           <Text style={styles.summaryRow}>💳 {selectedTier ? TIER_NAMES[selectedTier] : 'Bronze'} plan</Text>
         </View>
-        <TouchableOpacity style={styles.primaryBtn} onPress={handleComplete} activeOpacity={0.85}>
-          <Text style={styles.primaryBtnText}>Go to Jobs Board</Text>
-          <Ionicons name="arrow-forward" size={20} color={colors.white} />
+        <TouchableOpacity
+          style={[styles.primaryBtn, isCompleting && styles.primaryBtnDisabled]}
+          onPress={handleComplete}
+          activeOpacity={0.85}
+          disabled={isCompleting}
+        >
+          <Text style={styles.primaryBtnText}>
+            {isCompleting ? 'Setting up your profile...' : 'Go to Jobs Board'}
+          </Text>
+          {!isCompleting && <Ionicons name="arrow-forward" size={20} color={colors.white} />}
         </TouchableOpacity>
       </View>
     </View>,
