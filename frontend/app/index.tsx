@@ -2,7 +2,7 @@ import React, { useEffect } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet, Dimensions,
 } from 'react-native';
-import { router } from 'expo-router';
+import { router, usePathname } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
@@ -27,7 +27,8 @@ const SPRING_CONFIG = { damping: 18, stiffness: 180, mass: 0.8 };
 const TIMING_CONFIG = { duration: 400, easing: Easing.out(Easing.cubic) };
 
 export default function WelcomeScreen() {
-  const { isAuthenticated } = useApp();
+  const { isAuthenticated, currentUser, isLoading } = useApp();
+  const pathname = usePathname();
   const insets = useSafeAreaInsets();
 
   // Shared animation values
@@ -50,10 +51,17 @@ export default function WelcomeScreen() {
   const ringRotate    = useSharedValue(0);
 
   useEffect(() => {
-    if (isAuthenticated) {
-      router.replace('/(tabs)/jobs');
+    // Only act when this screen is the active route
+    if (pathname !== '/') return;
+    // Wait for auth + profile to load
+    if (isLoading) return;
+
+    if (isAuthenticated && currentUser) {
+      router.replace(currentUser.isOnboarded ? '/(tabs)/jobs' : '/sign-up');
       return;
     }
+
+    if (isAuthenticated && !currentUser) return; // Auth exists but profile not yet loaded
 
     // Ring rotation
     ringRotate.value = withRepeat(
@@ -100,7 +108,7 @@ export default function WelcomeScreen() {
     // Buttons slide up
     btnsOpacity.value = withDelay(780, withTiming(1, TIMING_CONFIG));
     btnsTranslY.value = withDelay(780, withTiming(0, TIMING_CONFIG));
-  }, [isAuthenticated]);
+  }, [isAuthenticated, currentUser, isLoading, pathname]);
 
   // Animated styles
   const logoStyle = useAnimatedStyle(() => ({

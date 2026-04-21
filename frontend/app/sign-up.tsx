@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView,
   FlatList, Dimensions, KeyboardAvoidingView, Platform, Alert,
@@ -10,30 +10,73 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useApp } from '@/context/AppContext';
 import { useAuth } from '@/context/AuthContext';
 import ChipSelector from '@/components/ChipSelector';
+import SubscriptionCard from '@/components/SubscriptionCard';
 import { colors } from '@/constants/colors';
 import { TRADES, SKILLS_BY_TRADE, ACCREDITATIONS } from '@/constants/trades';
+import { SubscriptionTier } from '@/constants/types';
+
+const TIER_NAMES: Record<SubscriptionTier, string> = {
+  bronze: 'Bronze',
+  silver: 'Silver',
+  gold: 'Gold',
+};
 
 const { width } = Dimensions.get('window');
-const TOTAL_SLIDES = 8;
+const TOTAL_SLIDES = 9;
 
 export default function SignUpScreen() {
-  const { updateCurrentUser } = useApp();
+  const { updateCurrentUser, completeOnboarding, updateSubscription, currentUser, isAuthenticated } = useApp();
   const { signUpWithEmail } = useAuth();
+  const isReturningUser = isAuthenticated && !!currentUser;
+  const minSlide = isReturningUser ? 1 : 0;
+
   const insets = useSafeAreaInsets();
   const pagerRef = useRef<FlatList>(null);
-  const [currentSlide, setCurrentSlide] = useState(0);
 
-  const [fullName, setFullName] = useState('');
+  const getInitialSlide = (): number => {
+    if (!isReturningUser) return 0;
+    if (!currentUser?.trade) return 1;
+    if (!currentUser?.skills?.length) return 2;
+    if (!currentUser?.dayRate) return 4;
+    if (!currentUser?.location) return 5;
+    return 7;
+  };
+
+  const [currentSlide, setCurrentSlide] = useState(getInitialSlide);
+
+  const [firstName, setFirstName] = useState(currentUser?.firstName ?? '');
+  const [lastName, setLastName] = useState(currentUser?.lastName ?? '');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [selectedTrade, setSelectedTrade] = useState('');
-  const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
-  const [selectedAccreditations, setSelectedAccreditations] = useState<string[]>([]);
-  const [dayRate, setDayRate] = useState('');
-  const [dayRateVisible, setDayRateVisible] = useState(true);
-  const [location, setLocation] = useState('');
-  const [travelRadius, setTravelRadius] = useState(25);
+  const [selectedTrade, setSelectedTrade] = useState(currentUser?.trade ?? '');
+  const [selectedSkills, setSelectedSkills] = useState<string[]>(currentUser?.skills ?? []);
+  const [selectedAccreditations, setSelectedAccreditations] = useState<string[]>(currentUser?.accreditations ?? []);
+  const [dayRate, setDayRate] = useState(currentUser?.dayRate ? String(currentUser.dayRate) : '');
+  const [dayRateVisible, setDayRateVisible] = useState(currentUser?.dayRateVisible ?? true);
+  const [location, setLocation] = useState(currentUser?.location ?? '');
+  const [travelRadius, setTravelRadius] = useState(currentUser?.travelRadius ?? 25);
   const [isCreatingAccount, setIsCreatingAccount] = useState(false);
+  const [isCompleting, setIsCompleting] = useState(false);
+  const [selectedTier, setSelectedTier] = useState<SubscriptionTier | null>(null);
+
+  useEffect(() => {
+    if (currentSlide > 0) {
+      setTimeout(() => {
+        pagerRef.current?.scrollToIndex({ index: currentSlide, animated: false });
+      }, 50);
+    }
+  }, []); // Run once on mount
+
+  const isSlideValid = (slide: number): boolean => {
+    switch (slide) {
+      case 0: return firstName.trim().length > 0 && email.trim().length > 0 && password.length >= 6;
+      case 1: return selectedTrade.length > 0;
+      case 2: return selectedSkills.length > 0;
+      case 4: return !!dayRate && parseInt(dayRate) > 0;
+      case 5: return location.trim().length > 0;
+      default: return true;
+    }
+  };
 
   const goNext = () => {
     if (currentSlide < TOTAL_SLIDES - 1) {
@@ -44,16 +87,18 @@ export default function SignUpScreen() {
   };
 
   const goPrev = () => {
-    if (currentSlide > 0) {
+    if (currentSlide > minSlide) {
       const prev = currentSlide - 1;
       pagerRef.current?.scrollToIndex({ index: prev, animated: true });
       setCurrentSlide(prev);
+    } else {
+      router.back();
     }
   };
 
   const handleCreateAccount = async () => {
-    if (!fullName.trim() || !email.trim() || password.length < 6) {
-      Alert.alert('Missing fields', 'Please fill in your full name, email and a password (min. 6 characters).');
+    if (!firstName.trim() || !email.trim() || password.length < 6) {
+      Alert.alert('Missing fields', 'Please fill in your first name, email and a password (min. 6 characters).');
       return;
     }
     setIsCreatingAccount(true);
@@ -74,12 +119,11 @@ export default function SignUpScreen() {
   };
 
   const handleComplete = async () => {
+    setIsCompleting(true);
     try {
-      const nameParts = fullName.trim().split(' ');
       await updateCurrentUser({
-        firstName: nameParts[0] || 'User',
-        lastName: nameParts.slice(1).join(' ') || undefined,
-        email,
+        firstName: firstName.trim() || 'User',
+        lastName: lastName.trim() || undefined,
         trade: selectedTrade,
         skills: selectedSkills,
         accreditations: selectedAccreditations,
@@ -88,9 +132,19 @@ export default function SignUpScreen() {
         location,
         travelRadius,
       });
+      await completeOnboarding();
+      if (selectedTier && selectedTier !== 'bronze') {
+        try {
+          await updateSubscription(selectedTier);
+        } catch {
+          // Non-fatal: subscription can be changed from profile screen
+        }
+      }
       router.replace('/(tabs)/jobs');
     } catch {
       Alert.alert('Profile setup failed', 'Could not save your profile. Please try again.');
+    } finally {
+      setIsCompleting(false);
     }
   };
 
@@ -103,10 +157,29 @@ export default function SignUpScreen() {
           <Text style={styles.slideSublink}>Already have an account? <Text style={styles.link}>Sign in</Text></Text>
         </TouchableOpacity>
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>Full Name</Text>
+          <Text style={styles.label}>First Name</Text>
           <View style={styles.inputWrap}>
             <Ionicons name="person-outline" size={18} color={colors.textLight} style={styles.inputIcon} />
-            <TextInput style={styles.input} placeholder="Dave Mitchell" placeholderTextColor={colors.textLight} value={fullName} onChangeText={setFullName} />
+            <TextInput
+              style={styles.input}
+              placeholder="Dave"
+              placeholderTextColor={colors.textLight}
+              value={firstName}
+              onChangeText={setFirstName}
+            />
+          </View>
+        </View>
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Last Name</Text>
+          <View style={styles.inputWrap}>
+            <Ionicons name="person-outline" size={18} color={colors.textLight} style={styles.inputIcon} />
+            <TextInput
+              style={styles.input}
+              placeholder="Mitchell"
+              placeholderTextColor={colors.textLight}
+              value={lastName}
+              onChangeText={setLastName}
+            />
           </View>
         </View>
         <View style={styles.inputGroup}>
@@ -278,8 +351,29 @@ export default function SignUpScreen() {
       </View>
     </View>,
 
-    // Slide 8: All set
+    // Slide 8: Subscription selection
     <View style={styles.slide} key="s8">
+      <View style={styles.slideContent}>
+        <Text style={styles.slideTitle}>Choose your plan</Text>
+        <Text style={styles.slideHint}>Select the subscription that suits your business. You can change this anytime.</Text>
+        <ScrollView showsVerticalScrollIndicator={false} style={{ flex: 1 }}>
+          {(['bronze', 'silver', 'gold'] as SubscriptionTier[]).map(tier => (
+            <SubscriptionCard
+              key={tier}
+              tier={tier}
+              isCurrentPlan={selectedTier === tier}
+              onSelect={() => setSelectedTier(tier)}
+            />
+          ))}
+        </ScrollView>
+        <TouchableOpacity onPress={goNext} style={styles.skipLink}>
+          <Text style={styles.link}>Start on Bronze</Text>
+        </TouchableOpacity>
+      </View>
+    </View>,
+
+    // Slide 9: All set
+    <View style={styles.slide} key="s9">
       <View style={[styles.slideContent, styles.slideCenter]}>
         <View style={styles.successIcon}>
           <MaterialCommunityIcons name="check-circle" size={72} color={colors.success} />
@@ -287,15 +381,23 @@ export default function SignUpScreen() {
         <Text style={styles.slideTitle}>You're all set!</Text>
         <Text style={styles.slideHint}>Here's a summary of your profile:</Text>
         <View style={styles.summaryCard}>
-          <Text style={styles.summaryRow}>👤 {fullName || 'Your Name'}</Text>
+          <Text style={styles.summaryRow}>👤 {[firstName, lastName].filter(Boolean).join(' ') || 'Your Name'}</Text>
           <Text style={styles.summaryRow}>🔨 {selectedTrade || 'Trade not set'}</Text>
           <Text style={styles.summaryRow}>📍 {location || 'Location not set'}</Text>
           <Text style={styles.summaryRow}>💰 {dayRateVisible ? `£${dayRate || '—'}/day` : 'Rate upon request'}</Text>
           <Text style={styles.summaryRow}>🎓 {selectedAccreditations.length} accreditation(s)</Text>
+          <Text style={styles.summaryRow}>💳 {selectedTier ? TIER_NAMES[selectedTier] : 'Bronze'} plan</Text>
         </View>
-        <TouchableOpacity style={styles.primaryBtn} onPress={handleComplete} activeOpacity={0.85}>
-          <Text style={styles.primaryBtnText}>Go to Jobs Board</Text>
-          <Ionicons name="arrow-forward" size={20} color={colors.white} />
+        <TouchableOpacity
+          style={[styles.primaryBtn, isCompleting && styles.primaryBtnDisabled]}
+          onPress={handleComplete}
+          activeOpacity={0.85}
+          disabled={isCompleting}
+        >
+          <Text style={styles.primaryBtnText}>
+            {isCompleting ? 'Setting up your profile...' : 'Go to Jobs Board'}
+          </Text>
+          {!isCompleting && <Ionicons name="arrow-forward" size={20} color={colors.white} />}
         </TouchableOpacity>
       </View>
     </View>,
@@ -307,7 +409,7 @@ export default function SignUpScreen() {
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
         <View style={styles.headerRow}>
-          {currentSlide > 0 ? (
+          {currentSlide > minSlide ? (
             <TouchableOpacity onPress={goPrev} style={styles.navBtn}>
               <Ionicons name="arrow-back" size={22} color={colors.white} />
             </TouchableOpacity>
@@ -344,10 +446,10 @@ export default function SignUpScreen() {
       {currentSlide < TOTAL_SLIDES - 1 && (
         <View style={[styles.nextBtnWrap, { paddingBottom: insets.bottom + 16 }]}>
           <TouchableOpacity
-            style={styles.primaryBtn}
+            style={[styles.primaryBtn, (isCreatingAccount || !isSlideValid(currentSlide)) && styles.primaryBtnDisabled]}
             onPress={currentSlide === 0 ? handleCreateAccount : goNext}
             activeOpacity={0.85}
-            disabled={isCreatingAccount}
+            disabled={isCreatingAccount || !isSlideValid(currentSlide)}
           >
             <Text style={styles.primaryBtnText}>
               {currentSlide === 0
@@ -522,6 +624,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 10,
     width: '100%',
+  },
+  primaryBtnDisabled: {
+    opacity: 0.45,
   },
   primaryBtnText: { color: colors.white, fontSize: 16, fontWeight: '700' },
   nextBtnWrap: { paddingHorizontal: 24, backgroundColor: colors.background },

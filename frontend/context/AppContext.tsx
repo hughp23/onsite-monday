@@ -19,6 +19,7 @@ interface AppContextType {
   conversations: Conversation[];
   notifications: AppNotification[];
   updateCurrentUser: (updates: Partial<User>) => Promise<void>;
+  completeOnboarding: () => Promise<void>;
   toggleJobInterest: (jobId: string) => Promise<void>;
   addJob: (job: Omit<Job, 'id' | 'createdAt' | 'status' | 'interestedCount' | 'isInterested' | 'applicantCount'>) => Promise<void>;
   acceptJob: (jobId: string, applicantId: string) => Promise<void>;
@@ -121,6 +122,11 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
       gallery: updates.gallery,
     });
     setCurrentUser(updated);
+  }, []);
+
+  const completeOnboarding = useCallback(async () => {
+    const user = await userService.completeOnboarding();
+    setCurrentUser(user);
   }, []);
 
   const toggleJobInterest = useCallback(async (jobId: string) => {
@@ -296,6 +302,7 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
       conversations,
       notifications,
       updateCurrentUser,
+      completeOnboarding,
       toggleJobInterest,
       addJob,
       acceptJob,
