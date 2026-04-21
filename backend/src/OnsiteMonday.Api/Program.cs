@@ -1,9 +1,12 @@
 using FluentValidation;
 using FluentValidation.AspNetCore;
+using Hangfire;
+using Hangfire.PostgreSql;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using OnsiteMonday.Api.Data;
+using OnsiteMonday.Api.Jobs;
 using OnsiteMonday.Api.Mapping;
 using OnsiteMonday.Api.Middleware;
 using OnsiteMonday.Api.Repositories;
@@ -63,8 +66,44 @@ builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<IConversationService, ConversationService>();
 builder.Services.AddScoped<ISubscriptionService, SubscriptionService>();
 
-// Phase-2 stubs (replace with real implementations when ready)
-builder.Services.AddScoped<IStripeService, StubStripeService>();
+// Mangopay — use stub in Development/Testing, real service in Production
+builder.Services.Configure<MangopayOptions>(builder.Configuration.GetSection("Mangopay"));
+if (builder.Environment.IsProduction())
+    builder.Services.AddScoped<IMangopayService, MangopayService>();
+else
+    builder.Services.AddScoped<IMangopayService, StubMangopayService>();
+
+// Stripe Billing — use stub in Development/Testing, real service in Production
+builder.Services.Configure<StripeOptions>(builder.Configuration.GetSection("Stripe"));
+if (builder.Environment.IsProduction())
+{
+    Stripe.StripeConfiguration.ApiKey = builder.Configuration["Stripe:SecretKey"];
+    builder.Services.AddScoped<IStripeBillingService, StripeBillingService>();
+}
+else
+{
+    builder.Services.AddScoped<IStripeBillingService, StubStripeBillingService>();
+}
+
+// Hangfire background jobs (scheduled payout release)
+if (builder.Environment.IsProduction())
+{
+    var connString = builder.Configuration.GetConnectionString("DefaultConnection")!;
+    builder.Services.AddHangfire(config => config
+        .SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
+        .UseSimpleAssemblyNameTypeSerializer()
+        .UseRecommendedSerializerSettings()
+        .UsePostgreSqlStorage(c => c.UseNpgsqlConnection(connString)));
+    builder.Services.AddHangfireServer();
+}
+else
+{
+    // No PostgreSQL in Development/Testing — use stub so DI is satisfied without a running DB
+    builder.Services.AddSingleton<IBackgroundJobClient, StubBackgroundJobClient>();
+}
+builder.Services.AddScoped<IPayoutReleaseJob, PayoutReleaseJob>();
+
+// Other stubs (replace with real implementations when ready)
 builder.Services.AddScoped<INotificationPushService, StubNotificationPushService>();
 builder.Services.AddScoped<IEmailService, StubEmailService>();
 
@@ -100,6 +139,14 @@ app.UseCors(app.Environment.IsDevelopment() ? "LocalDev" : "AllowAll");
 app.UseMiddleware<ErrorHandlingMiddleware>();
 app.UseAuthentication();
 app.UseAuthorization();
+if (app.Environment.IsProduction())
+{
+    app.UseHangfireDashboard("/hangfire", new DashboardOptions
+    {
+        Authorization = new[] { new Hangfire.Dashboard.LocalRequestsOnlyAuthorizationFilter() }
+    });
+    app.MapHangfireDashboard();
+}
 app.MapControllers();
 
 // Health check (no auth required)

@@ -11,10 +11,10 @@ public class UserRepository : IUserRepository
     public UserRepository(AppDbContext db) => _db = db;
 
     public Task<User?> GetByIdAsync(Guid id) =>
-        _db.Users.Include(u => u.ActiveSubscription).FirstOrDefaultAsync(u => u.Id == id);
+        _db.Users.Include(u => u.Subscriptions).FirstOrDefaultAsync(u => u.Id == id);
 
     public Task<User?> GetByFirebaseUidAsync(string firebaseUid) =>
-        _db.Users.Include(u => u.ActiveSubscription).FirstOrDefaultAsync(u => u.FirebaseUid == firebaseUid);
+        _db.Users.Include(u => u.Subscriptions).FirstOrDefaultAsync(u => u.FirebaseUid == firebaseUid);
 
     public async Task<User> GetOrCreateByFirebaseUidAsync(string firebaseUid, string email)
     {
@@ -49,8 +49,10 @@ public class UserRepository : IUserRepository
 
     public async Task<List<User>> GetTradespeopleAsync(string? trade, string? location)
     {
-        var query = _db.Users
-            .Include(u => u.ActiveSubscription)
+        try
+        {
+            var query = _db.Users
+            .Include(u => u.Subscriptions)
             .Where(u => u.Trade != null && u.IsOnboarded);
 
         if (!string.IsNullOrWhiteSpace(trade))
@@ -60,7 +62,14 @@ public class UserRepository : IUserRepository
             query = query.Where(u => u.Location != null &&
                 u.Location.ToLower().Contains(location.ToLower()));
 
-        return await query.OrderByDescending(u => u.Rating).ToListAsync();
+        return await query.ToListAsync();
+        }
+        catch (Exception ex)
+        {
+            // Log the exception (not implemented here)
+            throw new Exception("An error occurred while retrieving tradespeople.", ex);
+        }
+        
     }
 
     public async Task UpdateAsync(User user)

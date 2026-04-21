@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import {
   View, ScrollView, StyleSheet, Modal, Pressable, Text, TouchableOpacity,
 } from 'react-native';
-import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useApp } from '@/context/AppContext';
@@ -20,7 +19,6 @@ export default function SubscriptionScreen() {
   const { currentUser, updateSubscription } = useApp();
   const insets = useSafeAreaInsets();
   const [confirmTier, setConfirmTier] = useState<SubscriptionTier | null>(null);
-  const [successTier, setSuccessTier] = useState<SubscriptionTier | null>(null);
 
   if (!currentUser) return null;
 
@@ -33,7 +31,6 @@ export default function SubscriptionScreen() {
   const confirmChange = () => {
     if (confirmTier) {
       updateSubscription(confirmTier);
-      setSuccessTier(confirmTier);
       setConfirmTier(null);
     }
   };
@@ -68,10 +65,10 @@ export default function SubscriptionScreen() {
             <MaterialCommunityIcons name="crown" size={44} color={colors.accent} />
             <Text style={styles.modalTitle}>Switch to {confirmTier ? TIER_NAMES[confirmTier] : ''}?</Text>
             <Text style={styles.modalDesc}>
-              Your plan will be updated immediately. You can change it again at any time.
+              You'll be redirected to complete payment. Your plan activates once payment is confirmed.
             </Text>
             <TouchableOpacity style={styles.confirmBtn} onPress={confirmChange}>
-              <Text style={styles.confirmBtnText}>Yes, Switch Plan</Text>
+              <Text style={styles.confirmBtnText}>Yes, Proceed to Payment</Text>
             </TouchableOpacity>
             <TouchableOpacity onPress={() => setConfirmTier(null)} style={styles.cancelBtn}>
               <Text style={styles.cancelBtnText}>Cancel</Text>
@@ -80,21 +77,6 @@ export default function SubscriptionScreen() {
         </Pressable>
       </Modal>
 
-      {/* Success modal */}
-      <Modal visible={!!successTier} transparent animationType="fade">
-        <Pressable style={styles.overlay} onPress={() => { setSuccessTier(null); router.back(); }}>
-          <View style={styles.modal}>
-            <MaterialCommunityIcons name="check-circle" size={56} color={colors.success} />
-            <Text style={styles.modalTitle}>Plan Updated!</Text>
-            <Text style={styles.modalDesc}>
-              You're now on the {successTier ? TIER_NAMES[successTier] : ''} plan.
-            </Text>
-            <TouchableOpacity style={styles.confirmBtn} onPress={() => { setSuccessTier(null); router.back(); }}>
-              <Text style={styles.confirmBtnText}>Great!</Text>
-            </TouchableOpacity>
-          </View>
-        </Pressable>
-      </Modal>
     </View>
   );
 }

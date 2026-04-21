@@ -18,7 +18,7 @@ namespace OnsiteMonday.Api.Data.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "8.0.25")
+                .HasAnnotation("ProductVersion", "8.0.26")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -84,13 +84,31 @@ namespace OnsiteMonday.Api.Data.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<string>("EscrowPayInId")
+                        .HasColumnType("text");
+
+                    b.Property<string>("EscrowTransferId")
+                        .HasColumnType("text");
+
+                    b.Property<string>("HangfireJobId")
+                        .HasColumnType("text");
+
                     b.Property<string>("Location")
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<string>("PaymentStatus")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("text")
+                        .HasDefaultValue("none");
+
                     b.Property<string>("PaymentTerms")
                         .IsRequired()
                         .HasColumnType("text");
+
+                    b.Property<DateTimeOffset?>("PayoutScheduledAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<List<string>>("Photos")
                         .IsRequired()
@@ -298,8 +316,7 @@ namespace OnsiteMonday.Api.Data.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("UserId")
-                        .IsUnique();
+                    b.HasIndex("UserId");
 
                     b.ToTable("Subscriptions");
                 });
@@ -353,6 +370,12 @@ namespace OnsiteMonday.Api.Data.Migrations
                     b.Property<string>("Location")
                         .HasColumnType("text");
 
+                    b.Property<string>("MangopayUserId")
+                        .HasColumnType("text");
+
+                    b.Property<string>("MangopayWalletId")
+                        .HasColumnType("text");
+
                     b.Property<string>("Phone")
                         .HasColumnType("text");
 
@@ -369,6 +392,9 @@ namespace OnsiteMonday.Api.Data.Migrations
                     b.Property<List<string>>("Skills")
                         .IsRequired()
                         .HasColumnType("text[]");
+
+                    b.Property<string>("StripeCustomerId")
+                        .HasColumnType("text");
 
                     b.Property<string>("Trade")
                         .HasColumnType("text");
@@ -499,8 +525,8 @@ namespace OnsiteMonday.Api.Data.Migrations
             modelBuilder.Entity("OnsiteMonday.Api.Domain.Subscription", b =>
                 {
                     b.HasOne("OnsiteMonday.Api.Domain.User", "User")
-                        .WithOne("ActiveSubscription")
-                        .HasForeignKey("OnsiteMonday.Api.Domain.Subscription", "UserId")
+                        .WithMany("Subscriptions")
+                        .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -521,8 +547,6 @@ namespace OnsiteMonday.Api.Data.Migrations
 
             modelBuilder.Entity("OnsiteMonday.Api.Domain.User", b =>
                 {
-                    b.Navigation("ActiveSubscription");
-
                     b.Navigation("Applications");
 
                     b.Navigation("Notifications");
@@ -532,6 +556,8 @@ namespace OnsiteMonday.Api.Data.Migrations
                     b.Navigation("ReviewsGiven");
 
                     b.Navigation("ReviewsReceived");
+
+                    b.Navigation("Subscriptions");
                 });
 #pragma warning restore 612, 618
         }

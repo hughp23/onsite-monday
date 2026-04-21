@@ -1,3 +1,5 @@
+using System.ComponentModel.DataAnnotations.Schema;
+
 namespace OnsiteMonday.Api.Domain;
 
 public class User
@@ -24,8 +26,16 @@ public class User
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset UpdatedAt { get; set; }
 
+    // Payment provider identifiers
+    public string? MangopayUserId { get; set; }
+    public string? MangopayWalletId { get; set; }
+    public string? StripeCustomerId { get; set; } // Phase B — Stripe Billing
+
     // Navigation
-    public Subscription? ActiveSubscription { get; set; }
+    public ICollection<Subscription> Subscriptions { get; set; } = new List<Subscription>();
+
+    [NotMapped]
+    public Subscription? ActiveSubscription => Subscriptions.FirstOrDefault(s => s.IsActive);
     public ICollection<Job> PostedJobs { get; set; } = new List<Job>();
     public ICollection<JobApplication> Applications { get; set; } = new List<JobApplication>();
     public ICollection<Review> ReviewsReceived { get; set; } = new List<Review>();

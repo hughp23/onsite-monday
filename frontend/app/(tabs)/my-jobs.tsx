@@ -18,6 +18,7 @@ import JobCard from '@/components/JobCard';
 import EmptyState from '@/components/EmptyState';
 import AnimatedListItem from '@/components/AnimatedListItem';
 import { colors } from '@/constants/colors';
+import { fonts } from '@/constants/typography';
 import { Job } from '@/constants/types';
 
 type TabType = 'accepted' | 'posted';
@@ -25,10 +26,11 @@ type TabType = 'accepted' | 'posted';
 const SPRING = { damping: 22, stiffness: 200 };
 
 export default function MyJobsScreen() {
-  const { myJobs, markJobComplete } = useApp();
+  const { myJobs, markJobComplete, startJob } = useApp();
   const insets = useSafeAreaInsets();
   const [activeTab, setActiveTab] = useState<TabType>('accepted');
   const [completeModalJob, setCompleteModalJob] = useState<Job | null>(null);
+  const [startModalJob, setStartModalJob] = useState<Job | null>(null);
   const [segWidth, setSegWidth] = useState(0);
 
   // Sliding segment indicator
@@ -38,7 +40,6 @@ export default function MyJobsScreen() {
 
   const handleTabChange = (tab: TabType) => {
     if (tab === activeTab) return;
-    // Fade out → switch → fade in
     contentOpacity.value = withTiming(0, { duration: 120, easing: Easing.out(Easing.cubic) });
     setTimeout(() => {
       setActiveTab(tab);
@@ -48,7 +49,7 @@ export default function MyJobsScreen() {
 
   useEffect(() => {
     if (segWidth === 0) return;
-    const half = (segWidth - 8) / 2; // account for 4px padding each side
+    const half = (segWidth - 8) / 2;
     indicatorX.value = withSpring(activeTab === 'accepted' ? 0 : half, SPRING);
   }, [activeTab, segWidth]);
 
@@ -66,8 +67,6 @@ export default function MyJobsScreen() {
     flex: 1,
   }));
 
-  const handleMarkComplete = (job: Job) => setCompleteModalJob(job);
-
   const confirmComplete = () => {
     if (completeModalJob) {
       markJobComplete(completeModalJob.id);
@@ -76,6 +75,14 @@ export default function MyJobsScreen() {
     }
   };
 
+  const confirmStart = () => {
+    if (startModalJob) {
+      startJob(startModalJob.id);
+      setStartModalJob(null);
+    }
+  };
+
+  // Accepted tab: jobs the current user has been accepted for as a tradesperson
   const renderAccepted = () => (
     <FlatList
       data={myJobs.accepted}
@@ -88,16 +95,6 @@ export default function MyJobsScreen() {
               onPress={() => router.push(`/job/${item.id}`)}
               showStatus
             />
-            {item.status === 'in_progress' && (
-              <TouchableOpacity
-                style={styles.completeBtn}
-                onPress={() => handleMarkComplete(item)}
-                activeOpacity={0.8}
-              >
-                <MaterialCommunityIcons name="check-circle-outline" size={18} color={colors.white} />
-                <Text style={styles.completeBtnText}>Mark Complete</Text>
-              </TouchableOpacity>
-            )}
           </View>
         </AnimatedListItem>
       )}
@@ -118,6 +115,7 @@ export default function MyJobsScreen() {
     />
   );
 
+  // Posted tab: jobs the current user posted as a job poster
   const renderPosted = () => (
     <FlatList
       data={myJobs.posted}
@@ -130,10 +128,43 @@ export default function MyJobsScreen() {
               onPress={() => router.push(`/job/${item.id}`)}
               showStatus
             />
-            <View style={styles.applicantBar}>
-              <MaterialCommunityIcons name="account-group-outline" size={15} color={colors.textLight} />
-              <Text style={styles.applicantText}>{item.applicantCount} interested</Text>
-            </View>
+
+            {/* Applicant count — tappable to view applicants list */}
+            <TouchableOpacity
+              style={styles.applicantBar}
+              onPress={() => router.push(`/job-applicants/${item.id}`)}
+              activeOpacity={0.7}
+            >
+              <MaterialCommunityIcons name="account-group-outline" size={15} color={colors.primary} />
+              <Text style={styles.applicantText}>
+                {item.applicantCount} interested
+              </Text>
+              <Ionicons name="chevron-forward" size={14} color={colors.primary} />
+            </TouchableOpacity>
+
+            {/* Start Job — shown when a tradesperson has been accepted */}
+            {item.status === 'accepted' && (
+              <TouchableOpacity
+                style={styles.startBtn}
+                onPress={() => setStartModalJob(item)}
+                activeOpacity={0.8}
+              >
+                <MaterialCommunityIcons name="play-circle-outline" size={18} color={colors.white} />
+                <Text style={styles.startBtnText}>Start Job &amp; Pay</Text>
+              </TouchableOpacity>
+            )}
+
+            {/* Mark Complete — shown when job is in progress */}
+            {item.status === 'in_progress' && (
+              <TouchableOpacity
+                style={styles.completeBtn}
+                onPress={() => setCompleteModalJob(item)}
+                activeOpacity={0.8}
+              >
+                <MaterialCommunityIcons name="check-circle-outline" size={18} color={colors.white} />
+                <Text style={styles.completeBtnText}>Mark Complete</Text>
+              </TouchableOpacity>
+            )}
           </View>
         </AnimatedListItem>
       )}
@@ -151,12 +182,10 @@ export default function MyJobsScreen() {
 
   return (
     <View style={[styles.container, { paddingBottom: insets.bottom }]}>
-      {/* Segmented control with sliding indicator */}
+      {/* Segmented control */}
       <View style={styles.segmentWrap}>
         <View style={styles.segment} onLayout={handleLayout}>
-          {/* Sliding background indicator */}
           <Animated.View style={[styles.segmentIndicator, indicatorStyle]} />
-          {/* Tab buttons */}
           {(['accepted', 'posted'] as TabType[]).map(tab => (
             <TouchableOpacity
               key={tab}
@@ -165,7 +194,7 @@ export default function MyJobsScreen() {
               activeOpacity={0.7}
             >
               <Text style={[styles.segmentText, activeTab === tab && styles.segmentTextActive]}>
-                {tab === 'accepted' ? 'Accepted' : 'Posted'}
+                {tab === 'accepted' ? 'My Work' : 'Posted'}
               </Text>
             </TouchableOpacity>
           ))}
@@ -187,6 +216,29 @@ export default function MyJobsScreen() {
         </TouchableOpacity>
       )}
 
+      {/* Start Job confirmation modal */}
+      <Modal visible={!!startModalJob} transparent animationType="fade">
+        <Pressable style={styles.overlay} onPress={() => setStartModalJob(null)}>
+          <View style={styles.modal}>
+            <MaterialCommunityIcons name="play-circle" size={48} color={colors.primary} />
+            <Text style={styles.modalTitle}>Start Job?</Text>
+            <Text style={styles.modalDesc}>
+              Starting "{startModalJob?.title}" requires a payment of{' '}
+              <Text style={styles.modalAmount}>
+                £{((startModalJob?.dayRate ?? 0) * (startModalJob?.duration ?? 1)).toLocaleString()}
+              </Text>{' '}
+              to be held securely until the job is complete. You will be redirected to complete payment.
+            </Text>
+            <TouchableOpacity style={styles.confirmBtn} onPress={confirmStart}>
+              <Text style={styles.confirmBtnText}>Yes, Proceed to Payment</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => setStartModalJob(null)} style={styles.cancelBtn}>
+              <Text style={styles.cancelBtnText}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </Pressable>
+      </Modal>
+
       {/* Mark Complete confirmation modal */}
       <Modal visible={!!completeModalJob} transparent animationType="fade">
         <Pressable style={styles.overlay} onPress={() => setCompleteModalJob(null)}>
@@ -194,7 +246,7 @@ export default function MyJobsScreen() {
             <MaterialCommunityIcons name="check-circle" size={48} color={colors.success} />
             <Text style={styles.modalTitle}>Mark as Complete?</Text>
             <Text style={styles.modalDesc}>
-              Marking "{completeModalJob?.title}" as complete will trigger a review and payment release.
+              Marking "{completeModalJob?.title}" as complete will release the escrowed payment and trigger a review.
             </Text>
             <TouchableOpacity style={styles.confirmBtn} onPress={confirmComplete}>
               <Text style={styles.confirmBtnText}>Yes, Mark Complete</Text>
@@ -240,32 +292,43 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     zIndex: 1,
   },
-  segmentText: { fontSize: 14, color: colors.textLight, fontWeight: '500' },
-  segmentTextActive: { color: colors.white, fontWeight: '700' },
+  segmentText: { fontFamily: fonts.bodyMedium, fontSize: 14, color: colors.textMuted },
+  segmentTextActive: { fontFamily: fonts.bodyBold, color: colors.white },
   list: { padding: 16 },
+  applicantBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: -8,
+    marginBottom: 4,
+    paddingHorizontal: 4,
+    paddingVertical: 8,
+  },
+  applicantText: { fontFamily: fonts.bodySemiBold, fontSize: 12, color: colors.primary, flex: 1 },
+  startBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: colors.primary,
+    marginBottom: 4,
+    borderRadius: 8,
+    paddingVertical: 10,
+  },
+  startBtnText: { fontFamily: fonts.bodyBold, color: colors.white, fontSize: 14 },
   completeBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
     backgroundColor: colors.success,
-    marginTop: -8,
     marginBottom: 12,
     borderRadius: 8,
     paddingVertical: 10,
   },
-  completeBtnText: { color: colors.white, fontWeight: '700', fontSize: 14 },
-  applicantBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginTop: -8,
-    marginBottom: 12,
-    paddingLeft: 4,
-  },
-  applicantText: { fontSize: 12, color: colors.textLight },
+  completeBtnText: { fontFamily: fonts.bodyBold, color: colors.white, fontSize: 14 },
   findMoreLink: { alignItems: 'center', marginTop: 8, paddingVertical: 12 },
-  findMoreText: { color: colors.primary, fontWeight: '600', fontSize: 14 },
+  findMoreText: { fontFamily: fonts.bodySemiBold, color: colors.primary, fontSize: 14 },
   fab: {
     position: 'absolute',
     right: 24,
@@ -277,9 +340,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     shadowColor: colors.accent,
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.35,
-    shadowRadius: 8,
-    elevation: 6,
+    shadowOpacity: 0.40,
+    shadowRadius: 12,
+    elevation: 8,
   },
   overlay: {
     flex: 1,
@@ -289,14 +352,22 @@ const styles = StyleSheet.create({
     padding: 24,
   },
   modal: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.surfaceRaised,
     borderRadius: 20,
     padding: 28,
     alignItems: 'center',
     width: '100%',
   },
-  modalTitle: { fontSize: 20, fontWeight: '800', color: colors.text, marginTop: 12, marginBottom: 8 },
-  modalDesc: { fontSize: 14, color: colors.textLight, textAlign: 'center', lineHeight: 20, marginBottom: 24 },
+  modalTitle: {
+    fontFamily: fonts.display,
+    fontSize: 24,
+    letterSpacing: 0.3,
+    color: colors.text,
+    marginTop: 12,
+    marginBottom: 8,
+  },
+  modalDesc: { fontFamily: fonts.body, fontSize: 14, color: colors.textSecondary, textAlign: 'center', lineHeight: 20, marginBottom: 24 },
+  modalAmount: { fontFamily: fonts.bodyBold, color: colors.primary },
   confirmBtn: {
     backgroundColor: colors.primary,
     borderRadius: 10,
@@ -305,7 +376,7 @@ const styles = StyleSheet.create({
     width: '100%',
     marginBottom: 10,
   },
-  confirmBtnText: { color: colors.white, fontWeight: '700', fontSize: 15 },
+  confirmBtnText: { fontFamily: fonts.bodyBold, color: colors.white, fontSize: 15 },
   cancelBtn: { paddingVertical: 10 },
-  cancelBtnText: { color: colors.textLight, fontSize: 14 },
+  cancelBtnText: { fontFamily: fonts.body, color: colors.textMuted, fontSize: 14 },
 });

@@ -5,5 +5,5 @@ namespace OnsiteMonday.Api.Services;
 public interface ISubscriptionService
 {
     Task<SubscriptionDto?> GetCurrentAsync(Guid userId);
-    Task<SubscriptionDto> UpdateSubscriptionAsync(Guid userId, string tier);
+    Task<SubscriptionCheckoutResponse> UpdateSubscriptionAsync(Guid userId, string tier);
 }

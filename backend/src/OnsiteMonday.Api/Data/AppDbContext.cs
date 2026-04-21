@@ -27,6 +27,26 @@ public class AppDbContext : DbContext
             v => JsonSerializer.Serialize(v, (JsonSerializerOptions?)null),
             v => JsonSerializer.Deserialize<List<string>>(v, (JsonSerializerOptions?)null) ?? new List<string>());
 
+        // EF Core 8 SQLite throws when DateTimeOffset is used in ORDER BY.
+        // Store as Unix milliseconds (long) so sorting works correctly in tests.
+        if (!isNpgsql)
+        {
+            var dtoConverter = new ValueConverter<DateTimeOffset, long>(
+                v => v.ToUnixTimeMilliseconds(),
+                v => DateTimeOffset.FromUnixTimeMilliseconds(v));
+            var nullableDtoConverter = new ValueConverter<DateTimeOffset?, long?>(
+                v => v == null ? null : v.Value.ToUnixTimeMilliseconds(),
+                v => v == null ? null : DateTimeOffset.FromUnixTimeMilliseconds(v.Value));
+
+            foreach (var entityType in mb.Model.GetEntityTypes())
+            {
+                foreach (var property in entityType.GetProperties().Where(p => p.ClrType == typeof(DateTimeOffset)))
+                    property.SetValueConverter(dtoConverter);
+                foreach (var property in entityType.GetProperties().Where(p => p.ClrType == typeof(DateTimeOffset?)))
+                    property.SetValueConverter(nullableDtoConverter);
+            }
+        }
+
         // ── User ──────────────────────────────────────────────────────────────
         mb.Entity<User>(e =>
         {
@@ -52,8 +72,8 @@ public class AppDbContext : DbContext
         mb.Entity<Subscription>(e =>
         {
             e.HasOne(s => s.User)
-             .WithOne(u => u.ActiveSubscription)
-             .HasForeignKey<Subscription>(s => s.UserId)
+             .WithMany(u => u.Subscriptions)
+             .HasForeignKey(s => s.UserId)
              .OnDelete(DeleteBehavior.Cascade);
         });
 
@@ -71,6 +91,7 @@ public class AppDbContext : DbContext
                 e.Property(j => j.Photos).HasConversion(listConverter);
             }
             e.Property(j => j.DayRate).HasPrecision(10, 2);
+            e.Property(j => j.PaymentStatus).HasDefaultValue("none");
 
             e.HasOne(j => j.PostedBy)
              .WithMany(u => u.PostedJobs)

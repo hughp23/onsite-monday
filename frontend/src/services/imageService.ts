@@ -34,8 +34,16 @@ export async function pickAndUploadProfileImage(): Promise<string | typeof CANCE
   const uri = result.assets[0].uri;
 
   // 3. Convert local file URI → Blob
-  const response = await fetch(uri);
-  const blob = await response.blob();
+  // fetch().blob() is unreliable in React Native with the Firebase JS SDK
+  // (causes storage/unknown). XMLHttpRequest is the correct approach here.
+  const blob = await new Promise<Blob>((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.onload = () => resolve(xhr.response as Blob);
+    xhr.onerror = () => reject(new TypeError('Failed to read image file.'));
+    xhr.responseType = 'blob';
+    xhr.open('GET', uri, true);
+    xhr.send(null);
+  });
 
   // 4. Upload to Firebase Storage (overwrites previous photo)
   const uid = auth.currentUser?.uid;

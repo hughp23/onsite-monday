@@ -85,7 +85,7 @@ public class UserServiceTests
 
         var request = new UpdateUserRequest { FirstName = "New" }; // LastName intentionally null
 
-        var result = await _sut.UpdateCurrentUserAsync(user.FirebaseUid, request);
+        var result = await _sut.UpdateCurrentUserAsync(user.FirebaseUid, user.Email, request);
 
         result.FirstName.Should().Be("New");
         result.LastName.Should().Be("Name"); // untouched
@@ -97,7 +97,7 @@ public class UserServiceTests
     {
         _repoMock.Setup(r => r.GetByFirebaseUidAsync(It.IsAny<string>())).ReturnsAsync((User?)null);
 
-        var act = () => _sut.UpdateCurrentUserAsync("unknown-uid", new UpdateUserRequest());
+        var act = () => _sut.UpdateCurrentUserAsync("unknown-uid", "x@x.com", new UpdateUserRequest());
 
         await act.Should().ThrowAsync<KeyNotFoundException>();
     }

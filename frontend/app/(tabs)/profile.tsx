@@ -3,8 +3,9 @@ import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet, Modal, Pressable, Image,
 } from 'react-native';
 import Animated, {
-  useSharedValue, useAnimatedStyle, withTiming, withDelay, withSpring, Easing,
+  useSharedValue, useAnimatedStyle, withTiming, withDelay, Easing,
 } from 'react-native-reanimated';
+import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
@@ -12,6 +13,7 @@ import { useApp } from '@/context/AppContext';
 import { useAuth } from '@/context/AuthContext';
 import StarRating from '@/components/StarRating';
 import { colors } from '@/constants/colors';
+import { fonts } from '@/constants/typography';
 
 const TIER_LABELS = { bronze: 'Bronze', silver: 'Silver', gold: 'Gold' };
 const TIER_COLORS = { bronze: '#CD7F32', silver: '#A8A9AD', gold: colors.accent };
@@ -61,8 +63,8 @@ export default function ProfileScreen() {
     return (
       <View style={[styles.container, { alignItems: 'center', justifyContent: 'center' }]}>
         <MaterialCommunityIcons name="account-off-outline" size={48} color={colors.border} />
-        <Text style={{ color: colors.textLight, marginTop: 12, fontSize: 15 }}>Profile not loaded</Text>
-        <Text style={{ color: colors.textLight, marginTop: 4, fontSize: 13 }}>Check your connection and restart the app</Text>
+        <Text style={{ fontFamily: fonts.body, color: colors.textMuted, marginTop: 12, fontSize: 15 }}>Profile not loaded</Text>
+        <Text style={{ fontFamily: fonts.body, color: colors.textMuted, marginTop: 4, fontSize: 13 }}>Check your connection and restart the app</Text>
       </View>
     );
   }
@@ -73,38 +75,45 @@ export default function ProfileScreen() {
   return (
     <View style={[styles.container, { paddingBottom: insets.bottom }]}>
       <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Profile header */}
-        <Animated.View style={[styles.profileHeader, headerAnimStyle]}>
-          <View style={styles.headerTop}>
-            <View style={styles.headerInfo}>
-              <Text style={styles.name}>{name}</Text>
-              <View style={styles.metaRow}>
-                <MaterialCommunityIcons name="hammer-wrench" size={14} color="rgba(255,255,255,0.8)" />
-                <Text style={styles.metaText}>{currentUser.trade}</Text>
-                {currentUser.businessName ? (
-                  <>
-                    <Text style={styles.metaDot}>·</Text>
-                    <MaterialCommunityIcons name="domain" size={14} color="rgba(255,255,255,0.8)" />
-                    <Text style={styles.metaText}>{currentUser.businessName}</Text>
-                  </>
-                ) : null}
+        {/* Profile header with gradient */}
+        <Animated.View style={headerAnimStyle}>
+          <LinearGradient
+            colors={[colors.primaryDark, colors.primary]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.profileHeader}
+          >
+            <View style={styles.headerTop}>
+              <View style={styles.headerInfo}>
+                <Text style={styles.name}>{name}</Text>
+                <View style={styles.metaRow}>
+                  <MaterialCommunityIcons name="hammer-wrench" size={14} color="rgba(255,255,255,0.8)" />
+                  <Text style={styles.metaText}>{currentUser.trade}</Text>
+                  {currentUser.businessName ? (
+                    <>
+                      <Text style={styles.metaDot}>·</Text>
+                      <MaterialCommunityIcons name="domain" size={14} color="rgba(255,255,255,0.8)" />
+                      <Text style={styles.metaText}>{currentUser.businessName}</Text>
+                    </>
+                  ) : null}
+                </View>
+                <View style={styles.ratingRow}>
+                  <StarRating rating={currentUser.rating} size={14} />
+                  <Text style={styles.ratingText}>
+                    {currentUser.rating.toFixed(1)} ({currentUser.reviewCount} reviews)
+                  </Text>
+                </View>
               </View>
-              <View style={styles.ratingRow}>
-                <StarRating rating={currentUser.rating} size={14} />
-                <Text style={styles.ratingText}>
-                  {currentUser.rating.toFixed(1)} ({currentUser.reviewCount} reviews)
-                </Text>
-              </View>
+              <Avatar name={name} imageUri={currentUser.profileImage} />
             </View>
-            <Avatar name={name} imageUri={currentUser.profileImage} />
-          </View>
-          <View style={styles.contactRow}>
-            <Ionicons name="call-outline" size={14} color="rgba(255,255,255,0.8)" />
-            <Text style={styles.metaText}>{currentUser.phone}</Text>
-            <Text style={styles.metaDot}>·</Text>
-            <Ionicons name="location-outline" size={14} color="rgba(255,255,255,0.8)" />
-            <Text style={styles.metaText}>{currentUser.location}</Text>
-          </View>
+            <View style={styles.contactRow}>
+              <Ionicons name="call-outline" size={14} color="rgba(255,255,255,0.8)" />
+              <Text style={styles.metaText}>{currentUser.phone}</Text>
+              <Text style={styles.metaDot}>·</Text>
+              <Ionicons name="location-outline" size={14} color="rgba(255,255,255,0.8)" />
+              <Text style={styles.metaText}>{currentUser.location}</Text>
+            </View>
+          </LinearGradient>
         </Animated.View>
 
         <Animated.View style={[styles.body, bodyAnimStyle]}>
@@ -190,7 +199,7 @@ export default function ProfileScreen() {
                 <Text style={styles.upgradeLink}>Upgrade →</Text>
               </TouchableOpacity>
             </View>
-            <View style={[styles.tierBadge, { backgroundColor: TIER_COLORS[currentUser.subscription] + '20' }]}>
+            <View style={[styles.tierBadge, { backgroundColor: TIER_COLORS[currentUser.subscription] + '20', borderColor: TIER_COLORS[currentUser.subscription] + '40' }]}>
               <MaterialCommunityIcons
                 name="crown"
                 size={18}
@@ -245,21 +254,33 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   profileHeader: {
-    backgroundColor: colors.primary,
     paddingHorizontal: 20,
     paddingTop: 20,
     paddingBottom: 24,
   },
   headerTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 },
   headerInfo: { flex: 1 },
-  name: { fontSize: 22, fontWeight: '800', color: colors.white, marginBottom: 6 },
+  name: {
+    fontFamily: fonts.display,
+    fontSize: 28,
+    letterSpacing: 0.5,
+    lineHeight: 32,
+    color: colors.white,
+    marginBottom: 6,
+  },
   metaRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 6, flexWrap: 'wrap' },
-  metaText: { fontSize: 13, color: 'rgba(255,255,255,0.85)' },
+  metaText: { fontFamily: fonts.body, fontSize: 13, color: 'rgba(255,255,255,0.85)' },
   metaDot: { color: 'rgba(255,255,255,0.5)', fontSize: 13 },
   ratingRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  ratingText: { fontSize: 12, color: 'rgba(255,255,255,0.85)' },
-  avatar: { backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center' },
-  avatarText: { color: colors.white, fontWeight: '800' },
+  ratingText: { fontFamily: fonts.body, fontSize: 12, color: 'rgba(255,255,255,0.85)' },
+  avatar: {
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.35)',
+  },
+  avatarText: { fontFamily: fonts.bodyBold, color: colors.white },
   contactRow: { flexDirection: 'row', alignItems: 'center', gap: 5, flexWrap: 'wrap' },
   body: { padding: 16 },
   editBtn: {
@@ -269,36 +290,59 @@ const styles = StyleSheet.create({
     gap: 8,
     backgroundColor: colors.primaryLight,
     borderRadius: 10,
-    paddingVertical: 12,
+    paddingVertical: 13,
     marginBottom: 16,
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.20,
+    shadowRadius: 6,
+    elevation: 3,
   },
-  editBtnText: { color: colors.white, fontWeight: '700', fontSize: 15 },
+  editBtnText: { fontFamily: fonts.bodyBold, color: colors.white, fontSize: 15 },
   section: {
-    backgroundColor: colors.white,
-    borderRadius: 12,
+    backgroundColor: colors.surfaceRaised,
+    borderRadius: 14,
     padding: 16,
     marginBottom: 12,
     borderWidth: 1,
     borderColor: colors.border,
+    shadowColor: colors.shadowWarm,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.07,
+    shadowRadius: 6,
+    elevation: 2,
   },
-  sectionTitle: { fontSize: 14, fontWeight: '700', color: colors.text, marginBottom: 10 },
+  sectionTitle: {
+    fontFamily: fonts.bodySemiBold,
+    fontSize: 11,
+    color: colors.textMuted,
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
+    marginBottom: 10,
+  },
   chipsWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   chip: {
     backgroundColor: colors.chipBg,
     paddingHorizontal: 10,
     paddingVertical: 4,
-    borderRadius: 10,
+    borderRadius: 8,
   },
   chipAccred: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#27AE6015' },
-  chipText: { fontSize: 12, color: colors.primary, fontWeight: '500' },
+  chipText: { fontFamily: fonts.bodyMedium, fontSize: 12, color: colors.primary },
   chipTextAccred: { color: colors.success },
-  emptyText: { fontSize: 13, color: colors.textLight, fontStyle: 'italic' },
-  dayRate: { fontSize: 22, fontWeight: '800', color: colors.primary },
+  emptyText: { fontFamily: fonts.body, fontSize: 13, color: colors.textMuted, fontStyle: 'italic' },
+  dayRate: {
+    fontFamily: fonts.display,
+    fontSize: 34,
+    color: colors.primary,
+    letterSpacing: 0.5,
+    lineHeight: 39,
+  },
   locationRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  locationText: { fontSize: 15, color: colors.text, fontWeight: '500' },
+  locationText: { fontFamily: fonts.bodyMedium, fontSize: 15, color: colors.text },
   subscriptionSection: {},
   subHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
-  upgradeLink: { color: colors.primary, fontWeight: '600', fontSize: 13 },
+  upgradeLink: { fontFamily: fonts.bodySemiBold, color: colors.primary, fontSize: 13 },
   tierBadge: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -307,8 +351,9 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 10,
     alignSelf: 'flex-start',
+    borderWidth: 1.5,
   },
-  tierText: { fontSize: 15, fontWeight: '700' },
+  tierText: { fontFamily: fonts.bodyBold, fontSize: 15, letterSpacing: 0.2 },
   signOutBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -321,7 +366,7 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: colors.error,
   },
-  signOutText: { color: colors.error, fontWeight: '600', fontSize: 15 },
+  signOutText: { fontFamily: fonts.bodySemiBold, color: colors.error, fontSize: 15 },
   incompleteBanner: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -333,7 +378,7 @@ const styles = StyleSheet.create({
     padding: 14,
     marginBottom: 12,
   },
-  incompleteBannerText: { flex: 1, fontSize: 13, color: colors.text, lineHeight: 18 },
+  incompleteBannerText: { fontFamily: fonts.body, flex: 1, fontSize: 13, color: colors.text, lineHeight: 18 },
   overlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.4)',
@@ -342,14 +387,14 @@ const styles = StyleSheet.create({
     padding: 24,
   },
   modal: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.surfaceRaised,
     borderRadius: 20,
     padding: 28,
     alignItems: 'center',
     width: '100%',
   },
-  modalTitle: { fontSize: 20, fontWeight: '800', color: colors.text, marginBottom: 8 },
-  modalDesc: { fontSize: 14, color: colors.textLight, marginBottom: 24 },
+  modalTitle: { fontFamily: fonts.display, fontSize: 24, letterSpacing: 0.3, color: colors.text, marginBottom: 8 },
+  modalDesc: { fontFamily: fonts.body, fontSize: 14, color: colors.textSecondary, marginBottom: 24 },
   confirmBtn: {
     backgroundColor: colors.primary,
     borderRadius: 10,
@@ -358,7 +403,7 @@ const styles = StyleSheet.create({
     width: '100%',
     marginBottom: 10,
   },
-  confirmBtnText: { color: colors.white, fontWeight: '700', fontSize: 15 },
+  confirmBtnText: { fontFamily: fonts.bodyBold, color: colors.white, fontSize: 15 },
   cancelBtn: { paddingVertical: 10 },
-  cancelBtnText: { color: colors.textLight, fontSize: 14 },
+  cancelBtnText: { fontFamily: fonts.body, color: colors.textMuted, fontSize: 14 },
 });

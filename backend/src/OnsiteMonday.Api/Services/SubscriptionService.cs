@@ -9,7 +9,8 @@ namespace OnsiteMonday.Api.Services;
 public class SubscriptionService : ISubscriptionService
 {
     private readonly AppDbContext _db;
-    private readonly IStripeService _stripe;
+    private readonly IMangopayService _mangopay;
+    private readonly IStripeBillingService _stripe;
 
     private static readonly Dictionary<string, int> PayoutDaysByTier = new()
     {
@@ -18,9 +19,10 @@ public class SubscriptionService : ISubscriptionService
         { "gold",    7 },
     };
 
-    public SubscriptionService(AppDbContext db, IStripeService stripe)
+    public SubscriptionService(AppDbContext db, IMangopayService mangopay, IStripeBillingService stripe)
     {
         _db = db;
+        _mangopay = mangopay;
         _stripe = stripe;
     }
 
@@ -31,12 +33,18 @@ public class SubscriptionService : ISubscriptionService
         return sub == null ? null : ToDto(sub);
     }
 
-    public async Task<SubscriptionDto> UpdateSubscriptionAsync(Guid userId, string tier)
+    public async Task<SubscriptionCheckoutResponse> UpdateSubscriptionAsync(Guid userId, string tier)
     {
         tier = tier.ToLowerInvariant();
 
         if (!PayoutDaysByTier.TryGetValue(tier, out var payoutDays))
             throw new ArgumentException($"Invalid tier '{tier}'. Must be bronze, silver, or gold.");
+
+        // Capture old Stripe subscription ID before deactivating (for cancellation)
+        var oldStripeSubId = await _db.Subscriptions
+            .Where(s => s.UserId == userId && s.IsActive && s.StripeSubscriptionId != null)
+            .Select(s => s.StripeSubscriptionId)
+            .FirstOrDefaultAsync();
 
         // Deactivate any existing active subscription
         var now = DateTimeOffset.UtcNow;
@@ -59,10 +67,42 @@ public class SubscriptionService : ISubscriptionService
         _db.Subscriptions.Add(subscription);
         await _db.SaveChangesAsync();
 
-        // Phase 2: wire up real Stripe billing here
-        await _stripe.CreateConnectAccountAsync(userId.ToString());
+        string? checkoutUrl = null;
 
-        return ToDto(subscription);
+        var user = await _db.Users.FindAsync(userId);
+        if (user != null)
+        {
+            // Provision Mangopay user + wallet if not already done
+            if (string.IsNullOrEmpty(user.MangopayUserId))
+            {
+                user.MangopayUserId = await _mangopay.EnsureUserAsync(userId, user.Email, user.FirstName, user.LastName);
+                user.MangopayWalletId = await _mangopay.EnsureWalletAsync(user.MangopayUserId, $"Wallet for {user.Email}");
+            }
+
+            // Provision Stripe customer if not already done
+            if (string.IsNullOrEmpty(user.StripeCustomerId))
+                user.StripeCustomerId = await _stripe.EnsureCustomerAsync(userId, user.Email);
+
+            // Create Stripe Checkout Session for the subscription
+            var (_, url) = await _stripe.CreateSubscriptionCheckoutAsync(
+                user.StripeCustomerId,
+                tier,
+                "onsitemonday://subscription/success",
+                "onsitemonday://subscription/cancel");
+            checkoutUrl = url;
+
+            await _db.SaveChangesAsync();
+        }
+
+        // Cancel old Stripe subscription if one existed
+        if (!string.IsNullOrEmpty(oldStripeSubId))
+            await _stripe.CancelSubscriptionAsync(oldStripeSubId);
+
+        return new SubscriptionCheckoutResponse
+        {
+            Subscription = ToDto(subscription),
+            CheckoutUrl = checkoutUrl,
+        };
     }
 
     private static SubscriptionDto ToDto(Subscription s) => new()

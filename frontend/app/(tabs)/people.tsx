@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   View, Text, FlatList, TextInput, StyleSheet, TouchableOpacity,
   Modal, Pressable, ScrollView,
@@ -15,9 +15,13 @@ import { colors } from '@/constants/colors';
 const FILTER_TRADES = ['All', 'Labourer', 'Joiner', 'Plumber', 'Electrician', 'Bricklayer', 'Roofer', 'Plasterer'];
 
 export default function PeopleScreen() {
-  const { tradespeople, myJobs } = useApp();
+  const { tradespeople, myJobs, loadTradespeople } = useApp();
   const [search, setSearch] = useState('');
   const [tradeFilter, setTradeFilter] = useState('All');
+
+  useEffect(() => {
+    loadTradespeople();
+  }, [loadTradespeople]);
   const [hireModalPerson, setHireModalPerson] = useState<string | null>(null);
   const [selectedJobForHire, setSelectedJobForHire] = useState<string | null>(null);
   const [toastVisible, setToastVisible] = useState(false);

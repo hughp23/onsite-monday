@@ -11,6 +11,7 @@ import JobCard from '@/components/JobCard';
 import EmptyState from '@/components/EmptyState';
 import AnimatedListItem from '@/components/AnimatedListItem';
 import { colors } from '@/constants/colors';
+import { fonts } from '@/constants/typography';
 import { Job } from '@/constants/types';
 
 type SortOption = 'newest' | 'highest_pay' | 'shortest';
@@ -118,36 +119,44 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingVertical: 10,
-    backgroundColor: colors.white,
+    paddingVertical: 12,
+    backgroundColor: colors.surfaceRaised,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
-  resultsText: { fontSize: 13, color: colors.textLight },
+  resultsText: { fontFamily: fonts.bodyMedium, fontSize: 13, color: colors.textMuted },
   sortBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 5,
     backgroundColor: colors.chipBg,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
     borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
-  sortBtnText: { fontSize: 13, color: colors.primary, fontWeight: '600' },
-  list: { padding: 16 },
+  sortBtnText: { fontFamily: fonts.bodySemiBold, fontSize: 13, color: colors.primary },
+  list: { padding: 16, paddingTop: 8 },
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.4)',
     justifyContent: 'flex-end',
   },
   sortModal: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.surfaceRaised,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     padding: 20,
     paddingBottom: 36,
   },
-  sortModalTitle: { fontSize: 16, fontWeight: '700', color: colors.text, marginBottom: 12 },
+  sortModalTitle: {
+    fontFamily: fonts.display,
+    fontSize: 22,
+    letterSpacing: 0.3,
+    color: colors.text,
+    marginBottom: 12,
+  },
   sortOption: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -157,6 +166,6 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.border,
   },
   sortOptionActive: {},
-  sortOptionText: { fontSize: 15, color: colors.text },
-  sortOptionTextActive: { color: colors.primary, fontWeight: '700' },
+  sortOptionText: { fontFamily: fonts.body, fontSize: 15, color: colors.text },
+  sortOptionTextActive: { fontFamily: fonts.bodyBold, color: colors.primary },
 });

@@ -1,3 +1,4 @@
+using Hangfire;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -5,6 +6,7 @@ using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Moq;
 using OnsiteMonday.Api.Data;
 
 namespace OnsiteMonday.Api.Tests.Infrastructure;
@@ -47,6 +49,9 @@ public class TestWebApplicationFactory : WebApplicationFactory<Program>
                 .AddAuthentication(FakeAuthHandler.SchemeName)
                 .AddScheme<AuthenticationSchemeOptions, FakeAuthHandler>(
                     FakeAuthHandler.SchemeName, _ => { });
+
+            // Prevent Hangfire from trying to connect to PostgreSQL in tests
+            services.AddSingleton<IBackgroundJobClient>(new Mock<IBackgroundJobClient>().Object);
         });
     }
 

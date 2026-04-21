@@ -20,4 +20,5 @@ public interface IJobRepository
     Task AddApplicationAsync(JobApplication application);
     Task RemoveApplicationAsync(JobApplication application);
     Task<int> GetApplicationCountAsync(Guid jobId);
+    Task<List<(User Applicant, JobApplication Application)>> GetApplicantsAsync(Guid jobId);
 }

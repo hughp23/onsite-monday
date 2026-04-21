@@ -49,10 +49,10 @@ public class SubscriptionsController : ControllerBase
 
     // POST /api/subscriptions
     [HttpPost]
-    public async Task<ActionResult<SubscriptionDto>> UpdateSubscription([FromBody] UpdateSubscriptionRequest request)
+    public async Task<ActionResult<SubscriptionCheckoutResponse>> UpdateSubscription([FromBody] UpdateSubscriptionRequest request)
     {
         var userId = await GetCurrentUserIdAsync();
-        var subscription = await _subscriptionService.UpdateSubscriptionAsync(userId, request.Tier);
-        return Ok(subscription);
+        var response = await _subscriptionService.UpdateSubscriptionAsync(userId, request.Tier);
+        return Ok(response);
     }
 }

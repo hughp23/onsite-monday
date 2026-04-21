@@ -1,8 +1,10 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { SubscriptionTier } from '@/constants/types';
 import { colors } from '@/constants/colors';
+import { fonts } from '@/constants/typography';
 
 interface SubscriptionCardProps {
   tier: SubscriptionTier;
@@ -45,40 +47,86 @@ const TIER_INFO: Record<SubscriptionTier, {
 export default function SubscriptionCard({ tier, isCurrentPlan, onSelect }: SubscriptionCardProps) {
   const info = TIER_INFO[tier];
   const isGold = tier === 'gold';
+
+  if (isGold) {
+    return (
+      <LinearGradient
+        colors={['#2A0A0A', colors.primary]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={[styles.card, styles.cardGold, isCurrentPlan && styles.cardCurrentGold]}
+      >
+        <View style={styles.header}>
+          <Text style={[styles.tierName, styles.tierNameGold]}>{info.name}</Text>
+          <View style={styles.priceRow}>
+            <Text style={[styles.price, styles.priceGold]}>{info.price}</Text>
+            <Text style={[styles.perMonth, styles.perMonthGold]}>/month</Text>
+          </View>
+        </View>
+        <View style={[styles.divider, styles.dividerGold]} />
+        <View style={styles.detailRow}>
+          <Ionicons name="time-outline" size={15} color="rgba(255,255,255,0.6)" />
+          <Text style={styles.detailTextGold}>Payout in <Text style={styles.boldGold}>{info.paymentDays}</Text></Text>
+        </View>
+        <View style={styles.detailRow}>
+          <Ionicons name="briefcase-outline" size={15} color="rgba(255,255,255,0.6)" />
+          <Text style={styles.detailTextGold}>Live posts: <Text style={styles.boldGold}>{info.posts}</Text></Text>
+        </View>
+        <View style={styles.featuresList}>
+          {info.features.map(f => (
+            <View key={f} style={styles.featureRow}>
+              <Ionicons name="checkmark-circle" size={15} color={colors.accent} />
+              <Text style={styles.featureTextGold}>{f}</Text>
+            </View>
+          ))}
+        </View>
+        <TouchableOpacity
+          onPress={onSelect}
+          style={[styles.btn, styles.btnGold, isCurrentPlan && styles.btnCurrentGold]}
+          activeOpacity={0.8}
+        >
+          <Text style={[styles.btnText, isCurrentPlan && styles.btnTextCurrentGold]}>
+            {isCurrentPlan ? 'Current Plan' : 'Select Plan'}
+          </Text>
+        </TouchableOpacity>
+      </LinearGradient>
+    );
+  }
+
   return (
-    <View style={[styles.card, isGold && styles.cardGold, isCurrentPlan && styles.cardCurrent]}>
+    <View style={[styles.card, isCurrentPlan && styles.cardCurrent]}>
       {info.popular && (
-        <View style={styles.popularBadge}>
-          <Text style={styles.popularText}>Most Popular</Text>
+        <View style={styles.popularBanner}>
+          <Text style={styles.popularText}>MOST POPULAR</Text>
         </View>
       )}
-      <View style={styles.header}>
-        <Text style={[styles.tierName, isGold && styles.tierNameGold]}>{info.name}</Text>
+      <View style={[styles.header, info.popular && styles.headerWithBanner]}>
+        <Text style={styles.tierName}>{info.name}</Text>
         <View style={styles.priceRow}>
-          <Text style={[styles.price, isGold && styles.priceGold]}>{info.price}</Text>
+          <Text style={styles.price}>{info.price}</Text>
           <Text style={styles.perMonth}>/month</Text>
         </View>
       </View>
       <View style={styles.divider} />
       <View style={styles.detailRow}>
-        <Ionicons name="time-outline" size={15} color={colors.textLight} />
+        <Ionicons name="time-outline" size={15} color={colors.textMuted} />
         <Text style={styles.detailText}>Payout in <Text style={styles.bold}>{info.paymentDays}</Text></Text>
       </View>
       <View style={styles.detailRow}>
-        <Ionicons name="briefcase-outline" size={15} color={colors.textLight} />
+        <Ionicons name="briefcase-outline" size={15} color={colors.textMuted} />
         <Text style={styles.detailText}>Live posts: <Text style={styles.bold}>{info.posts}</Text></Text>
       </View>
       <View style={styles.featuresList}>
         {info.features.map(f => (
           <View key={f} style={styles.featureRow}>
-            <Ionicons name="checkmark-circle" size={15} color={isGold ? colors.accent : colors.success} />
+            <Ionicons name="checkmark-circle" size={15} color={colors.success} />
             <Text style={styles.featureText}>{f}</Text>
           </View>
         ))}
       </View>
       <TouchableOpacity
         onPress={onSelect}
-        style={[styles.btn, isCurrentPlan && styles.btnCurrent, isGold && styles.btnGold]}
+        style={[styles.btn, isCurrentPlan && styles.btnCurrent]}
         activeOpacity={0.8}
       >
         <Text style={[styles.btnText, isCurrentPlan && styles.btnTextCurrent]}>
@@ -91,52 +139,92 @@ export default function SubscriptionCard({ tier, isCurrentPlan, onSelect }: Subs
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.surfaceRaised,
     borderRadius: 16,
     padding: 20,
     marginBottom: 16,
     borderWidth: 1.5,
     borderColor: colors.border,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
+    shadowColor: colors.shadowWarm,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.10,
+    shadowRadius: 12,
     elevation: 3,
+    overflow: 'hidden',
   },
-  cardGold: { borderColor: colors.accent, backgroundColor: '#FFFDF5' },
+  cardGold: {
+    borderColor: 'transparent',
+    shadowOpacity: 0.20,
+    shadowRadius: 16,
+    elevation: 5,
+  },
   cardCurrent: { borderColor: colors.primary },
-  popularBadge: {
+  cardCurrentGold: { borderWidth: 2, borderColor: colors.accent },
+
+  // Silver "Most Popular" — full-width top banner
+  popularBanner: {
     position: 'absolute',
-    top: -12,
-    right: 20,
+    top: 0,
+    left: 0,
+    right: 0,
     backgroundColor: colors.primary,
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 10,
+    paddingVertical: 7,
+    alignItems: 'center',
   },
-  popularText: { color: colors.white, fontSize: 11, fontWeight: '700' },
+  popularText: {
+    fontFamily: fonts.bodySemiBold,
+    color: colors.white,
+    fontSize: 11,
+    letterSpacing: 1.5,
+  },
+  headerWithBanner: { marginTop: 24 },
+
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 12 },
-  tierName: { fontSize: 22, fontWeight: '800', color: colors.text },
+  tierName: {
+    fontFamily: fonts.display,
+    fontSize: 28,
+    letterSpacing: 1,
+    color: colors.text,
+    lineHeight: 32,
+  },
   tierNameGold: { color: colors.accent },
+
   priceRow: { flexDirection: 'row', alignItems: 'flex-end' },
-  price: { fontSize: 28, fontWeight: '800', color: colors.primary },
+  price: {
+    fontFamily: fonts.display,
+    fontSize: 44,
+    color: colors.primary,
+    lineHeight: 50,
+    letterSpacing: 0,
+  },
   priceGold: { color: colors.accent },
-  perMonth: { fontSize: 13, color: colors.textLight, marginBottom: 4, marginLeft: 2 },
+  perMonth: { fontFamily: fonts.body, fontSize: 13, color: colors.textMuted, marginBottom: 6, marginLeft: 2 },
+  perMonthGold: { color: 'rgba(255,255,255,0.55)' },
+
   divider: { height: 1, backgroundColor: colors.border, marginBottom: 12 },
+  dividerGold: { backgroundColor: 'rgba(255,255,255,0.15)' },
+
   detailRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 },
-  detailText: { fontSize: 13, color: colors.textLight },
-  bold: { fontWeight: '700', color: colors.text },
+  detailText: { fontFamily: fonts.body, fontSize: 13, color: colors.textSecondary },
+  detailTextGold: { fontFamily: fonts.body, fontSize: 13, color: 'rgba(255,255,255,0.75)' },
+  bold: { fontFamily: fonts.bodyBold, color: colors.text },
+  boldGold: { fontFamily: fonts.bodyBold, color: colors.white },
+
   featuresList: { marginTop: 8, marginBottom: 16 },
   featureRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 },
-  featureText: { fontSize: 13, color: colors.text },
+  featureText: { fontFamily: fonts.body, fontSize: 13, color: colors.text },
+  featureTextGold: { fontFamily: fonts.body, fontSize: 13, color: 'rgba(255,255,255,0.9)' },
+
   btn: {
     backgroundColor: colors.primary,
     borderRadius: 10,
-    paddingVertical: 12,
+    paddingVertical: 13,
     alignItems: 'center',
   },
   btnCurrent: { backgroundColor: colors.background, borderWidth: 1.5, borderColor: colors.primary },
   btnGold: { backgroundColor: colors.accent },
-  btnText: { color: colors.white, fontWeight: '700', fontSize: 15 },
+  btnCurrentGold: { backgroundColor: 'rgba(255,255,255,0.12)', borderWidth: 1.5, borderColor: colors.accent },
+  btnText: { fontFamily: fonts.bodyBold, color: colors.white, fontSize: 15 },
   btnTextCurrent: { color: colors.primary },
+  btnTextCurrentGold: { color: colors.accent },
 });

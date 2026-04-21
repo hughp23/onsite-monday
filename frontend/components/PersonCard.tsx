@@ -5,6 +5,7 @@ import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-na
 import StarRating from './StarRating';
 import { Tradesperson } from '@/constants/types';
 import { colors } from '@/constants/colors';
+import { fonts } from '@/constants/typography';
 
 interface PersonCardProps {
   person: Tradesperson;
@@ -46,10 +47,10 @@ export default function PersonCard({ person, onPress, onHire }: PersonCardProps)
               <Avatar name={name} />
             </View>
             <View style={styles.metaRow}>
-              <MaterialCommunityIcons name="hammer-wrench" size={13} color={colors.textLight} />
+              <MaterialCommunityIcons name="hammer-wrench" size={13} color={colors.textMuted} />
               <Text style={styles.metaText}>{person.trade}</Text>
               <Text style={styles.dot}>·</Text>
-              <Ionicons name="location-outline" size={13} color={colors.textLight} />
+              <Ionicons name="location-outline" size={13} color={colors.textMuted} />
               <Text style={styles.metaText}>{person.location}</Text>
               <Text style={styles.dot}>·</Text>
               <StarRating rating={person.rating} size={12} />
@@ -84,45 +85,71 @@ export default function PersonCard({ person, onPress, onHire }: PersonCardProps)
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: colors.white,
-    borderRadius: 12,
+    backgroundColor: colors.surfaceRaised,
+    borderRadius: 14,
     padding: 14,
     marginBottom: 10,
     borderWidth: 1,
     borderColor: colors.border,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
-    elevation: 2,
+    shadowColor: colors.shadowWarm,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.10,
+    shadowRadius: 8,
+    elevation: 3,
   },
   row: { flexDirection: 'row' },
   content: { flex: 1 },
   topRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 },
-  name: { fontSize: 17, fontWeight: '700', color: colors.text, flex: 1 },
-  avatar: { backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center', marginLeft: 8 },
-  avatarText: { color: colors.white, fontWeight: '700' },
+  name: {
+    fontFamily: fonts.display,
+    fontSize: 20,
+    color: colors.text,
+    flex: 1,
+    letterSpacing: 0.3,
+    lineHeight: 24,
+  },
+  avatar: {
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 8,
+    borderWidth: 2.5,
+    borderColor: colors.accent,
+  },
+  avatarText: { fontFamily: fonts.bodyBold, color: colors.white },
   metaRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 8, flexWrap: 'wrap' },
-  metaText: { fontSize: 12, color: colors.textLight },
-  dot: { color: colors.textLight, fontSize: 12 },
-  ratingText: { fontSize: 12, color: colors.textLight, marginLeft: 2 },
+  metaText: { fontFamily: fonts.body, fontSize: 12, color: colors.textSecondary },
+  dot: { color: colors.textMuted, fontSize: 12 },
+  ratingText: { fontFamily: fonts.body, fontSize: 12, color: colors.textSecondary, marginLeft: 2 },
   skillsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 10 },
   chip: {
-    backgroundColor: colors.chipBg,
+    backgroundColor: colors.surfaceSunken,
     paddingHorizontal: 8,
     paddingVertical: 3,
-    borderRadius: 10,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
-  chipText: { fontSize: 11, color: colors.primary, fontWeight: '500' },
-  moreChips: { fontSize: 11, color: colors.textLight, paddingVertical: 3 },
+  chipText: { fontFamily: fonts.bodyMedium, fontSize: 11, color: colors.textSecondary },
+  moreChips: { fontFamily: fonts.body, fontSize: 11, color: colors.textMuted, paddingVertical: 3 },
   footerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  rate: { fontSize: 15, fontWeight: '700', color: colors.primary },
-  hireBtn: {
-    borderWidth: 1.5,
-    borderColor: colors.primary,
-    borderRadius: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 6,
+  rate: {
+    fontFamily: fonts.display,
+    fontSize: 20,
+    color: colors.primary,
+    letterSpacing: 0.3,
+    lineHeight: 24,
   },
-  hireBtnText: { color: colors.primary, fontSize: 13, fontWeight: '600' },
+  hireBtn: {
+    backgroundColor: colors.primary,
+    borderRadius: 8,
+    paddingHorizontal: 18,
+    paddingVertical: 7,
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  hireBtnText: { fontFamily: fonts.bodyBold, color: colors.white, fontSize: 13 },
 });

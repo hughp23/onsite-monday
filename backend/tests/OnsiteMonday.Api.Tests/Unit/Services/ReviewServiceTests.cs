@@ -4,7 +4,6 @@ using OnsiteMonday.Api.Domain;
 using OnsiteMonday.Api.DTOs.Reviews;
 using OnsiteMonday.Api.Repositories;
 using OnsiteMonday.Api.Services;
-using OnsiteMonday.Api.Stubs;
 using OnsiteMonday.Api.Tests.Infrastructure;
 
 namespace OnsiteMonday.Api.Tests.Unit.Services;
@@ -14,7 +13,6 @@ public class ReviewServiceTests
     private readonly Mock<IReviewRepository> _reviewRepoMock = new();
     private readonly Mock<IUserRepository> _userRepoMock = new();
     private readonly Mock<INotificationRepository> _notificationRepoMock = new();
-    private readonly Mock<IStripeService> _stripeMock = new();
     private readonly ReviewService _sut;
 
     public ReviewServiceTests()
@@ -22,8 +20,7 @@ public class ReviewServiceTests
         _sut = new ReviewService(
             _reviewRepoMock.Object,
             _userRepoMock.Object,
-            _notificationRepoMock.Object,
-            _stripeMock.Object);
+            _notificationRepoMock.Object);
     }
 
     private static SubmitReviewRequest MakeRequest(int rating = 4) => new()
@@ -48,8 +45,6 @@ public class ReviewServiceTests
         _reviewRepoMock.Setup(r => r.GetReviewCountAsync(reviewee.Id)).ReturnsAsync(1);
         _userRepoMock.Setup(r => r.UpdateAsync(It.IsAny<User>())).Returns(Task.CompletedTask);
         _notificationRepoMock.Setup(r => r.CreateAsync(It.IsAny<Notification>())).ReturnsAsync((Notification n) => n);
-        _stripeMock.Setup(s => s.TriggerPayoutAsync(It.IsAny<Guid>(), It.IsAny<decimal>(), It.IsAny<int>()))
-            .Returns(Task.CompletedTask);
 
         var result = await _sut.SubmitReviewAsync(reviewer.Id, reviewee.Id, request);
 
@@ -76,8 +71,6 @@ public class ReviewServiceTests
         _reviewRepoMock.Setup(r => r.GetReviewCountAsync(reviewee.Id)).ReturnsAsync(5);
         _userRepoMock.Setup(r => r.UpdateAsync(It.IsAny<User>())).Returns(Task.CompletedTask);
         _notificationRepoMock.Setup(r => r.CreateAsync(It.IsAny<Notification>())).ReturnsAsync((Notification n) => n);
-        _stripeMock.Setup(s => s.TriggerPayoutAsync(It.IsAny<Guid>(), It.IsAny<decimal>(), It.IsAny<int>()))
-            .Returns(Task.CompletedTask);
 
         await _sut.SubmitReviewAsync(reviewer.Id, reviewee.Id, request);
 
@@ -115,8 +108,9 @@ public class ReviewServiceTests
     }
 
     [Fact]
-    public async Task SubmitReview_CallsStripeTriggerPayout()
+    public async Task SubmitReview_DoesNotSchedulePayout()
     {
+        // Payout is now scheduled from CompleteJobAsync (Hangfire), not from review submission.
         var reviewer = TestBuilders.MakeUser("uid-reviewer", "reviewer@test.com");
         var reviewee = TestBuilders.MakeUser("uid-reviewee", "reviewee@test.com");
         var request = MakeRequest();
@@ -129,12 +123,11 @@ public class ReviewServiceTests
         _reviewRepoMock.Setup(r => r.GetReviewCountAsync(reviewee.Id)).ReturnsAsync(1);
         _userRepoMock.Setup(r => r.UpdateAsync(It.IsAny<User>())).Returns(Task.CompletedTask);
         _notificationRepoMock.Setup(r => r.CreateAsync(It.IsAny<Notification>())).ReturnsAsync((Notification n) => n);
-        _stripeMock.Setup(s => s.TriggerPayoutAsync(It.IsAny<Guid>(), It.IsAny<decimal>(), It.IsAny<int>()))
-            .Returns(Task.CompletedTask);
 
         await _sut.SubmitReviewAsync(reviewer.Id, reviewee.Id, request);
 
-        _stripeMock.Verify(s => s.TriggerPayoutAsync(It.IsAny<Guid>(), It.IsAny<decimal>(), It.IsAny<int>()), Times.Once);
+        // ReviewService no longer touches any payment service
+        // (verified implicitly — no payment mock injected and no exception thrown)
     }
 
     [Fact]

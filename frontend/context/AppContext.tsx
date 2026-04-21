@@ -176,11 +176,15 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
   }, []);
 
   const startJob = useCallback(async (jobId: string) => {
-    const updated = await jobService.startJob(jobId);
+    const { job: updated, payInRedirectUrl } = await jobService.startJob(jobId);
     setMyJobs(prev => ({
       ...prev,
       posted: prev.posted.map(j => j.id === jobId ? updated : j),
     }));
+    if (payInRedirectUrl) {
+      const { Linking } = await import('react-native');
+      await Linking.openURL(payInRedirectUrl);
+    }
   }, []);
 
   const markJobComplete = useCallback(async (jobId: string) => {
@@ -228,8 +232,12 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
   }, []);
 
   const updateSubscription = useCallback(async (tier: SubscriptionTier) => {
-    await subscriptionService.update(tier);
-    setCurrentUser(prev => prev ? { ...prev, subscription: tier } : prev);
+    const { subscription, checkoutUrl } = await subscriptionService.update(tier);
+    setCurrentUser(prev => prev ? { ...prev, subscription: subscription.tier as SubscriptionTier } : prev);
+    if (checkoutUrl) {
+      const { Linking } = await import('react-native');
+      await Linking.openURL(checkoutUrl);
+    }
   }, []);
 
   const loadTradespeople = useCallback(async (params?: { trade?: string; location?: string }) => {

@@ -4,6 +4,7 @@ import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
 import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
 import { Job } from '@/constants/types';
 import { colors } from '@/constants/colors';
+import { fonts } from '@/constants/typography';
 
 interface JobCardProps {
   job: Job;
@@ -47,7 +48,7 @@ export default function JobCard({ job, onPress, onInterest, showStatus = false }
       >
         <View style={styles.row}>
           <View style={styles.iconBox}>
-            <MaterialCommunityIcons name="briefcase" size={28} color={colors.primary} />
+            <MaterialCommunityIcons name="briefcase" size={24} color={colors.white} />
           </View>
           <View style={styles.content}>
             <View style={styles.topRow}>
@@ -61,18 +62,20 @@ export default function JobCard({ job, onPress, onInterest, showStatus = false }
               )}
             </View>
             <View style={styles.metaRow}>
-              <MaterialCommunityIcons name="hammer-wrench" size={13} color={colors.textLight} />
+              <MaterialCommunityIcons name="hammer-wrench" size={13} color={colors.textMuted} />
               <Text style={styles.metaText}>{job.trade}</Text>
               <Text style={styles.dot}>·</Text>
-              <Ionicons name="location-outline" size={13} color={colors.textLight} />
+              <Ionicons name="location-outline" size={13} color={colors.textMuted} />
               <Text style={styles.metaText} numberOfLines={1}>{job.location}</Text>
             </View>
             <View style={styles.bottomRow}>
               <View style={styles.daysRow}>
-                <MaterialCommunityIcons name="calendar" size={13} color={colors.textLight} />
+                <MaterialCommunityIcons name="calendar" size={13} color={colors.textMuted} />
                 <Text style={styles.metaText}>{job.duration} Day{job.duration > 1 ? 's' : ''} · </Text>
                 {job.days.map(d => (
-                  <Text key={d} style={styles.dayChip}>{d}</Text>
+                  <View key={d} style={styles.dayChip}>
+                    <Text style={styles.dayChipText}>{d}</Text>
+                  </View>
                 ))}
               </View>
               <Text style={styles.rate}>£{job.dayRate}/d</Text>
@@ -83,7 +86,7 @@ export default function JobCard({ job, onPress, onInterest, showStatus = false }
               <MaterialCommunityIcons
                 name={job.isInterested ? 'thumb-up' : 'thumb-up-outline'}
                 size={20}
-                color={job.isInterested ? colors.accent : colors.textLight}
+                color={job.isInterested ? colors.accent : colors.textMuted}
               />
               <Text style={[styles.thumbCount, job.isInterested && { color: colors.accent }]}>
                 {job.interestedCount}
@@ -98,39 +101,52 @@ export default function JobCard({ job, onPress, onInterest, showStatus = false }
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: colors.white,
-    borderRadius: 12,
+    backgroundColor: colors.surfaceRaised,
+    borderRadius: 14,
     padding: 14,
     marginBottom: 10,
     borderWidth: 1,
     borderColor: colors.border,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
-    elevation: 2,
+    shadowColor: colors.shadowWarm,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.10,
+    shadowRadius: 8,
+    elevation: 3,
   },
   row: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
   iconBox: {
-    width: 48,
-    height: 48,
-    borderRadius: 10,
-    backgroundColor: colors.chipBg,
+    width: 46,
+    height: 46,
+    borderRadius: 12,
+    backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
   },
   content: { flex: 1 },
   topRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
-  title: { fontSize: 15, fontWeight: '700', color: colors.text, flex: 1 },
+  title: { fontFamily: fonts.bodyBold, fontSize: 15, color: colors.text, flex: 1 },
   statusBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8, marginLeft: 8 },
-  statusText: { fontSize: 11, fontWeight: '600' },
+  statusText: { fontFamily: fonts.bodySemiBold, fontSize: 11 },
   metaRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 6 },
-  metaText: { fontSize: 12, color: colors.textLight },
-  dot: { color: colors.textLight, fontSize: 12 },
+  metaText: { fontFamily: fonts.body, fontSize: 12, color: colors.textSecondary },
+  dot: { color: colors.textMuted, fontSize: 12 },
   bottomRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  daysRow: { flexDirection: 'row', alignItems: 'center', gap: 3 },
-  dayChip: { fontSize: 11, color: colors.primary, fontWeight: '600', marginRight: 2 },
-  rate: { fontSize: 15, fontWeight: '700', color: colors.primary },
+  daysRow: { flexDirection: 'row', alignItems: 'center', gap: 3, flex: 1 },
+  dayChip: {
+    backgroundColor: colors.primaryDark,
+    paddingHorizontal: 5,
+    paddingVertical: 2,
+    borderRadius: 4,
+    marginRight: 2,
+  },
+  dayChipText: { fontFamily: fonts.bodySemiBold, fontSize: 10, color: colors.white },
+  rate: {
+    fontFamily: fonts.display,
+    fontSize: 22,
+    color: colors.primary,
+    letterSpacing: 0.3,
+    lineHeight: 26,
+  },
   thumbBtn: { alignItems: 'center', paddingLeft: 8 },
-  thumbCount: { fontSize: 11, color: colors.textLight, marginTop: 2 },
+  thumbCount: { fontFamily: fonts.body, fontSize: 11, color: colors.textMuted, marginTop: 2 },
 });

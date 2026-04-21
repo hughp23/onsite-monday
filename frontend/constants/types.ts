@@ -102,6 +102,20 @@ export interface Conversation {
   messages: Message[];
 }
 
+export interface Applicant {
+  id: string;
+  firstName: string;
+  lastName: string;
+  trade: string;
+  profileImage: string | null;
+  dayRate: number;
+  rating: number;
+  reviewCount: number;
+  skills: string[];
+  applicationStatus: string;
+  appliedAt: string;
+}
+
 export interface AppNotification {
   id: string;
   type: NotificationType;

@@ -19,6 +19,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useApp } from '@/context/AppContext';
 import { colors } from '@/constants/colors';
+import { fonts } from '@/constants/typography';
 
 const { width } = Dimensions.get('window');
 
@@ -273,20 +274,27 @@ const styles = StyleSheet.create({
     shadowRadius: 16,
     elevation: 10,
   },
-  monogramText: { fontSize: 30, fontWeight: '900', color: colors.primary, letterSpacing: -0.5 },
+  monogramText: {
+    fontFamily: fonts.display,
+    fontSize: 34,
+    color: colors.primary,
+    letterSpacing: 1,
+  },
   appName: {
-    fontSize: 30,
-    fontWeight: '800',
+    fontFamily: fonts.display,
+    fontSize: 42,
+    letterSpacing: 2,
     color: colors.white,
-    letterSpacing: 0.3,
     textAlign: 'center',
+    lineHeight: 48,
   },
   tagline: {
-    fontSize: 14,
+    fontFamily: fonts.bodyMedium,
+    fontSize: 15,
     color: colors.accent,
     marginTop: 6,
-    fontStyle: 'italic',
     textAlign: 'center',
+    letterSpacing: 0.5,
   },
 
   // Icons
@@ -329,13 +337,15 @@ const styles = StyleSheet.create({
 
   // Text
   subtitle: {
-    fontSize: 21,
-    fontWeight: '700',
+    fontFamily: fonts.display,
+    fontSize: 26,
     color: colors.white,
     textAlign: 'center',
-    lineHeight: 30,
+    lineHeight: 32,
+    letterSpacing: 0.5,
   },
   body: {
+    fontFamily: fonts.body,
     fontSize: 14,
     color: 'rgba(255,255,255,0.68)',
     textAlign: 'center',
@@ -361,8 +371,8 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     elevation: 6,
   },
-  primaryBtnText: { color: colors.white, fontSize: 16, fontWeight: '700' },
+  primaryBtnText: { fontFamily: fonts.bodyBold, color: colors.white, fontSize: 17, letterSpacing: 0.3 },
   secondaryBtn: { alignItems: 'center', paddingVertical: 10 },
-  secondaryBtnText: { color: 'rgba(255,255,255,0.7)', fontSize: 14 },
-  linkText: { color: colors.accent, fontWeight: '600' },
+  secondaryBtnText: { fontFamily: fonts.body, color: 'rgba(255,255,255,0.7)', fontSize: 14 },
+  linkText: { fontFamily: fonts.bodySemiBold, color: colors.accent },
 });

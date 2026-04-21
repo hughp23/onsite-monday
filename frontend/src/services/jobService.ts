@@ -1,5 +1,5 @@
 import { apiRequest } from './api';
-import { Job } from '@/constants/types';
+import { Applicant, Job } from '@/constants/types';
 
 export interface CreateJobPayload {
   title: string;
@@ -109,6 +109,33 @@ export const jobService = {
   acceptApplicant: async (jobId: string, applicantId: string): Promise<Job> => {
     const data = await apiRequest<ApiJob>('PUT', `/jobs/${jobId}/accept`, { applicantId });
     return toJob(data);
+  },
+
+  getApplicants: async (jobId: string): Promise<Applicant[]> => {
+    const data = await apiRequest<Array<{
+      id: string; firstName: string; lastName: string;
+      trade?: string; profileImageUrl?: string; dayRate?: number;
+      rating: number; reviewCount: number; skills: string[];
+      applicationStatus: string; appliedAt: string;
+    }>>('GET', `/jobs/${jobId}/applicants`);
+    return data.map(a => ({
+      id: a.id,
+      firstName: a.firstName,
+      lastName: a.lastName,
+      trade: a.trade ?? '',
+      profileImage: a.profileImageUrl ?? null,
+      dayRate: a.dayRate ?? 0,
+      rating: a.rating,
+      reviewCount: a.reviewCount,
+      skills: a.skills,
+      applicationStatus: a.applicationStatus,
+      appliedAt: a.appliedAt,
+    }));
+  },
+
+  startJob: async (jobId: string): Promise<{ job: Job; payInRedirectUrl: string | null }> => {
+    const data = await apiRequest<{ job: ApiJob; payInRedirectUrl: string | null }>('PUT', `/jobs/${jobId}/start`);
+    return { job: toJob(data.job), payInRedirectUrl: data.payInRedirectUrl };
   },
 
   completeJob: async (jobId: string): Promise<Job> => {

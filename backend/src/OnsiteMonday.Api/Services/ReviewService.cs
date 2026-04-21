@@ -1,7 +1,6 @@
 using OnsiteMonday.Api.Domain;
 using OnsiteMonday.Api.DTOs.Reviews;
 using OnsiteMonday.Api.Repositories;
-using OnsiteMonday.Api.Stubs;
 
 namespace OnsiteMonday.Api.Services;
 
@@ -10,18 +9,15 @@ public class ReviewService : IReviewService
     private readonly IReviewRepository _reviewRepo;
     private readonly IUserRepository _userRepo;
     private readonly INotificationRepository _notificationRepo;
-    private readonly IStripeService _stripe;
 
     public ReviewService(
         IReviewRepository reviewRepo,
         IUserRepository userRepo,
-        INotificationRepository notificationRepo,
-        IStripeService stripe)
+        INotificationRepository notificationRepo)
     {
         _reviewRepo = reviewRepo;
         _userRepo = userRepo;
         _notificationRepo = notificationRepo;
-        _stripe = stripe;
     }
 
     public async Task<ReviewDto> SubmitReviewAsync(Guid reviewerId, Guid revieweeId, SubmitReviewRequest request)
@@ -52,9 +48,6 @@ public class ReviewService : IReviewService
         reviewee.Rating = await _reviewRepo.GetAverageRatingAsync(revieweeId);
         reviewee.ReviewCount = await _reviewRepo.GetReviewCountAsync(revieweeId);
         await _userRepo.UpdateAsync(reviewee);
-
-        // Trigger payout (stub logs in Phase 1, real Stripe call in Phase 2)
-        await _stripe.TriggerPayoutAsync(request.JobId, 0, 30);
 
         // Notify the reviewee
         await _notificationRepo.CreateAsync(new Notification

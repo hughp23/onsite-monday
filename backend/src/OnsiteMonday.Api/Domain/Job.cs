@@ -23,6 +23,13 @@ public class Job
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset UpdatedAt { get; set; }
 
+    // Mangopay escrow fields
+    public string? EscrowPayInId { get; set; }
+    public string? EscrowTransferId { get; set; }
+    public DateTimeOffset? PayoutScheduledAt { get; set; }
+    public string PaymentStatus { get; set; } = "none"; // none|payin_pending|escrowed|payout_pending|paid
+    public string? HangfireJobId { get; set; }
+
     // Navigation
     public ICollection<JobApplication> Applications { get; set; } = new List<JobApplication>();
     public Review? Review { get; set; }

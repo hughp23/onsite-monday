@@ -112,4 +112,15 @@ public class JobRepository : IJobRepository
 
     public Task<int> GetApplicationCountAsync(Guid jobId) =>
         _db.JobApplications.CountAsync(a => a.JobId == jobId);
+
+    public async Task<List<(User Applicant, JobApplication Application)>> GetApplicantsAsync(Guid jobId)
+    {
+        var applications = await _db.JobApplications
+            .Include(a => a.Applicant)
+                .ThenInclude(u => u.Subscriptions)
+            .Where(a => a.JobId == jobId)
+            .OrderBy(a => a.AppliedAt)
+            .ToListAsync();
+        return applications.Select(a => (a.Applicant, a)).ToList();
+    }
 }

@@ -93,6 +93,15 @@ public class JobsController : ControllerBase
         return Ok(job);
     }
 
+    // GET /api/jobs/{id}/applicants
+    [HttpGet("{id:guid}/applicants")]
+    public async Task<ActionResult<List<ApplicantDto>>> GetApplicants(Guid id)
+    {
+        var userId = await GetCurrentUserIdAsync();
+        var applicants = await _jobService.GetApplicantsAsync(id, userId);
+        return Ok(applicants);
+    }
+
     // PUT /api/jobs/{id}/accept
     [HttpPut("{id:guid}/accept")]
     public async Task<ActionResult<JobDto>> AcceptApplicant(Guid id, [FromBody] AcceptJobRequest request)
@@ -100,6 +109,15 @@ public class JobsController : ControllerBase
         var userId = await GetCurrentUserIdAsync();
         var job = await _jobService.AcceptApplicantAsync(id, userId, request.ApplicantId);
         return Ok(job);
+    }
+
+    // PUT /api/jobs/{id}/start
+    [HttpPut("{id:guid}/start")]
+    public async Task<ActionResult<JobStartResponse>> StartJob(Guid id)
+    {
+        var userId = await GetCurrentUserIdAsync();
+        var result = await _jobService.StartJobAsync(id, userId);
+        return Ok(result);
     }
 
     // PUT /api/jobs/{id}/complete

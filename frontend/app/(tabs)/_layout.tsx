@@ -4,7 +4,9 @@ import { TouchableOpacity, View, Text, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useApp } from '@/context/AppContext';
+import { useAuth } from '@/context/AuthContext';
 import { colors } from '@/constants/colors';
+import { fonts } from '@/constants/typography';
 
 function NotificationBell() {
   const { getUnreadNotificationCount } = useApp();
@@ -38,32 +40,47 @@ function MessagesTabIcon({ color, size }: { color: string; size: number }) {
 
 export default function TabLayout() {
   const { isAuthenticated } = useApp();
+  const { isAuthLoading } = useAuth();
   const insets = useSafeAreaInsets();
 
   useEffect(() => {
-    if (!isAuthenticated) {
+    // Only redirect once Firebase has determined auth state.
+    // Redirecting while isAuthLoading=true would destroy nav history
+    // before the session is resolved, causing GO_BACK errors.
+    if (!isAuthLoading && !isAuthenticated) {
       router.replace('/');
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, isAuthLoading]);
 
-  if (!isAuthenticated) return null;
+  // Keep the navigator unmounted until auth is resolved to avoid
+  // rendering protected tabs for an unauthenticated user.
+  if (isAuthLoading || !isAuthenticated) return null;
 
   return (
     <Tabs
       screenOptions={{
         tabBarActiveTintColor: colors.primary,
-        tabBarInactiveTintColor: colors.textLight,
+        tabBarInactiveTintColor: colors.textMuted,
         tabBarStyle: {
-          backgroundColor: colors.white,
+          backgroundColor: colors.surfaceRaised,
           borderTopColor: colors.border,
           borderTopWidth: 1,
           height: 60 + insets.bottom,
           paddingBottom: 8 + insets.bottom,
+          shadowColor: colors.shadowWarm,
+          shadowOffset: { width: 0, height: -2 },
+          shadowOpacity: 0.08,
+          shadowRadius: 8,
+          elevation: 8,
         },
-        tabBarLabelStyle: { fontSize: 11, fontWeight: '600' },
+        tabBarLabelStyle: { fontFamily: fonts.bodyMedium, fontSize: 11 },
         headerStyle: { backgroundColor: colors.primary },
         headerTintColor: colors.white,
-        headerTitleStyle: { fontWeight: '700', fontSize: 18 },
+        headerTitleStyle: {
+          fontFamily: fonts.display,
+          fontSize: 22,
+          letterSpacing: 0.5,
+        },
         headerRight: () => <NotificationBell />,
       }}
     >
@@ -128,7 +145,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: 3,
   },
-  badgeText: { color: colors.white, fontSize: 10, fontWeight: '700' },
+  badgeText: { fontFamily: fonts.bodyBold, color: colors.white, fontSize: 10 },
   tabBadge: {
     position: 'absolute',
     top: -4,
@@ -141,5 +158,5 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: 2,
   },
-  tabBadgeText: { color: colors.white, fontSize: 8, fontWeight: '700' },
+  tabBadgeText: { fontFamily: fonts.bodyBold, color: colors.white, fontSize: 8 },
 });
