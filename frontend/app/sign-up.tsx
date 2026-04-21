@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView,
   FlatList, Dimensions, KeyboardAvoidingView, Platform, Alert,
@@ -25,25 +25,47 @@ const { width } = Dimensions.get('window');
 const TOTAL_SLIDES = 9;
 
 export default function SignUpScreen() {
-  const { updateCurrentUser } = useApp();
+  const { updateCurrentUser, completeOnboarding, updateSubscription, currentUser, isAuthenticated } = useApp();
   const { signUpWithEmail } = useAuth();
+  const isReturningUser = isAuthenticated && !!currentUser;
+  const minSlide = isReturningUser ? 1 : 0;
+
   const insets = useSafeAreaInsets();
   const pagerRef = useRef<FlatList>(null);
-  const [currentSlide, setCurrentSlide] = useState(0);
 
-  const [firstName, setFirstName] = useState('');
-  const [lastName, setLastName] = useState('');
+  const getInitialSlide = (): number => {
+    if (!isReturningUser) return 0;
+    if (!currentUser?.trade) return 1;
+    if (!currentUser?.skills?.length) return 2;
+    if (!currentUser?.dayRate) return 4;
+    if (!currentUser?.location) return 5;
+    return 7;
+  };
+
+  const [currentSlide, setCurrentSlide] = useState(getInitialSlide);
+
+  const [firstName, setFirstName] = useState(currentUser?.firstName ?? '');
+  const [lastName, setLastName] = useState(currentUser?.lastName ?? '');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [selectedTrade, setSelectedTrade] = useState('');
-  const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
-  const [selectedAccreditations, setSelectedAccreditations] = useState<string[]>([]);
-  const [dayRate, setDayRate] = useState('');
-  const [dayRateVisible, setDayRateVisible] = useState(true);
-  const [location, setLocation] = useState('');
-  const [travelRadius, setTravelRadius] = useState(25);
+  const [selectedTrade, setSelectedTrade] = useState(currentUser?.trade ?? '');
+  const [selectedSkills, setSelectedSkills] = useState<string[]>(currentUser?.skills ?? []);
+  const [selectedAccreditations, setSelectedAccreditations] = useState<string[]>(currentUser?.accreditations ?? []);
+  const [dayRate, setDayRate] = useState(currentUser?.dayRate ? String(currentUser.dayRate) : '');
+  const [dayRateVisible, setDayRateVisible] = useState(currentUser?.dayRateVisible ?? true);
+  const [location, setLocation] = useState(currentUser?.location ?? '');
+  const [travelRadius, setTravelRadius] = useState(currentUser?.travelRadius ?? 25);
   const [isCreatingAccount, setIsCreatingAccount] = useState(false);
+  const [isCompleting, setIsCompleting] = useState(false);
   const [selectedTier, setSelectedTier] = useState<SubscriptionTier | null>(null);
+
+  useEffect(() => {
+    if (currentSlide > 0) {
+      setTimeout(() => {
+        pagerRef.current?.scrollToIndex({ index: currentSlide, animated: false });
+      }, 50);
+    }
+  }, []); // Run once on mount
 
   const isSlideValid = (slide: number): boolean => {
     switch (slide) {
@@ -65,10 +87,12 @@ export default function SignUpScreen() {
   };
 
   const goPrev = () => {
-    if (currentSlide > 0) {
+    if (currentSlide > minSlide) {
       const prev = currentSlide - 1;
       pagerRef.current?.scrollToIndex({ index: prev, animated: true });
       setCurrentSlide(prev);
+    } else {
+      router.back();
     }
   };
 
@@ -368,7 +392,7 @@ export default function SignUpScreen() {
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
         <View style={styles.headerRow}>
-          {currentSlide > 0 ? (
+          {currentSlide > minSlide ? (
             <TouchableOpacity onPress={goPrev} style={styles.navBtn}>
               <Ionicons name="arrow-back" size={22} color={colors.white} />
             </TouchableOpacity>
