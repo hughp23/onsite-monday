@@ -134,7 +134,11 @@ export default function SignUpScreen() {
       });
       await completeOnboarding();
       if (selectedTier && selectedTier !== 'bronze') {
-        await updateSubscription(selectedTier);
+        try {
+          await updateSubscription(selectedTier);
+        } catch {
+          // Non-fatal: subscription can be changed from profile screen
+        }
       }
       router.replace('/(tabs)/jobs');
     } catch {
