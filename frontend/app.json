@@ -35,7 +35,14 @@
     },
     "plugins": [
       "expo-router",
-      "expo-image-picker"
+      "expo-image-picker",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#8B2020"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true
