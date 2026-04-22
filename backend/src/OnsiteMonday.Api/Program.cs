@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using OnsiteMonday.Api.Data;
+using OnsiteMonday.Api.Hubs;
 using OnsiteMonday.Api.Jobs;
 using OnsiteMonday.Api.Mapping;
 using OnsiteMonday.Api.Middleware;
@@ -21,8 +22,10 @@ builder.Host.UseSerilog((ctx, lc) => lc
     .ReadFrom.Configuration(ctx.Configuration)
     .WriteTo.Console());
 
-// Controllers
+// Controllers + SignalR
 builder.Services.AddControllers();
+builder.Services.AddSignalR();
+builder.Services.AddHttpClient("expo-push");
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
@@ -44,6 +47,17 @@ builder.Services
             ValidateAudience = true,
             ValidAudience = firebaseProjectId,
             ValidateLifetime = true,
+        };
+        // SignalR WebSocket can't send headers — read token from query string instead
+        opts.Events = new JwtBearerEvents
+        {
+            OnMessageReceived = ctx =>
+            {
+                var token = ctx.Request.Query["access_token"];
+                if (!string.IsNullOrEmpty(token) && ctx.Request.Path.StartsWithSegments("/hubs"))
+                    ctx.Token = token;
+                return Task.CompletedTask;
+            }
         };
     });
 builder.Services.AddAuthorization();
@@ -103,8 +117,11 @@ else
 }
 builder.Services.AddScoped<IPayoutReleaseJob, PayoutReleaseJob>();
 
-// Other stubs (replace with real implementations when ready)
-builder.Services.AddScoped<INotificationPushService, StubNotificationPushService>();
+// Push notifications — stub in Dev, real FCM in Production
+if (builder.Environment.IsProduction())
+    builder.Services.AddScoped<INotificationPushService, FcmNotificationPushService>();
+else
+    builder.Services.AddScoped<INotificationPushService, StubNotificationPushService>();
 builder.Services.AddScoped<IEmailService, StubEmailService>();
 
 // FluentValidation — validators registered in Phase 3+
@@ -148,6 +165,7 @@ if (app.Environment.IsProduction())
     app.MapHangfireDashboard();
 }
 app.MapControllers();
+app.MapHub<ChatHub>("/hubs/chat");
 
 // Health check (no auth required)
 app.MapGet("/api/health", () => Results.Ok(new { status = "healthy", timestamp = DateTime.UtcNow }));

@@ -17,6 +17,7 @@ public class AppDbContext : DbContext
     public DbSet<Message> Messages => Set<Message>();
     public DbSet<Review> Reviews => Set<Review>();
     public DbSet<Notification> Notifications => Set<Notification>();
+    public DbSet<DeviceToken> DeviceTokens => Set<DeviceToken>();
 
     protected override void OnModelCreating(ModelBuilder mb)
     {
@@ -172,6 +173,17 @@ public class AppDbContext : DbContext
             e.HasOne(n => n.User)
              .WithMany(u => u.Notifications)
              .HasForeignKey(n => n.UserId)
+             .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // ── DeviceToken ───────────────────────────────────────────────────────
+        mb.Entity<DeviceToken>(e =>
+        {
+            e.HasIndex(d => new { d.UserId, d.Token }).IsUnique();
+
+            e.HasOne(d => d.User)
+             .WithMany()
+             .HasForeignKey(d => d.UserId)
              .OnDelete(DeleteBehavior.Cascade);
         });
     }

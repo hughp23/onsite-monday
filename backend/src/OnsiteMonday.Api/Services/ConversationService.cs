@@ -1,6 +1,7 @@
 using OnsiteMonday.Api.Domain;
 using OnsiteMonday.Api.DTOs.Conversations;
 using OnsiteMonday.Api.Repositories;
+using OnsiteMonday.Api.Stubs;
 
 namespace OnsiteMonday.Api.Services;
 
@@ -8,11 +9,16 @@ public class ConversationService : IConversationService
 {
     private readonly IConversationRepository _repo;
     private readonly IUserRepository _userRepo;
+    private readonly INotificationPushService _pushService;
 
-    public ConversationService(IConversationRepository repo, IUserRepository userRepo)
+    public ConversationService(
+        IConversationRepository repo,
+        IUserRepository userRepo,
+        INotificationPushService pushService)
     {
         _repo = repo;
         _userRepo = userRepo;
+        _pushService = pushService;
     }
 
     public async Task<List<ConversationDto>> GetConversationsAsync(Guid userId)
@@ -86,7 +92,7 @@ public class ConversationService : IConversationService
         await _repo.AddMessageAsync(message);
         await _repo.UpdateLastActivityAsync(conversationId);
 
-        return new MessageDto
+        var dto = new MessageDto
         {
             Id = message.Id,
             ConversationId = message.ConversationId,
@@ -95,6 +101,23 @@ public class ConversationService : IConversationService
             IsRead = message.IsRead,
             SentAt = message.SentAt,
         };
+
+        var recipientId = conversation.InitiatorId == senderId
+            ? conversation.ParticipantId
+            : conversation.InitiatorId;
+
+        var sender = await _userRepo.GetByIdAsync(senderId);
+        var senderName = sender != null
+            ? $"{sender.FirstName} {sender.LastName}".Trim()
+            : "Someone";
+
+        _ = _pushService.SendPushAsync(
+            recipientId.ToString(),
+            senderName,
+            text.Length > 80 ? text[..80] + "…" : text,
+            new Dictionary<string, string> { ["conversationId"] = conversationId.ToString() });
+
+        return dto;
     }
 
     public Task MarkReadAsync(Guid conversationId, Guid userId) =>

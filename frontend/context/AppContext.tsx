@@ -37,6 +37,7 @@ interface AppContextType {
   getJob: (id: string) => Job | undefined;
   getConversation: (id: string) => Conversation | undefined;
   fetchConversation: (id: string) => Promise<void>;
+  addIncomingMessage: (message: import('@/constants/types').Message) => void;
 }
 
 const AppContext = createContext<AppContextType | null>(null);
@@ -291,6 +292,22 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
     setConversations(prev => prev.map(c => c.id === id ? conv : c));
   }, []);
 
+  const addIncomingMessage = useCallback((message: import('@/constants/types').Message) => {
+    setConversations(prev => prev.map(conv =>
+      conv.id === message.conversationId
+        ? {
+            ...conv,
+            messages: conv.messages.some(m => m.id === message.id)
+              ? conv.messages
+              : [...conv.messages, message],
+            lastMessage: message.text,
+            lastMessageTime: message.timestamp,
+            unreadCount: conv.unreadCount + 1,
+          }
+        : conv
+    ));
+  }, []);
+
   return (
     <AppContext.Provider value={{
       currentUser,
@@ -320,6 +337,7 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
       getJob,
       getConversation,
       fetchConversation,
+      addIncomingMessage,
     }}>
       {children}
     </AppContext.Provider>

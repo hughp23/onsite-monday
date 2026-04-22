@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
 using OnsiteMonday.Api.DTOs.Conversations;
+using OnsiteMonday.Api.Hubs;
 using OnsiteMonday.Api.Repositories;
 using OnsiteMonday.Api.Services;
 using System.Security.Claims;
@@ -14,11 +16,16 @@ public class ConversationsController : ControllerBase
 {
     private readonly IConversationService _conversationService;
     private readonly IUserRepository _userRepo;
+    private readonly IHubContext<ChatHub> _hub;
 
-    public ConversationsController(IConversationService conversationService, IUserRepository userRepo)
+    public ConversationsController(
+        IConversationService conversationService,
+        IUserRepository userRepo,
+        IHubContext<ChatHub> hub)
     {
         _conversationService = conversationService;
         _userRepo = userRepo;
+        _hub = hub;
     }
 
     private string FirebaseUid =>
@@ -68,6 +75,7 @@ public class ConversationsController : ControllerBase
     {
         var userId = await GetCurrentUserIdAsync();
         var message = await _conversationService.SendMessageAsync(id, userId, request.Text);
+        await _hub.Clients.Group($"conversation-{id}").SendAsync("ReceiveMessage", message);
         return Ok(message);
     }
 

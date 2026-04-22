@@ -4,12 +4,14 @@ import {
   KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { useLocalSearchParams, useNavigation } from 'expo-router';
+import { useHeaderHeight } from '@react-navigation/elements';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, {
   useSharedValue, useAnimatedStyle, withDelay, withTiming, withSpring, Easing,
 } from 'react-native-reanimated';
 import { useApp } from '@/context/AppContext';
+import { signalRService } from '@/src/services/signalRService';
 import { colors } from '@/constants/colors';
 import { Message } from '@/constants/types';
 import { useLayoutEffect } from 'react';
@@ -67,10 +69,11 @@ function formatDateGroup(timestamp: string): string {
 
 export default function ChatScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { getConversation, sendMessage, currentUser, fetchConversation } = useApp();
+  const { getConversation, sendMessage, currentUser, fetchConversation, addIncomingMessage } = useApp();
   const conversation = getConversation(id);
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
+  const headerHeight = useHeaderHeight();
   const [text, setText] = useState('');
   const listRef = useRef<FlatList>(null);
 
@@ -85,6 +88,22 @@ export default function ChatScreen() {
 
   useEffect(() => {
     fetchConversation(id);
+  }, [id]);
+
+  useEffect(() => {
+    let cleanup: (() => void) | undefined;
+    signalRService.start()
+      .then(() => signalRService.joinConversation(id))
+      .catch(() => {});
+    cleanup = signalRService.onReceiveMessage(msg => {
+      if (msg.conversationId === id) {
+        addIncomingMessage(msg);
+      }
+    });
+    return () => {
+      cleanup?.();
+      signalRService.leaveConversation(id).catch(() => {});
+    };
   }, [id]);
 
   useEffect(() => {
@@ -140,8 +159,8 @@ export default function ChatScreen() {
   return (
     <KeyboardAvoidingView
       style={{ flex: 1 }}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 88 : 0}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={headerHeight}
     >
       <FlatList
         ref={listRef}

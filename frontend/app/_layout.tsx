@@ -18,9 +18,34 @@ import {
 } from '@expo-google-fonts/barlow';
 import { AuthContextProvider } from '@/context/AuthContext';
 import { AppContextProvider } from '@/context/AppContext';
+import { useAuth } from '@/context/AuthContext';
 import { colors } from '@/constants/colors';
+import {
+  requestNotificationPermissions,
+  registerDeviceToken,
+  setupNotificationHandlers,
+  teardownNotificationHandlers,
+} from '@/src/services/notificationSetup';
 
 SplashScreen.preventAutoHideAsync();
+
+function NotificationBootstrap() {
+  const { firebaseUser } = useAuth();
+
+  useEffect(() => {
+    setupNotificationHandlers();
+    return teardownNotificationHandlers;
+  }, []);
+
+  useEffect(() => {
+    if (!firebaseUser) return;
+    requestNotificationPermissions().then(granted => {
+      if (granted) registerDeviceToken();
+    });
+  }, [firebaseUser]);
+
+  return null;
+}
 
 export default function RootLayout() {
   const [fontsLoaded] = useFonts({
@@ -44,6 +69,7 @@ export default function RootLayout() {
     <GestureHandlerRootView style={styles.root}>
       <SafeAreaProvider>
         <AuthContextProvider>
+        <NotificationBootstrap />
         <AppContextProvider>
           <StatusBar style="light" />
           <Stack
