@@ -140,10 +140,10 @@ public class JobsController : ControllerBase
 
     // PUT /api/jobs/{id}/cancel
     [HttpPut("{id:guid}/cancel")]
-    public async Task<ActionResult<JobDto>> CancelJob(Guid id, [FromBody] CancelJobRequest request)
+    public async Task<ActionResult<JobDto>> CancelJob(Guid id, [FromBody] CancelJobRequest? request = null)
     {
         var userId = await GetCurrentUserIdAsync();
-        var job = await _jobService.CancelJobAsync(id, userId, request.Reason);
+        var job = await _jobService.CancelJobAsync(id, userId, request?.Reason);
         return Ok(job);
     }
 }

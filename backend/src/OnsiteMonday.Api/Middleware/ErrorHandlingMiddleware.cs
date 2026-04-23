@@ -32,6 +32,10 @@ public class ErrorHandlingMiddleware
         {
             await WriteErrorAsync(context, HttpStatusCode.BadRequest, ex.Message);
         }
+        catch (InvalidOperationException ex)
+        {
+            await WriteErrorAsync(context, HttpStatusCode.Conflict, ex.Message);
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Unhandled exception");
