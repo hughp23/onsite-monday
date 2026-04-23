@@ -128,4 +128,22 @@ public class JobsController : ControllerBase
         var job = await _jobService.CompleteJobAsync(id, userId);
         return Ok(job);
     }
+
+    // DELETE /api/jobs/{id}
+    [HttpDelete("{id:guid}")]
+    public async Task<IActionResult> DeleteJob(Guid id)
+    {
+        var userId = await GetCurrentUserIdAsync();
+        await _jobService.DeleteJobAsync(id, userId);
+        return NoContent();
+    }
+
+    // PUT /api/jobs/{id}/cancel
+    [HttpPut("{id:guid}/cancel")]
+    public async Task<ActionResult<JobDto>> CancelJob(Guid id, [FromBody] CancelJobRequest request)
+    {
+        var userId = await GetCurrentUserIdAsync();
+        var job = await _jobService.CancelJobAsync(id, userId, request.Reason);
+        return Ok(job);
+    }
 }

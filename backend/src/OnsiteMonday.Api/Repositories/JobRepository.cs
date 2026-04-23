@@ -95,6 +95,12 @@ public class JobRepository : IJobRepository
         await _db.SaveChangesAsync();
     }
 
+    public async Task DeleteAsync(Job job)
+    {
+        _db.Jobs.Remove(job);
+        await _db.SaveChangesAsync();
+    }
+
     public Task<JobApplication?> GetApplicationAsync(Guid jobId, Guid applicantId) =>
         _db.JobApplications.FirstOrDefaultAsync(a => a.JobId == jobId && a.ApplicantId == applicantId);
 

@@ -14,4 +14,6 @@ public interface IJobService
     Task<JobDto> AcceptApplicantAsync(Guid jobId, Guid posterId, Guid applicantId);
     Task<JobStartResponse> StartJobAsync(Guid jobId, Guid userId);
     Task<JobDto> CompleteJobAsync(Guid jobId, Guid userId);
+    Task DeleteJobAsync(Guid jobId, Guid userId);
+    Task<JobDto> CancelJobAsync(Guid jobId, Guid userId, string? reason);
 }

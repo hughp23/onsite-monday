@@ -318,6 +318,67 @@ public class JobService : IJobService
         return ToDto(job, result.IsInterested, count);
     }
 
+    public async Task DeleteJobAsync(Guid jobId, Guid userId)
+    {
+        var result = await _jobRepo.GetByIdAsync(jobId, userId)
+            ?? throw new KeyNotFoundException($"Job {jobId} not found.");
+
+        if (result.Job.PostedById != userId)
+            throw new UnauthorizedAccessException("Only the job poster can delete a job.");
+
+        if (result.Job.Status != "open")
+            throw new InvalidOperationException("Only open jobs (with no hire) can be deleted.");
+
+        await _jobRepo.DeleteAsync(result.Job);
+    }
+
+    public async Task<JobDto> CancelJobAsync(Guid jobId, Guid userId, string? reason)
+    {
+        var result = await _jobRepo.GetByIdAsync(jobId, userId)
+            ?? throw new KeyNotFoundException($"Job {jobId} not found.");
+
+        var job = result.Job;
+
+        if (job.Status != "accepted")
+            throw new InvalidOperationException("Only accepted jobs can be cancelled.");
+
+        // Check caller is poster or accepted tradesperson
+        var applicants = await _jobRepo.GetApplicantsAsync(jobId);
+        var acceptedEntry = applicants.FirstOrDefault(a => a.Application.Status == "accepted");
+        Guid? acceptedTradespersonId = acceptedEntry != default ? acceptedEntry.Applicant.Id : null;
+
+        if (job.PostedById != userId && acceptedTradespersonId != userId)
+            throw new UnauthorizedAccessException("Only the job poster or the hired tradesperson can cancel this job.");
+
+        if (job.PaymentStatus == "escrowed")
+            job.PaymentStatus = "refund_pending";
+
+        job.Status = "cancelled";
+        job.CancellationReason = reason;
+        job.CancelledAt = DateTimeOffset.UtcNow;
+        job.UpdatedAt = DateTimeOffset.UtcNow;
+        await _jobRepo.UpdateAsync(job);
+
+        // Notify the other party
+        var otherPartyId = job.PostedById == userId ? acceptedTradespersonId : (Guid?)job.PostedById;
+        if (otherPartyId.HasValue)
+        {
+            await _notificationRepo.CreateAsync(new Notification
+            {
+                Id = Guid.NewGuid(),
+                UserId = otherPartyId.Value,
+                Type = "cancelled",
+                Title = "Job cancelled",
+                Description = $"The job \"{job.Title}\" has been cancelled.",
+                LinkedId = jobId,
+                CreatedAt = DateTimeOffset.UtcNow,
+            });
+        }
+
+        var count = await _jobRepo.GetApplicationCountAsync(jobId);
+        return ToDto(job, result.IsInterested, count);
+    }
+
     private static JobDto ToDto(Job job, bool isInterested, int interestedCount) => new()
     {
         Id = job.Id,

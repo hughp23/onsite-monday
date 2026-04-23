@@ -18,7 +18,9 @@ public class Job
     public Guid PostedById { get; set; }
     public User PostedBy { get; set; } = null!;
     public string PaymentTerms { get; set; } = null!;
-    public string Status { get; set; } = "open"; // open | applied | accepted | in_progress | completed
+    public string Status { get; set; } = "open"; // open | applied | accepted | in_progress | completed | cancelled
+    public string? CancellationReason { get; set; }
+    public DateTimeOffset? CancelledAt { get; set; }
     public List<string> Photos { get; set; } = new();
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset UpdatedAt { get; set; }
