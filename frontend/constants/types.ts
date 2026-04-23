@@ -1,5 +1,5 @@
 export type SubscriptionTier = 'bronze' | 'silver' | 'gold';
-export type JobStatus = 'open' | 'applied' | 'accepted' | 'in_progress' | 'completed';
+export type JobStatus = 'open' | 'applied' | 'accepted' | 'in_progress' | 'completed' | 'cancelled';
 export type DayLetter = 'M' | 'T' | 'W' | 'Th' | 'F' | 'S' | 'Su';
 export type NotificationType = 'application' | 'accepted' | 'payment' | 'review' | 'profile_view';
 

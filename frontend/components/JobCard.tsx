@@ -19,6 +19,7 @@ const STATUS_COLORS: Record<string, string> = {
   in_progress: '#2196F3',
   completed: colors.textLight,
   applied: '#9C27B0',
+  cancelled: colors.error,
 };
 
 const STATUS_LABELS: Record<string, string> = {
@@ -27,6 +28,7 @@ const STATUS_LABELS: Record<string, string> = {
   in_progress: 'In Progress',
   completed: 'Completed',
   applied: 'Applied',
+  cancelled: 'Cancelled',
 };
 
 const SPRING = { damping: 20, stiffness: 320 };
