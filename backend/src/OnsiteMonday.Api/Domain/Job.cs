@@ -29,7 +29,7 @@ public class Job
     public string? EscrowPayInId { get; set; }
     public string? EscrowTransferId { get; set; }
     public DateTimeOffset? PayoutScheduledAt { get; set; }
-    public string PaymentStatus { get; set; } = "none"; // none|payin_pending|escrowed|payout_pending|paid
+    public string PaymentStatus { get; set; } = "none"; // none|payin_pending|escrowed|refund_pending|payout_pending|paid
     public string? HangfireJobId { get; set; }
 
     // Navigation

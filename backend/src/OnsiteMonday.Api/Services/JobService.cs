@@ -350,6 +350,7 @@ public class JobService : IJobService
         if (job.PostedById != userId && acceptedTradespersonId != userId)
             throw new UnauthorizedAccessException("Only the job poster or the hired tradesperson can cancel this job.");
 
+        // Payment refund is handled manually for now; set status so ops can identify affected jobs
         if (job.PaymentStatus == "escrowed")
             job.PaymentStatus = "refund_pending";
 
