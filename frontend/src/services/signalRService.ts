@@ -7,9 +7,11 @@ function hubUrl(): string {
   const apiUrl =
     process.env.EXPO_PUBLIC_API_URL ??
     (__DEV__
-      ? `http://${(Constants.expoConfig?.hostUri ?? 'localhost:8081').split(':')[0]}:5236`
-      : 'https://api.onsitemonday.co.uk');
-  return `${apiUrl}/hubs/chat`;
+      ? `http://${(Constants.expoConfig?.hostUri ?? 'localhost:8081').split(':')[0]}:5236/api`
+      : 'https://api.onsitemonday.co.uk/api');
+  // Strip trailing /api — the hub is at /hubs/chat, not /api/hubs/chat
+  const baseUrl = apiUrl.replace(/\/api$/, '');
+  return `${baseUrl}/hubs/chat`;
 }
 
 // Backend sends MessageDto with sentAt; map to our Message type
