@@ -142,4 +142,13 @@ export const jobService = {
     const data = await apiRequest<ApiJob>('PUT', `/jobs/${jobId}/complete`);
     return toJob(data);
   },
+
+  deleteJob: async (jobId: string): Promise<void> => {
+    await apiRequest<void>('DELETE', `/jobs/${jobId}`);
+  },
+
+  cancelJob: async (jobId: string, reason?: string): Promise<Job> => {
+    const data = await apiRequest<ApiJob>('PUT', `/jobs/${jobId}/cancel`, { reason });
+    return toJob(data);
+  },
 };

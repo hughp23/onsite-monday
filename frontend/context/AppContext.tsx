@@ -25,6 +25,8 @@ interface AppContextType {
   acceptJob: (jobId: string, applicantId: string) => Promise<void>;
   startJob: (jobId: string) => Promise<void>;
   markJobComplete: (jobId: string) => Promise<void>;
+  deleteJob: (jobId: string) => Promise<void>;
+  cancelJob: (jobId: string, reason?: string) => Promise<void>;
   submitReview: (tradespersonId: string, review: { rating: number; text: string; jobId: string }) => Promise<void>;
   startConversation: (participantId: string, relatedJobId?: string) => Promise<string>;
   sendMessage: (conversationId: string, text: string) => Promise<void>;
@@ -203,6 +205,20 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
     }));
   }, []);
 
+  const deleteJob = useCallback(async (jobId: string) => {
+    await jobService.deleteJob(jobId);
+    setMyJobs(prev => ({ ...prev, posted: prev.posted.filter(j => j.id !== jobId) }));
+    setJobs(prev => prev.filter(j => j.id !== jobId));
+  }, []);
+
+  const cancelJob = useCallback(async (jobId: string, reason?: string) => {
+    const updated = await jobService.cancelJob(jobId, reason);
+    setMyJobs(prev => ({
+      accepted: prev.accepted.map(j => j.id === jobId ? updated : j),
+      posted: prev.posted.map(j => j.id === jobId ? updated : j),
+    }));
+  }, []);
+
   const submitReview = useCallback(async (tradespersonId: string, review: { rating: number; text: string; jobId: string }) => {
     await reviewService.submitReview(tradespersonId, review);
   }, []);
@@ -325,6 +341,8 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
       acceptJob,
       startJob,
       markJobComplete,
+      deleteJob,
+      cancelJob,
       submitReview,
       startConversation,
       sendMessage,
