@@ -3,6 +3,7 @@ import {
   View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet,
   KeyboardAvoidingView, Platform,
 } from 'react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { router } from 'expo-router';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -21,7 +22,8 @@ export default function CreateJobScreen() {
   const [trade, setTrade] = useState('');
   const [location, setLocation] = useState('');
   const [postcode, setPostcode] = useState('');
-  const [startDate, setStartDate] = useState('');
+  const [startDate, setStartDate] = useState<Date | null>(null);
+  const [showDatePicker, setShowDatePicker] = useState(false);
   const [duration, setDuration] = useState('');
   const [selectedDays, setSelectedDays] = useState<DayLetter[]>([]);
   const [startTime, setStartTime] = useState('8:00am');
@@ -46,9 +48,7 @@ export default function CreateJobScreen() {
     }
     const durationNum = parseInt(duration) || 1;
     const now = new Date();
-    const startDateObj = startDate
-      ? new Date(startDate)
-      : new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+    const startDateObj = startDate ?? new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
     const endDateObj = new Date(startDateObj.getTime() + (durationNum - 1) * 24 * 60 * 60 * 1000);
 
     const newJob: Job = {
@@ -145,10 +145,31 @@ export default function CreateJobScreen() {
         <View style={styles.row}>
           <View style={[styles.inputGroup, { flex: 1 }]}>
             <Text style={styles.label}>Start Date</Text>
-            <View style={styles.inputWrap}>
+            <TouchableOpacity style={styles.inputWrap} onPress={() => setShowDatePicker(true)} activeOpacity={0.7}>
               <Ionicons name="calendar-outline" size={18} color={colors.textLight} style={styles.icon} />
-              <TextInput style={styles.input} placeholder="YYYY-MM-DD" placeholderTextColor={colors.textLight} value={startDate} onChangeText={setStartDate} />
-            </View>
+              <Text style={[styles.input, !startDate && { color: colors.textLight }]}>
+                {startDate
+                  ? startDate.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'long', year: 'numeric' })
+                  : 'Select start date'}
+              </Text>
+            </TouchableOpacity>
+            {showDatePicker && (
+              <DateTimePicker
+                value={startDate ?? new Date()}
+                mode="date"
+                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                minimumDate={new Date()}
+                onChange={(_, selected) => {
+                  setShowDatePicker(Platform.OS === 'ios');
+                  if (selected) setStartDate(selected);
+                }}
+              />
+            )}
+            {showDatePicker && Platform.OS === 'ios' && (
+              <TouchableOpacity onPress={() => setShowDatePicker(false)} style={styles.datePickerDone}>
+                <Text style={styles.datePickerDoneText}>Done</Text>
+              </TouchableOpacity>
+            )}
           </View>
           <View style={[styles.inputGroup, { width: 90, marginLeft: 10 }]}>
             <Text style={styles.label}>Duration</Text>
@@ -323,4 +344,6 @@ const styles = StyleSheet.create({
   },
   postBtnDisabled: { backgroundColor: colors.border },
   postBtnText: { color: colors.white, fontSize: 16, fontWeight: '700' },
+  datePickerDone: { alignItems: 'flex-end', paddingVertical: 6, paddingRight: 4 },
+  datePickerDoneText: { fontSize: 15, color: colors.primary, fontWeight: '600' },
 });
