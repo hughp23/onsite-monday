@@ -96,6 +96,9 @@ public class JobService : IJobService
         var result = await _jobRepo.GetByIdAsync(jobId, userId)
             ?? throw new KeyNotFoundException($"Job {jobId} not found.");
 
+        if (result.Job.PostedById == userId)
+            throw new InvalidOperationException("You cannot apply to your own job.");
+
         var existing = await _jobRepo.GetApplicationAsync(jobId, userId);
 
         if (existing != null)

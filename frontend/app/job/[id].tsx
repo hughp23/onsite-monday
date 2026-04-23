@@ -14,6 +14,7 @@ export default function JobDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { getJob, toggleJobInterest, currentUser, startConversation } = useApp();
   const job = getJob(id);
+  const isOwnJob = job?.postedById === currentUser?.id;
   const insets = useSafeAreaInsets();
   const [showInterestModal, setShowInterestModal] = useState(false);
   const [toastVisible, setToastVisible] = useState(false);
@@ -68,19 +69,21 @@ export default function JobDetailScreen() {
                 <MaterialCommunityIcons name="hammer-wrench" size={13} color={colors.primary} />
                 <Text style={styles.tradeBadgeText}>{job.trade}</Text>
               </View>
-              <TouchableOpacity
-                onPress={() => toggleJobInterest(job.id)}
-                style={styles.interestBtn}
-              >
-                <MaterialCommunityIcons
-                  name={job.isInterested ? 'thumb-up' : 'thumb-up-outline'}
-                  size={22}
-                  color={job.isInterested ? colors.accent : colors.textLight}
-                />
-                <Text style={[styles.interestCount, job.isInterested && { color: colors.accent }]}>
-                  {job.interestedCount}
-                </Text>
-              </TouchableOpacity>
+              {!isOwnJob && (
+                <TouchableOpacity
+                  onPress={() => toggleJobInterest(job.id)}
+                  style={styles.interestBtn}
+                >
+                  <MaterialCommunityIcons
+                    name={job.isInterested ? 'thumb-up' : 'thumb-up-outline'}
+                    size={22}
+                    color={job.isInterested ? colors.accent : colors.textLight}
+                  />
+                  <Text style={[styles.interestCount, job.isInterested && { color: colors.accent }]}>
+                    {job.interestedCount}
+                  </Text>
+                </TouchableOpacity>
+              )}
             </View>
           </View>
         </View>
@@ -157,22 +160,29 @@ export default function JobDetailScreen() {
           </View>
         </View>
 
-        {/* Message poster */}
-        <TouchableOpacity style={[styles.messageSection, startingConv && { opacity: 0.6 }]} onPress={handleMessage} activeOpacity={0.7} disabled={startingConv}>
-          <MaterialCommunityIcons name="chat-question-outline" size={22} color={colors.primary} />
-          <View style={styles.messageSectionContent}>
-            <Text style={styles.messageSectionTitle}>Got a question?</Text>
-            <Text style={styles.messageSectionSub}>Message the job poster now.</Text>
-          </View>
-          <Ionicons name="chevron-forward" size={18} color={colors.textLight} />
-        </TouchableOpacity>
+        {/* Message poster — hidden for own jobs */}
+        {!isOwnJob && (
+          <TouchableOpacity style={[styles.messageSection, startingConv && { opacity: 0.6 }]} onPress={handleMessage} activeOpacity={0.7} disabled={startingConv}>
+            <MaterialCommunityIcons name="chat-question-outline" size={22} color={colors.primary} />
+            <View style={styles.messageSectionContent}>
+              <Text style={styles.messageSectionTitle}>Got a question?</Text>
+              <Text style={styles.messageSectionSub}>Message the job poster now.</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={colors.textLight} />
+          </TouchableOpacity>
+        )}
 
         <View style={styles.bottomPadding} />
       </ScrollView>
 
       {/* Sticky bottom button */}
       <View style={styles.stickyFooter}>
-        {job.isInterested ? (
+        {isOwnJob ? (
+          <View style={styles.alreadyInterested}>
+            <MaterialCommunityIcons name="briefcase-check" size={20} color={colors.textLight} />
+            <Text style={[styles.alreadyInterestedText, { color: colors.textLight }]}>Your job posting</Text>
+          </View>
+        ) : job.isInterested ? (
           <View style={styles.alreadyInterested}>
             <MaterialCommunityIcons name="check-circle" size={20} color={colors.success} />
             <Text style={styles.alreadyInterestedText}>Interest expressed</Text>

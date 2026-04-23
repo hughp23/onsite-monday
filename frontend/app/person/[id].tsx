@@ -26,7 +26,7 @@ function Avatar({ name, size = 80, imageUri }: { name: string; size?: number; im
 
 export default function PersonDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { tradespeople, startConversation } = useApp();
+  const { tradespeople, startConversation, currentUser } = useApp();
   const person = tradespeople.find(t => t.id === id);
   const insets = useSafeAreaInsets();
 
@@ -152,17 +152,19 @@ export default function PersonDetailScreen() {
         </View>
       </ScrollView>
 
-      {/* Sticky footer */}
-      <View style={styles.stickyFooter}>
-        <TouchableOpacity style={styles.hireBtn} activeOpacity={0.85}>
-          <MaterialCommunityIcons name="account-check" size={18} color={colors.white} />
-          <Text style={styles.hireBtnText}>Hire {person.firstName}</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={[styles.messageBtn, startingConv && { opacity: 0.6 }]} onPress={handleMessage} activeOpacity={0.85} disabled={startingConv}>
-          <Ionicons name="chatbubble-outline" size={18} color={colors.primary} />
-          <Text style={styles.messageBtnText}>Message</Text>
-        </TouchableOpacity>
-      </View>
+      {/* Sticky footer — hidden when viewing own profile */}
+      {currentUser?.id !== person.id && (
+        <View style={styles.stickyFooter}>
+          <TouchableOpacity style={styles.hireBtn} activeOpacity={0.85}>
+            <MaterialCommunityIcons name="account-check" size={18} color={colors.white} />
+            <Text style={styles.hireBtnText}>Hire {person.firstName}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.messageBtn, startingConv && { opacity: 0.6 }]} onPress={handleMessage} activeOpacity={0.85} disabled={startingConv}>
+            <Ionicons name="chatbubble-outline" size={18} color={colors.primary} />
+            <Text style={styles.messageBtnText}>Message</Text>
+          </TouchableOpacity>
+        </View>
+      )}
     </View>
   );
 }

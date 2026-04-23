@@ -29,6 +29,9 @@ public class ConversationService : IConversationService
 
     public async Task<ConversationDto> GetOrCreateConversationAsync(Guid initiatorId, Guid participantId, Guid? relatedJobId)
     {
+        if (initiatorId == participantId)
+            throw new InvalidOperationException("You cannot start a conversation with yourself.");
+
         // Upsert — return existing conversation if one already exists between this pair
         var existing = await _repo.GetByParticipantsAsync(initiatorId, participantId);
         if (existing != null)

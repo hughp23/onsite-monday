@@ -32,7 +32,7 @@ function sortJobs(jobs: Job[], sort: SortOption): Job[] {
 }
 
 export default function JobsScreen() {
-  const { jobs, toggleJobInterest } = useApp();
+  const { jobs, toggleJobInterest, currentUser } = useApp();
   const insets = useSafeAreaInsets();
   const [sort, setSort] = useState<SortOption>('newest');
   const [showSortModal, setShowSortModal] = useState(false);
@@ -70,7 +70,7 @@ export default function JobsScreen() {
             <JobCard
               job={item}
               onPress={() => router.push(`/job/${item.id}`)}
-              onInterest={() => toggleJobInterest(item.id)}
+              onInterest={item.postedById !== currentUser?.id ? () => toggleJobInterest(item.id) : undefined}
             />
           </AnimatedListItem>
         )}
