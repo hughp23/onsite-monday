@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "838911528327",
+    "project_id": "onsite-monday",
+    "storage_bucket": "onsite-monday.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:838911528327:android:8e3262de67ada7e69dd722",
+        "android_client_info": {
+          "package_name": "com.onsitemonday.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "838911528327-978jsjrudmbe2e6mamr3r4i84k0s4neu.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAv2Dy06NqROTPmTavreC2oWvk4syUHYlw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "838911528327-978jsjrudmbe2e6mamr3r4i84k0s4neu.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
