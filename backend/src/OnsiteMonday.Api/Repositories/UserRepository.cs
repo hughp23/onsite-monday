@@ -53,7 +53,7 @@ public class UserRepository : IUserRepository
         {
             var query = _db.Users
             .Include(u => u.Subscriptions)
-            .Where(u => u.Trade != null && u.IsOnboarded);
+            .Where(u => u.Trade != null);
 
         if (!string.IsNullOrWhiteSpace(trade))
             query = query.Where(u => u.Trade == trade);
