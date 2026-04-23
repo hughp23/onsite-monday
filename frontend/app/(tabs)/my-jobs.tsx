@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, FlatList, TouchableOpacity, StyleSheet, Modal, Pressable,
-  LayoutChangeEvent,
+  LayoutChangeEvent, TextInput,
 } from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -26,11 +26,14 @@ type TabType = 'accepted' | 'posted';
 const SPRING = { damping: 22, stiffness: 200 };
 
 export default function MyJobsScreen() {
-  const { myJobs, markJobComplete, startJob } = useApp();
+  const { myJobs, markJobComplete, startJob, deleteJob, cancelJob } = useApp();
   const insets = useSafeAreaInsets();
   const [activeTab, setActiveTab] = useState<TabType>('accepted');
   const [completeModalJob, setCompleteModalJob] = useState<Job | null>(null);
   const [startModalJob, setStartModalJob] = useState<Job | null>(null);
+  const [deleteModalJob, setDeleteModalJob] = useState<Job | null>(null);
+  const [cancelModalJob, setCancelModalJob] = useState<Job | null>(null);
+  const [cancelReason, setCancelReason] = useState('');
   const [segWidth, setSegWidth] = useState(0);
 
   // Sliding segment indicator
@@ -82,6 +85,21 @@ export default function MyJobsScreen() {
     }
   };
 
+  const confirmDelete = async () => {
+    if (deleteModalJob) {
+      await deleteJob(deleteModalJob.id);
+      setDeleteModalJob(null);
+    }
+  };
+
+  const confirmCancel = async () => {
+    if (cancelModalJob) {
+      await cancelJob(cancelModalJob.id, cancelReason.trim() || undefined);
+      setCancelModalJob(null);
+      setCancelReason('');
+    }
+  };
+
   // Accepted tab: jobs the current user has been accepted for as a tradesperson
   const renderAccepted = () => (
     <FlatList
@@ -95,6 +113,16 @@ export default function MyJobsScreen() {
               onPress={() => router.push(`/job/${item.id}`)}
               showStatus
             />
+            {item.status === 'accepted' && (
+              <TouchableOpacity
+                style={styles.cancelJobBtn}
+                onPress={() => setCancelModalJob(item)}
+                activeOpacity={0.8}
+              >
+                <MaterialCommunityIcons name="close-circle-outline" size={18} color={colors.error} />
+                <Text style={styles.cancelJobBtnText}>Cancel Job</Text>
+              </TouchableOpacity>
+            )}
           </View>
         </AnimatedListItem>
       )}
@@ -142,6 +170,18 @@ export default function MyJobsScreen() {
               <Ionicons name="chevron-forward" size={14} color={colors.primary} />
             </TouchableOpacity>
 
+            {/* Delete Job — shown when job is open (no hire yet) */}
+            {item.status === 'open' && (
+              <TouchableOpacity
+                style={styles.deleteJobBtn}
+                onPress={() => setDeleteModalJob(item)}
+                activeOpacity={0.8}
+              >
+                <MaterialCommunityIcons name="delete-outline" size={18} color={colors.error} />
+                <Text style={styles.deleteJobBtnText}>Delete Job</Text>
+              </TouchableOpacity>
+            )}
+
             {/* Start Job — shown when a tradesperson has been accepted */}
             {item.status === 'accepted' && (
               <TouchableOpacity
@@ -151,6 +191,18 @@ export default function MyJobsScreen() {
               >
                 <MaterialCommunityIcons name="play-circle-outline" size={18} color={colors.white} />
                 <Text style={styles.startBtnText}>Start Job &amp; Pay</Text>
+              </TouchableOpacity>
+            )}
+
+            {/* Cancel Job — shown when a tradesperson has been accepted (before work starts) */}
+            {item.status === 'accepted' && (
+              <TouchableOpacity
+                style={styles.cancelJobBtn}
+                onPress={() => setCancelModalJob(item)}
+                activeOpacity={0.8}
+              >
+                <MaterialCommunityIcons name="close-circle-outline" size={18} color={colors.error} />
+                <Text style={styles.cancelJobBtnText}>Cancel Job</Text>
               </TouchableOpacity>
             )}
 
@@ -234,6 +286,53 @@ export default function MyJobsScreen() {
             </TouchableOpacity>
             <TouchableOpacity onPress={() => setStartModalJob(null)} style={styles.cancelBtn}>
               <Text style={styles.cancelBtnText}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </Pressable>
+      </Modal>
+
+      {/* Delete Job confirmation modal */}
+      <Modal visible={!!deleteModalJob} transparent animationType="fade">
+        <Pressable style={styles.overlay} onPress={() => setDeleteModalJob(null)}>
+          <View style={styles.modal}>
+            <MaterialCommunityIcons name="delete" size={48} color={colors.error} />
+            <Text style={styles.modalTitle}>Delete Job?</Text>
+            <Text style={styles.modalDesc}>
+              This will permanently remove "{deleteModalJob?.title}" and cannot be undone.
+            </Text>
+            <TouchableOpacity style={styles.destructiveBtn} onPress={confirmDelete}>
+              <Text style={styles.confirmBtnText}>Yes, Delete</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => setDeleteModalJob(null)} style={styles.cancelBtn}>
+              <Text style={styles.cancelBtnText}>Go Back</Text>
+            </TouchableOpacity>
+          </View>
+        </Pressable>
+      </Modal>
+
+      {/* Cancel Job confirmation modal */}
+      <Modal visible={!!cancelModalJob} transparent animationType="fade">
+        <Pressable style={styles.overlay} onPress={() => { setCancelModalJob(null); setCancelReason(''); }}>
+          <View style={styles.modal}>
+            <MaterialCommunityIcons name="close-circle" size={48} color={colors.error} />
+            <Text style={styles.modalTitle}>Cancel Job?</Text>
+            <Text style={styles.modalDesc}>
+              This cannot be undone. If payment was made, it will be refunded to the job poster.
+            </Text>
+            <TextInput
+              style={styles.cancelReasonInput}
+              placeholder="Reason for cancelling (optional)"
+              placeholderTextColor={colors.textMuted}
+              value={cancelReason}
+              onChangeText={setCancelReason}
+              multiline
+              numberOfLines={3}
+            />
+            <TouchableOpacity style={styles.destructiveBtn} onPress={confirmCancel}>
+              <Text style={styles.confirmBtnText}>Yes, Cancel Job</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => { setCancelModalJob(null); setCancelReason(''); }} style={styles.cancelBtn}>
+              <Text style={styles.cancelBtnText}>Go Back</Text>
             </TouchableOpacity>
           </View>
         </Pressable>
@@ -379,4 +478,51 @@ const styles = StyleSheet.create({
   confirmBtnText: { fontFamily: fonts.bodyBold, color: colors.white, fontSize: 15 },
   cancelBtn: { paddingVertical: 10 },
   cancelBtnText: { fontFamily: fonts.body, color: colors.textMuted, fontSize: 14 },
+  deleteJobBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    borderWidth: 1,
+    borderColor: colors.error,
+    marginBottom: 12,
+    borderRadius: 8,
+    paddingVertical: 10,
+  },
+  deleteJobBtnText: { fontFamily: fonts.bodyBold, color: colors.error, fontSize: 14 },
+  cancelJobBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    borderWidth: 1,
+    borderColor: colors.error,
+    marginBottom: 12,
+    borderRadius: 8,
+    paddingVertical: 10,
+  },
+  cancelJobBtnText: { fontFamily: fonts.bodyBold, color: colors.error, fontSize: 14 },
+  destructiveBtn: {
+    backgroundColor: colors.error,
+    borderRadius: 10,
+    paddingVertical: 14,
+    alignItems: 'center',
+    width: '100%',
+    marginBottom: 10,
+  },
+  cancelReasonInput: {
+    width: '100%',
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    fontFamily: fonts.body,
+    fontSize: 14,
+    color: colors.text,
+    backgroundColor: colors.surfaceSunken,
+    marginBottom: 20,
+    minHeight: 72,
+    textAlignVertical: 'top',
+  },
 });
