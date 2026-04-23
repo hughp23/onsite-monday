@@ -4,6 +4,7 @@ import {
   KeyboardAvoidingView, Platform,
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplete';
 import { router } from 'expo-router';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -126,19 +127,52 @@ export default function CreateJobScreen() {
           )}
         </View>
 
-        <View style={styles.row}>
-          <View style={[styles.inputGroup, { flex: 1 }]}>
-            <Text style={styles.label}>Location *</Text>
-            <View style={styles.inputWrap}>
+        <View style={[styles.inputGroup, { zIndex: 10 }]}>
+          <Text style={styles.label}>Location *</Text>
+          <GooglePlacesAutocomplete
+            placeholder="Search UK town or city"
+            query={{
+              key: process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY ?? '',
+              language: 'en',
+              components: 'country:gb',
+              types: '(cities)',
+            }}
+            fetchDetails={true}
+            onPress={(data, details) => {
+              const city = data.description.split(',')[0].trim();
+              setLocation(city);
+              const postcodeComp = details?.address_components?.find(
+                (c: { types: string[] }) => c.types.includes('postal_code')
+              );
+              if (postcodeComp) setPostcode((postcodeComp as { long_name: string }).long_name);
+            }}
+            renderLeftButton={() => (
               <Ionicons name="location-outline" size={18} color={colors.textLight} style={styles.icon} />
-              <TextInput style={styles.input} placeholder="City" placeholderTextColor={colors.textLight} value={location} onChangeText={setLocation} />
-            </View>
-          </View>
-          <View style={[styles.inputGroup, { width: 110, marginLeft: 10 }]}>
-            <Text style={styles.label}>Postcode</Text>
-            <View style={styles.inputWrap}>
-              <TextInput style={styles.input} placeholder="YO1 1AA" placeholderTextColor={colors.textLight} value={postcode} onChangeText={setPostcode} autoCapitalize="characters" />
-            </View>
+            )}
+            textInputProps={{ placeholderTextColor: colors.textLight }}
+            enablePoweredByContainer={false}
+            minLength={2}
+            styles={{
+              container: { flex: 0 },
+              textInputContainer: styles.inputWrap,
+              textInput: [styles.input, { height: 50, margin: 0, padding: 0, backgroundColor: 'transparent' }],
+              listView: {
+                backgroundColor: colors.surfaceRaised,
+                borderWidth: 1,
+                borderColor: colors.border,
+                borderRadius: 8,
+                marginTop: 2,
+              },
+              row: { paddingHorizontal: 12, paddingVertical: 12 },
+              description: { fontSize: 14, color: colors.text },
+            }}
+          />
+        </View>
+
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Postcode</Text>
+          <View style={styles.inputWrap}>
+            <TextInput style={styles.input} placeholder="YO1 1AA" placeholderTextColor={colors.textLight} value={postcode} onChangeText={setPostcode} autoCapitalize="characters" />
           </View>
         </View>
 
