@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
 import { Alert } from 'react-native';
 import { User, Job, Tradesperson, Conversation, AppNotification, Review, SubscriptionTier } from '@/constants/types';
 import { useAuth } from '@/context/AuthContext';
@@ -8,6 +8,7 @@ import { conversationService } from '@/src/services/conversationService';
 import { notificationService } from '@/src/services/notificationService';
 import { subscriptionService } from '@/src/services/subscriptionService';
 import { reviewService } from '@/src/services/reviewService';
+import { signalRService } from '@/src/services/signalRService';
 
 interface AppContextType {
   currentUser: User | null;
@@ -34,6 +35,10 @@ interface AppContextType {
   markNotificationRead: (notificationId: string) => Promise<void>;
   updateSubscription: (tier: SubscriptionTier) => Promise<void>;
   loadTradespeople: (params?: { trade?: string; location?: string }) => Promise<void>;
+  refreshJobs: () => Promise<void>;
+  refreshMyJobs: () => Promise<void>;
+  refreshConversations: () => Promise<void>;
+  refreshNotifications: () => Promise<void>;
   getUnreadNotificationCount: () => number;
   getUnreadMessageCount: () => number;
   getJob: (id: string) => Job | undefined;
@@ -102,6 +107,36 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
 
     loadAppData();
   }, [firebaseUser]);
+
+  // Track which conversation IDs have been joined so we only join new ones
+  const joinedConvIds = useRef(new Set<string>());
+
+  useEffect(() => {
+    if (!firebaseUser) {
+      joinedConvIds.current.clear();
+      signalRService.stop().catch(() => {});
+      return;
+    }
+
+    // Register global handler — updates conversations list from any screen
+    const cleanup = signalRService.onReceiveMessage(addIncomingMessage);
+    signalRService.start().catch(() => {});
+
+    return () => {
+      cleanup();
+      signalRService.stop().catch(() => {});
+    };
+  }, [firebaseUser]);
+
+  useEffect(() => {
+    if (!firebaseUser || conversations.length === 0) return;
+    conversations.forEach(c => {
+      if (!joinedConvIds.current.has(c.id)) {
+        joinedConvIds.current.add(c.id);
+        signalRService.joinConversation(c.id).catch(() => {});
+      }
+    });
+  }, [firebaseUser, conversations]);
 
   const updateCurrentUser = useCallback(async (updates: Partial<User>) => {
     // Treat empty strings as undefined so they are omitted from the JSON body
@@ -287,6 +322,29 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
     })));
   }, []);
 
+  const refreshJobs = useCallback(async () => {
+    const jobList = await jobService.getJobs();
+    setJobs(jobList);
+  }, []);
+
+  const refreshMyJobs = useCallback(async () => {
+    const [accepted, posted] = await Promise.all([
+      jobService.getMyAcceptedJobs(),
+      jobService.getMyPostedJobs(),
+    ]);
+    setMyJobs({ accepted, posted });
+  }, []);
+
+  const refreshConversations = useCallback(async () => {
+    const convs = await conversationService.getConversations();
+    setConversations(convs);
+  }, []);
+
+  const refreshNotifications = useCallback(async () => {
+    const notifs = await notificationService.getNotifications();
+    setNotifications(notifs);
+  }, []);
+
   const getUnreadNotificationCount = useCallback(() =>
     notifications.filter(n => !n.isRead).length, [notifications]);
 
@@ -350,6 +408,10 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
       markNotificationRead,
       updateSubscription,
       loadTradespeople,
+      refreshJobs,
+      refreshMyJobs,
+      refreshConversations,
+      refreshNotifications,
       getUnreadNotificationCount,
       getUnreadMessageCount,
       getJob,
