@@ -108,13 +108,28 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
     loadAppData();
   }, [firebaseUser]);
 
+  const addIncomingMessage = useCallback((message: import('@/constants/types').Message) => {
+    setConversations(prev => prev.map(conv =>
+      conv.id === message.conversationId
+        ? {
+            ...conv,
+            messages: conv.messages.some(m => m.id === message.id)
+              ? conv.messages
+              : [...conv.messages, message],
+            lastMessage: message.text,
+            lastMessageTime: message.timestamp,
+            unreadCount: conv.unreadCount + 1,
+          }
+        : conv
+    ));
+  }, []);
+
   // Track which conversation IDs have been joined so we only join new ones
   const joinedConvIds = useRef(new Set<string>());
 
   useEffect(() => {
     if (!firebaseUser) {
       joinedConvIds.current.clear();
-      signalRService.stop().catch(() => {});
       return;
     }
 
@@ -126,7 +141,7 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
       cleanup();
       signalRService.stop().catch(() => {});
     };
-  }, [firebaseUser]);
+  }, [firebaseUser, addIncomingMessage]);
 
   useEffect(() => {
     if (!firebaseUser || conversations.length === 0) return;
@@ -364,22 +379,6 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
   const fetchConversation = useCallback(async (id: string) => {
     const conv = await conversationService.getById(id);
     setConversations(prev => prev.map(c => c.id === id ? conv : c));
-  }, []);
-
-  const addIncomingMessage = useCallback((message: import('@/constants/types').Message) => {
-    setConversations(prev => prev.map(conv =>
-      conv.id === message.conversationId
-        ? {
-            ...conv,
-            messages: conv.messages.some(m => m.id === message.id)
-              ? conv.messages
-              : [...conv.messages, message],
-            lastMessage: message.text,
-            lastMessageTime: message.timestamp,
-            unreadCount: conv.unreadCount + 1,
-          }
-        : conv
-    ));
   }, []);
 
   return (
