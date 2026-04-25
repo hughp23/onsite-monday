@@ -30,9 +30,9 @@ export default function EditProfileScreen() {
   const [profileImageUri, setProfileImageUri] = useState<string | null>(currentUser?.profileImage ?? null);
   const [isUploading, setIsUploading] = useState(false);
 
-  if (!currentUser) return null;
   const [showTradePicker, setShowTradePicker] = useState(false);
   const [toastVisible, setToastVisible] = useState(false);
+  if (!currentUser) return null;
 
   const handleChangePhoto = async () => {
     setIsUploading(true);

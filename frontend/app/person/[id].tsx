@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
-  View, Text, ScrollView, TouchableOpacity, StyleSheet, Image,
+  View, Text, ScrollView, TouchableOpacity, StyleSheet, Image, ActivityIndicator,
 } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
@@ -8,8 +8,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useApp } from '@/context/AppContext';
 import StarRating from '@/components/StarRating';
 import ReviewCard from '@/components/ReviewCard';
-import EmptyState from '@/components/EmptyState';
 import { colors } from '@/constants/colors';
+import { userService } from '@/src/services/userService';
+import { Tradesperson } from '@/constants/types';
 
 function Avatar({ name, size = 80, imageUri }: { name: string; size?: number; imageUri?: string | null }) {
   const initials = name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2);
@@ -27,10 +28,53 @@ function Avatar({ name, size = 80, imageUri }: { name: string; size?: number; im
 export default function PersonDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { tradespeople, startConversation, currentUser } = useApp();
-  const person = tradespeople.find(t => t.id === id);
   const insets = useSafeAreaInsets();
+  const [startingConv, setStartingConv] = useState(false);
+  const [fetchedPerson, setFetchedPerson] = useState<Tradesperson | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [notFound, setNotFound] = useState(false);
 
-  if (!person) {
+  const cached = tradespeople.find(t => t.id === id);
+
+  useEffect(() => {
+    if (cached) return;
+    setLoading(true);
+    userService.getById(id)
+      .then(u => setFetchedPerson({
+        id: u.id,
+        firstName: u.firstName,
+        lastName: u.lastName,
+        businessName: u.businessName ?? '',
+        trade: u.trade ?? '',
+        skills: u.skills,
+        accreditations: u.accreditations,
+        dayRate: u.dayRate ?? 0,
+        dayRateVisible: u.dayRateVisible,
+        location: u.location ?? '',
+        travelRadius: u.travelRadius,
+        rating: u.rating,
+        reviewCount: u.reviewCount,
+        profileImage: u.profileImageUrl ?? null,
+        gallery: u.gallery,
+        reviews: [],
+        phone: u.phone ?? '',
+        email: u.email,
+      }))
+      .catch(() => setNotFound(true))
+      .finally(() => setLoading(false));
+  }, [id]);
+
+  const person = cached ?? fetchedPerson;
+
+  if (loading) {
+    return (
+      <View style={styles.notFound}>
+        <ActivityIndicator color={colors.primary} />
+      </View>
+    );
+  }
+
+  if (notFound || !person) {
     return (
       <View style={styles.notFound}>
         <Text style={styles.notFoundText}>Person not found</Text>
@@ -39,7 +83,6 @@ export default function PersonDetailScreen() {
   }
 
   const name = `${person.firstName} ${person.lastName}`;
-  const [startingConv, setStartingConv] = useState(false);
 
   const handleMessage = async () => {
     if (startingConv) return;

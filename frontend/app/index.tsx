@@ -165,10 +165,10 @@ export default function WelcomeScreen() {
       {/* Logo area */}
       <View style={styles.logoArea}>
         <Animated.View style={[styles.monogram, logoStyle]}>
-          <Text style={styles.monogramText}>ÔM</Text>
+          <Text style={styles.monogramText}>OM</Text>
         </Animated.View>
         <Animated.View style={titleStyle}>
-          <Text style={styles.appName}>Ônsite Monday</Text>
+          <Text style={styles.appName}>Onsite Monday</Text>
           <Text style={styles.tagline}>Your trusted trades network</Text>
         </Animated.View>
       </View>

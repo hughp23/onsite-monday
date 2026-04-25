@@ -91,7 +91,7 @@ export default function CreateJobScreen() {
       <ScrollView
         style={styles.container}
         contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 24 }]}
-        keyboardShouldPersistTaps="handled"
+        keyboardShouldPersistTaps="always"
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.inputGroup}>
@@ -131,25 +131,32 @@ export default function CreateJobScreen() {
           <Text style={styles.label}>Location *</Text>
           <GooglePlacesAutocomplete
             placeholder="Search UK town or city"
+            isNewPlacesAPI={true}
+            requestUrl={{
+              useOnPlatform: 'all',
+              url: 'https://places.googleapis.com',
+              headers: {
+                'X-Goog-FieldMask':
+                  'suggestions.placePrediction.text,suggestions.placePrediction.placeId,suggestions.placePrediction.structuredFormat',
+              },
+            }}
             query={{
               key: process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY ?? '',
-              language: 'en',
-              components: 'country:gb',
-              types: '(cities)',
+              languageCode: 'en',
+              includedRegionCodes: ['gb'],
+              includedPrimaryTypes: ['locality'],
             }}
-            fetchDetails={true}
-            onPress={(data, details) => {
+            onPress={(data) => {
               const city = data.description.split(',')[0].trim();
               setLocation(city);
-              const postcodeComp = details?.address_components?.find(
-                (c: { types: string[] }) => c.types.includes('postal_code')
-              );
-              if (postcodeComp) setPostcode((postcodeComp as { long_name: string }).long_name);
             }}
             renderLeftButton={() => (
               <Ionicons name="location-outline" size={18} color={colors.textLight} style={styles.icon} />
             )}
-            textInputProps={{ placeholderTextColor: colors.textLight }}
+            textInputProps={{
+              placeholderTextColor: colors.textLight,
+              onChangeText: (text) => setLocation(text),
+            }}
             enablePoweredByContainer={false}
             minLength={2}
             styles={{
