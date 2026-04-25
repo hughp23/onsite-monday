@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import {
   View, Text, FlatList, TouchableOpacity, StyleSheet,
-  RefreshControl, Modal, Pressable, ActivityIndicator,
+  RefreshControl, Modal, Pressable, ActivityIndicator, Alert,
 } from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -42,12 +42,15 @@ export default function JobsScreen() {
     setRefreshing(true);
     try {
       await refreshJobs();
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Failed to refresh jobs';
+      Alert.alert('Refresh failed', msg);
     } finally {
       setRefreshing(false);
     }
   }, [refreshJobs]);
 
-  if (isLoading) {
+  if (isLoading && jobs.length === 0) {
     return (
       <View style={[styles.container, styles.loadingCenter]}>
         <ActivityIndicator size="large" color={colors.primary} />
