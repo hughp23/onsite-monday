@@ -1,7 +1,7 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import {
   View, Text, FlatList, TextInput, StyleSheet, TouchableOpacity,
-  Modal, Pressable, ScrollView,
+  Modal, Pressable, ScrollView, ActivityIndicator, RefreshControl, Alert,
 } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -18,9 +18,24 @@ export default function PeopleScreen() {
   const { tradespeople, myJobs, loadTradespeople } = useApp();
   const [search, setSearch] = useState('');
   const [tradeFilter, setTradeFilter] = useState('All');
+  const [isLoadingPeople, setIsLoadingPeople] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
-    loadTradespeople();
+    setIsLoadingPeople(true);
+    loadTradespeople().finally(() => setIsLoadingPeople(false));
+  }, [loadTradespeople]);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await loadTradespeople();
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Failed to refresh';
+      Alert.alert('Refresh failed', msg);
+    } finally {
+      setRefreshing(false);
+    }
   }, [loadTradespeople]);
   const [hireModalPerson, setHireModalPerson] = useState<string | null>(null);
   const [selectedJobForHire, setSelectedJobForHire] = useState<string | null>(null);
@@ -39,6 +54,14 @@ export default function PeopleScreen() {
       return matchSearch && matchTrade;
     });
   }, [tradespeople, search, tradeFilter]);
+
+  if (isLoadingPeople) {
+    return (
+      <View style={{ flex: 1, backgroundColor: colors.white, alignItems: 'center', justifyContent: 'center' }}>
+        <ActivityIndicator size="large" color={colors.primary} />
+      </View>
+    );
+  }
 
   const handleHireConfirm = () => {
     const person = tradespeople.find(tp => tp.id === hireModalPerson);
@@ -103,6 +126,9 @@ export default function PeopleScreen() {
         )}
         contentContainerStyle={styles.list}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
+        }
         ListEmptyComponent={
           <EmptyState
             icon="people-outline"
