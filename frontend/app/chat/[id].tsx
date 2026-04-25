@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, FlatList, StyleSheet,
-  KeyboardAvoidingView, Platform,
+  KeyboardAvoidingView, Platform, ActivityIndicator,
 } from 'react-native';
 import { useLocalSearchParams, useNavigation } from 'expo-router';
 import { useHeaderHeight } from '@react-navigation/elements';
@@ -69,12 +69,13 @@ function formatDateGroup(timestamp: string): string {
 
 export default function ChatScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { getConversation, sendMessage, currentUser, fetchConversation, addIncomingMessage } = useApp();
+  const { getConversation, sendMessage, currentUser, fetchConversation } = useApp();
   const conversation = getConversation(id);
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
   const headerHeight = useHeaderHeight();
   const [text, setText] = useState('');
+  const [isLoadingChat, setIsLoadingChat] = useState(true);
   const listRef = useRef<FlatList>(null);
 
   useLayoutEffect(() => {
@@ -87,21 +88,13 @@ export default function ChatScreen() {
   }, [conversation]);
 
   useEffect(() => {
-    fetchConversation(id);
+    setIsLoadingChat(true);
+    fetchConversation(id).finally(() => setIsLoadingChat(false));
   }, [id]);
 
   useEffect(() => {
-    let cleanup: (() => void) | undefined;
-    signalRService.start()
-      .then(() => signalRService.joinConversation(id))
-      .catch(() => {});
-    cleanup = signalRService.onReceiveMessage(msg => {
-      if (msg.conversationId === id) {
-        addIncomingMessage(msg);
-      }
-    });
+    signalRService.joinConversation(id).catch(() => {});
     return () => {
-      cleanup?.();
       signalRService.leaveConversation(id).catch(() => {});
     };
   }, [id]);
@@ -111,6 +104,14 @@ export default function ChatScreen() {
       setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 100);
     }
   }, [conversation?.messages.length]);
+
+  if (isLoadingChat) {
+    return (
+      <View style={styles.notFound}>
+        <ActivityIndicator size="large" color={colors.primary} />
+      </View>
+    );
+  }
 
   if (!conversation) {
     return (
