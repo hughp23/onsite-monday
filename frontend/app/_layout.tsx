@@ -19,6 +19,7 @@ import {
 import { AuthContextProvider } from '@/context/AuthContext';
 import { AppContextProvider } from '@/context/AppContext';
 import { useAuth } from '@/context/AuthContext';
+import { useApp } from '@/context/AppContext';
 import { colors } from '@/constants/colors';
 import {
   requestNotificationPermissions,
@@ -31,11 +32,12 @@ SplashScreen.preventAutoHideAsync();
 
 function NotificationBootstrap() {
   const { firebaseUser } = useAuth();
+  const { refreshNotifications } = useApp();
 
   useEffect(() => {
-    setupNotificationHandlers();
+    setupNotificationHandlers(refreshNotifications);
     return teardownNotificationHandlers;
-  }, []);
+  }, [refreshNotifications]);
 
   useEffect(() => {
     if (!firebaseUser) return;
@@ -69,8 +71,8 @@ export default function RootLayout() {
     <GestureHandlerRootView style={styles.root}>
       <SafeAreaProvider>
         <AuthContextProvider>
-        <NotificationBootstrap />
         <AppContextProvider>
+          <NotificationBootstrap />
           <StatusBar style="light" />
           <Stack
             screenOptions={{
