@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import {
   View, Text, FlatList, TouchableOpacity, StyleSheet,
-  RefreshControl, Modal, Pressable,
+  RefreshControl, Modal, Pressable, ActivityIndicator,
 } from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -32,16 +32,28 @@ function sortJobs(jobs: Job[], sort: SortOption): Job[] {
 }
 
 export default function JobsScreen() {
-  const { jobs, toggleJobInterest, currentUser } = useApp();
+  const { jobs, toggleJobInterest, currentUser, isLoading, refreshJobs } = useApp();
   const insets = useSafeAreaInsets();
   const [sort, setSort] = useState<SortOption>('newest');
   const [showSortModal, setShowSortModal] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
-  const onRefresh = useCallback(() => {
+  const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    setTimeout(() => setRefreshing(false), 1200);
-  }, []);
+    try {
+      await refreshJobs();
+    } finally {
+      setRefreshing(false);
+    }
+  }, [refreshJobs]);
+
+  if (isLoading) {
+    return (
+      <View style={[styles.container, styles.loadingCenter]}>
+        <ActivityIndicator size="large" color={colors.primary} />
+      </View>
+    );
+  }
 
   const openJobs = jobs.filter(j => j.status === 'open');
   const sorted = sortJobs(openJobs, sort);
@@ -114,6 +126,7 @@ export default function JobsScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
+  loadingCenter: { alignItems: 'center', justifyContent: 'center' },
   sortBar: {
     flexDirection: 'row',
     justifyContent: 'space-between',
