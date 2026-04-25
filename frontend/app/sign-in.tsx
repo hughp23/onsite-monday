@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView,
-  KeyboardAvoidingView, Platform, Alert,
+  KeyboardAvoidingView, Platform, Alert, ActivityIndicator,
 } from 'react-native';
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -21,6 +21,7 @@ export default function SignInScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [isSigningIn, setIsSigningIn] = useState(false);
 
   // Animation values
   const logoScale   = useSharedValue(0.5);
@@ -60,11 +61,14 @@ export default function SignInScreen() {
       Alert.alert('Missing fields', 'Please enter your email and password.');
       return;
     }
+    setIsSigningIn(true);
     try {
       await signInWithEmail(email.trim(), password);
       router.replace('/(tabs)/jobs');
     } catch {
       Alert.alert('Sign in failed', 'Invalid email or password.');
+    } finally {
+      setIsSigningIn(false);
     }
   };
 
@@ -145,8 +149,12 @@ export default function SignInScreen() {
             <Text style={styles.link}>Forgot password?</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.primaryBtn} onPress={handleSignIn} activeOpacity={0.85}>
-            <Text style={styles.primaryBtnText}>Sign In</Text>
+          <TouchableOpacity style={[styles.primaryBtn, isSigningIn && { opacity: 0.7 }]} onPress={handleSignIn} activeOpacity={0.85} disabled={isSigningIn}>
+            {isSigningIn ? (
+              <ActivityIndicator color="#fff" size="small" />
+            ) : (
+              <Text style={styles.primaryBtnText}>Sign In</Text>
+            )}
           </TouchableOpacity>
         </Animated.View>
       </ScrollView>
