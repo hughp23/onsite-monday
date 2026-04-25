@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, FlatList, TouchableOpacity, StyleSheet, Modal, Pressable,
-  LayoutChangeEvent, TextInput,
+  LayoutChangeEvent, TextInput, ActivityIndicator, RefreshControl, Alert,
 } from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -26,7 +26,7 @@ type TabType = 'accepted' | 'posted';
 const SPRING = { damping: 22, stiffness: 200 };
 
 export default function MyJobsScreen() {
-  const { myJobs, markJobComplete, startJob, deleteJob, cancelJob } = useApp();
+  const { myJobs, markJobComplete, startJob, deleteJob, cancelJob, isLoading, refreshMyJobs } = useApp();
   const insets = useSafeAreaInsets();
   const [activeTab, setActiveTab] = useState<TabType>('accepted');
   const [completeModalJob, setCompleteModalJob] = useState<Job | null>(null);
@@ -35,6 +35,19 @@ export default function MyJobsScreen() {
   const [cancelModalJob, setCancelModalJob] = useState<Job | null>(null);
   const [cancelReason, setCancelReason] = useState('');
   const [segWidth, setSegWidth] = useState(0);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await refreshMyJobs();
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Failed to refresh';
+      Alert.alert('Refresh failed', msg);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [refreshMyJobs]);
 
   // Sliding segment indicator
   const indicatorX = useSharedValue(0);
@@ -128,6 +141,9 @@ export default function MyJobsScreen() {
       )}
       contentContainerStyle={styles.list}
       showsVerticalScrollIndicator={false}
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
+      }
       ListEmptyComponent={
         <EmptyState
           icon="clipboard-text-outline"
@@ -222,6 +238,9 @@ export default function MyJobsScreen() {
       )}
       contentContainerStyle={styles.list}
       showsVerticalScrollIndicator={false}
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
+      }
       ListEmptyComponent={
         <EmptyState
           icon="plus-circle-outline"
@@ -231,6 +250,14 @@ export default function MyJobsScreen() {
       }
     />
   );
+
+  if (isLoading && myJobs.accepted.length === 0 && myJobs.posted.length === 0) {
+    return (
+      <View style={[styles.container, { alignItems: 'center', justifyContent: 'center' }]}>
+        <ActivityIndicator size="large" color={colors.primary} />
+      </View>
+    );
+  }
 
   return (
     <View style={[styles.container, { paddingBottom: insets.bottom }]}>
