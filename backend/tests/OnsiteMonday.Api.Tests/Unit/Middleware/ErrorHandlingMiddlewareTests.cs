@@ -58,7 +58,7 @@ public class ErrorHandlingMiddlewareTests
     [Fact]
     public async Task GenericException_Returns500()
     {
-        var ctx = await InvokeWithException(new InvalidOperationException("unexpected"));
+        var ctx = await InvokeWithException(new NotSupportedException("unexpected"));
 
         ctx.Response.StatusCode.Should().Be(500);
     }

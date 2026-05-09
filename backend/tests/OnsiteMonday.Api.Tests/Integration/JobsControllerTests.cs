@@ -117,10 +117,21 @@ public class JobsControllerTests : IClassFixture<TestWebApplicationFactory>, IAs
     [Fact]
     public async Task ToggleInterest_Returns200()
     {
-        var createResponse = await _client.PostAsJsonAsync("/api/jobs", MakeValidJobRequest());
-        var created = await createResponse.Content.ReadFromJsonAsync<JobDto>();
+        // Must be a different user's job — you cannot apply to your own
+        Guid otherJobId = Guid.Empty;
+        await _factory.SeedAsync(async db =>
+        {
+            var poster = TestBuilders.MakeUser("uid-poster-toggle", "poster-toggle@test.com");
+            db.Users.Add(poster);
+            await db.SaveChangesAsync();
 
-        var response = await _client.PostAsync($"/api/jobs/{created!.Id}/interest", null);
+            var job = TestBuilders.MakeJob(poster.Id);
+            db.Jobs.Add(job);
+            await db.SaveChangesAsync();
+            otherJobId = job.Id;
+        });
+
+        var response = await _client.PostAsync($"/api/jobs/{otherJobId}/interest", null);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
     }
