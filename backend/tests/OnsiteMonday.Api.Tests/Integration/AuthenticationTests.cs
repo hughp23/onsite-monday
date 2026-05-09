@@ -31,7 +31,7 @@ public class AuthenticationTests : IClassFixture<TestWebApplicationFactory>
         var response = await client.GetAsync("/api/users/me");
 
         // 200 if the user exists in the test DB, 404 if not seeded — either way not 401
-        ((int)response.StatusCode).Should().BeOneOf(200, 201, 404);
+        response.StatusCode.Should().BeOneOf(HttpStatusCode.OK, HttpStatusCode.NotFound);
     }
 
     [Fact]
