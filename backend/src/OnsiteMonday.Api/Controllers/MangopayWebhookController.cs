@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using OnsiteMonday.Api.Data;
 using OnsiteMonday.Api.Stubs;
@@ -7,6 +8,7 @@ namespace OnsiteMonday.Api.Controllers;
 
 [ApiController]
 [Route("api/webhooks/mangopay")]
+[EnableRateLimiting("public")]
 public class MangopayWebhookController : ControllerBase
 {
     private readonly AppDbContext _db;

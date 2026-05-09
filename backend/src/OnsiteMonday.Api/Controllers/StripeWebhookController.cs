@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using OnsiteMonday.Api.Data;
@@ -11,6 +12,7 @@ namespace OnsiteMonday.Api.Controllers;
 
 [ApiController]
 [Route("api/webhooks/stripe")]
+[EnableRateLimiting("public")]
 public class StripeWebhookController : ControllerBase
 {
     private readonly AppDbContext _db;

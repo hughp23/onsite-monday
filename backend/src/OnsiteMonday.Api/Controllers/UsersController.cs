@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using OnsiteMonday.Api.DTOs.Users;
 using OnsiteMonday.Api.Services;
 using System.Security.Claims;
@@ -47,6 +48,7 @@ public class UsersController : ControllerBase
     }
 
     // GET /api/users/tradespeople?trade=Builder&location=York
+    [EnableRateLimiting("user-lookup")]
     [HttpGet("tradespeople")]
     public async Task<ActionResult<List<TradespersonDto>>> GetTradespeople(
         [FromQuery] string? trade,
@@ -57,6 +59,7 @@ public class UsersController : ControllerBase
     }
 
     // GET /api/users/{id}
+    [EnableRateLimiting("user-lookup")]
     [HttpGet("{id:guid}")]
     public async Task<ActionResult<UserDto>> GetById(Guid id)
     {

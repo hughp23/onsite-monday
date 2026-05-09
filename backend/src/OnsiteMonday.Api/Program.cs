@@ -3,6 +3,8 @@ using FluentValidation.AspNetCore;
 using Hangfire;
 using Hangfire.PostgreSql;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using OnsiteMonday.Api.Data;
@@ -14,6 +16,7 @@ using OnsiteMonday.Api.Repositories;
 using OnsiteMonday.Api.Services;
 using OnsiteMonday.Api.Stubs;
 using Serilog;
+using System.Threading.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -144,6 +147,56 @@ builder.Services.AddCors(opts =>
          .AllowAnyHeader());
 });
 
+// Trust X-Forwarded-For from AWS ALB so rate limiting partitions on real client IP
+builder.Services.Configure<ForwardedHeadersOptions>(opts =>
+{
+    opts.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    opts.KnownNetworks.Clear();
+    opts.KnownProxies.Clear();
+});
+
+// Rate limiting
+builder.Services.AddRateLimiter(opts =>
+{
+    // Global backstop: all endpoints — 300 req/min per IP
+    opts.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(ctx =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 300,
+                Window = TimeSpan.FromMinutes(1),
+                QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                QueueLimit = 0
+            }));
+
+    // Public endpoints (health, webhooks): 30 req/min per IP
+    opts.AddFixedWindowLimiter("public", o =>
+    {
+        o.PermitLimit = 30;
+        o.Window = TimeSpan.FromMinutes(1);
+        o.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+        o.QueueLimit = 0;
+    });
+
+    // User lookup endpoints: 20 req/min per IP (anti-enumeration)
+    opts.AddSlidingWindowLimiter("user-lookup", o =>
+    {
+        o.PermitLimit = 20;
+        o.Window = TimeSpan.FromMinutes(1);
+        o.SegmentsPerWindow = 4;
+        o.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+        o.QueueLimit = 0;
+    });
+
+    opts.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    opts.OnRejected = async (ctx, token) =>
+    {
+        ctx.HttpContext.Response.Headers.RetryAfter = "60";
+        await ctx.HttpContext.Response.WriteAsync("Rate limit exceeded. Please try again later.", token);
+    };
+});
+
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
@@ -152,7 +205,9 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
+app.UseForwardedHeaders();
 app.UseCors(app.Environment.IsDevelopment() ? "LocalDev" : "AllowAll");
+app.UseRateLimiter();
 app.UseMiddleware<ErrorHandlingMiddleware>();
 app.UseAuthentication();
 app.UseAuthorization();
@@ -168,7 +223,8 @@ app.MapControllers();
 app.MapHub<ChatHub>("/hubs/chat");
 
 // Health check (no auth required)
-app.MapGet("/api/health", () => Results.Ok(new { status = "healthy", timestamp = DateTime.UtcNow }));
+app.MapGet("/api/health", () => Results.Ok(new { status = "healthy", timestamp = DateTime.UtcNow }))
+   .RequireRateLimiting("public");
 
 // Run migrations and seed on startup
 using (var scope = app.Services.CreateScope())
