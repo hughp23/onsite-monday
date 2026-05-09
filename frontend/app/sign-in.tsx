@@ -187,9 +187,11 @@ export default function SignInScreen() {
                 {isGoogleSigningIn ? (
                   <ActivityIndicator color={colors.text} size="small" />
                 ) : (
-                  <AntDesign name="google" size={18} color="#DB4437" />
+                  <>
+                    <AntDesign name="google" size={18} color="#DB4437" />
+                    <Text style={styles.googleBtnText}>Continue with Google</Text>
+                  </>
                 )}
-                <Text style={styles.googleBtnText}>Continue with Google</Text>
               </TouchableOpacity>
             </>
           )}
