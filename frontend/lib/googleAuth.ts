@@ -1,4 +1,4 @@
-import Constants from 'expo-constants';
+import Constants, { ExecutionEnvironment } from 'expo-constants';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import { GoogleAuthProvider, signInWithCredential } from 'firebase/auth';
 import { auth } from './firebase';
@@ -9,7 +9,7 @@ GoogleSignin.configure({
 });
 
 export async function signInWithGoogle() {
-  if (Constants.appOwnership === 'expo') {
+  if (Constants.executionEnvironment === ExecutionEnvironment.StoreClient) {
     // Button is hidden in Expo Go — this throw is a safety net.
     throw new Error('Google sign-in is not available in Expo Go. Use the dev build.');
   }
@@ -21,6 +21,10 @@ export async function signInWithGoogle() {
     throw new Error('cancelled');
   }
 
-  const credential = GoogleAuthProvider.credential(response.data.idToken);
+  const { idToken } = response.data;
+  if (!idToken) {
+    throw new Error('Google sign-in succeeded but returned no ID token.');
+  }
+  const credential = GoogleAuthProvider.credential(idToken);
   return signInWithCredential(auth, credential);
 }
