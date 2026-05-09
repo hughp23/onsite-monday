@@ -1,12 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView,
-  FlatList, Dimensions, KeyboardAvoidingView, Platform, Alert,
+  FlatList, Dimensions, KeyboardAvoidingView, Platform, Alert, ActivityIndicator,
 } from 'react-native';
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons, AntDesign } from '@expo/vector-icons';
 import { useApp } from '@/context/AppContext';
 import { useAuth } from '@/context/AuthContext';
 import ChipSelector from '@/components/ChipSelector';
@@ -14,6 +14,7 @@ import SubscriptionCard from '@/components/SubscriptionCard';
 import { colors } from '@/constants/colors';
 import { TRADES, SKILLS_BY_TRADE, ACCREDITATIONS } from '@/constants/trades';
 import { SubscriptionTier } from '@/constants/types';
+import Constants, { ExecutionEnvironment } from 'expo-constants';
 
 const TIER_NAMES: Record<SubscriptionTier, string> = {
   bronze: 'Bronze',
@@ -26,9 +27,8 @@ const TOTAL_SLIDES = 9;
 
 export default function SignUpScreen() {
   const { updateCurrentUser, completeOnboarding, updateSubscription, currentUser, isAuthenticated } = useApp();
-  const { signUpWithEmail } = useAuth();
+  const { signUpWithEmail, signInWithGoogle } = useAuth();
   const isReturningUser = isAuthenticated && !!currentUser;
-  const minSlide = isReturningUser ? 1 : 0;
 
   const insets = useSafeAreaInsets();
   const pagerRef = useRef<FlatList>(null);
@@ -57,7 +57,11 @@ export default function SignUpScreen() {
   const [travelRadius, setTravelRadius] = useState(currentUser?.travelRadius ?? 25);
   const [isCreatingAccount, setIsCreatingAccount] = useState(false);
   const [isCompleting, setIsCompleting] = useState(false);
+  const [isGoogleSigningIn, setIsGoogleSigningIn] = useState(false);
+  const [googleAuthenticated, setGoogleAuthenticated] = useState(false);
   const [selectedTier, setSelectedTier] = useState<SubscriptionTier | null>(null);
+
+  const minSlide = isReturningUser || googleAuthenticated ? 1 : 0;
 
   useEffect(() => {
     if (currentSlide > 0) {
@@ -115,6 +119,25 @@ export default function SignUpScreen() {
       Alert.alert('Sign up failed', message);
     } finally {
       setIsCreatingAccount(false);
+    }
+  };
+
+  const handleGoogleSignIn = async () => {
+    setIsGoogleSigningIn(true);
+    try {
+      const result = await signInWithGoogle();
+      const displayName = result.user.displayName ?? '';
+      const parts = displayName.trim().split(/\s+/);
+      setFirstName(parts[0] ?? '');
+      setLastName(parts.slice(1).join(' '));
+      setGoogleAuthenticated(true);
+      pagerRef.current?.scrollToIndex({ index: 1, animated: true });
+      setCurrentSlide(1);
+    } catch (err: unknown) {
+      if ((err as Error).message === 'cancelled') return;
+      Alert.alert('Google sign-in failed', 'Please try again.');
+    } finally {
+      setIsGoogleSigningIn(false);
     }
   };
 
@@ -199,6 +222,30 @@ export default function SignUpScreen() {
         <View style={styles.illustrationWrap}>
           <MaterialCommunityIcons name="account-hard-hat-outline" size={80} color={colors.border} />
         </View>
+        {Constants.executionEnvironment !== ExecutionEnvironment.StoreClient && (
+          <>
+            <View style={styles.dividerRow}>
+              <View style={styles.dividerLine} />
+              <Text style={styles.dividerText}>or</Text>
+              <View style={styles.dividerLine} />
+            </View>
+            <TouchableOpacity
+              style={[styles.googleBtn, isGoogleSigningIn && { opacity: 0.7 }]}
+              onPress={handleGoogleSignIn}
+              activeOpacity={0.85}
+              disabled={isGoogleSigningIn}
+            >
+              {isGoogleSigningIn ? (
+                <ActivityIndicator color={colors.text} size="small" />
+              ) : (
+                <>
+                  <AntDesign name="google" size={18} color="#DB4437" />
+                  <Text style={styles.googleBtnText}>Continue with Google</Text>
+                </>
+              )}
+            </TouchableOpacity>
+          </>
+        )}
       </View>
     </View>,
 
@@ -632,4 +679,24 @@ const styles = StyleSheet.create({
   nextBtnWrap: { paddingHorizontal: 24, backgroundColor: colors.background },
   illustrationWrap: { alignItems: 'center', marginTop: 24 },
   success: { color: '#22C55E' },
+  dividerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 16,
+    gap: 12,
+  },
+  dividerLine: { flex: 1, height: 1, backgroundColor: colors.border },
+  dividerText: { fontSize: 13, color: colors.textLight },
+  googleBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    borderWidth: 1.5,
+    borderColor: colors.primary,
+    borderRadius: 12,
+    paddingVertical: 14,
+    backgroundColor: colors.white,
+  },
+  googleBtnText: { fontSize: 15, fontWeight: '600', color: colors.text },
 });
