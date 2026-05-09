@@ -8,7 +8,12 @@ import {
   type UserCredential,
 } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
-import { signInWithGoogle as googleSignIn } from '@/lib/googleAuth';
+
+// Lazy import: @react-native-google-signin calls TurboModuleRegistry.getEnforcing at
+// module evaluation time, which crashes Expo Go. require() defers it to call time.
+const getGoogleSignIn = (): (() => Promise<UserCredential>) =>
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  (require('@/lib/googleAuth') as { signInWithGoogle: () => Promise<UserCredential> }).signInWithGoogle;
 
 interface AuthContextType {
   firebaseUser: FirebaseUser | null;
@@ -43,10 +48,18 @@ export function AuthContextProvider({ children }: { children: React.ReactNode })
 
   const signOut = async () => {
     await firebaseSignOut(auth);
+    // Also clear the native Google session so the account picker shows next time.
+    try {
+      const { GoogleSignin } = require('@react-native-google-signin/google-signin') as
+        typeof import('@react-native-google-signin/google-signin');
+      await GoogleSignin.signOut();
+    } catch {
+      // Not available in Expo Go or if never signed in via Google — safe to ignore.
+    }
   };
 
   const signInWithGoogle = (): Promise<UserCredential> => {
-    return googleSignIn();
+    return getGoogleSignIn()();
   };
 
   return (
