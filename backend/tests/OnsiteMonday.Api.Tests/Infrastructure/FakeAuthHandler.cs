@@ -20,6 +20,12 @@ public class FakeAuthHandler : AuthenticationHandler<AuthenticationSchemeOptions
 
     protected override Task<AuthenticateResult> HandleAuthenticateAsync()
     {
+        // Only authenticate if an Authorization header is present.
+        // Returning NoResult() (not Fail()) lets the framework produce a proper 401
+        // for [Authorize] endpoints while leaving anonymous endpoints untouched.
+        if (!Request.Headers.ContainsKey("Authorization"))
+            return Task.FromResult(AuthenticateResult.NoResult());
+
         var claims = new[]
         {
             new Claim(ClaimTypes.NameIdentifier, TestFirebaseUid),

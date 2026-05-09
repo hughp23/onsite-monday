@@ -85,6 +85,21 @@ public class TestWebApplicationFactory : WebApplicationFactory<Program>
     }
 
     /// <summary>
+    /// Creates an HttpClient that includes the fake Authorization header,
+    /// so FakeAuthHandler authenticates every request as TestFirebaseUid.
+    /// </summary>
+    public HttpClient CreateAuthenticatedClient()
+    {
+        var client = CreateClient(new WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = false,
+        });
+        client.DefaultRequestHeaders.Authorization =
+            new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", "fake-token");
+        return client;
+    }
+
+    /// <summary>
     /// Seeds data into the shared InMemory database and returns a scoped service provider.
     /// </summary>
     public async Task SeedAsync(Func<AppDbContext, Task> seed)
