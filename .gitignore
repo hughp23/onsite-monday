@@ -153,3 +153,4 @@ backend/**/*.user
 
 expo-env.d.ts
 # @end expo-cli
+trello-import.csv
