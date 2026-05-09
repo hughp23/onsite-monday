@@ -73,7 +73,7 @@ export default function SignUpScreen() {
 
   const isSlideValid = (slide: number): boolean => {
     switch (slide) {
-      case 0: return firstName.trim().length > 0 && email.trim().length > 0 && password.length >= 6;
+      case 0: return googleAuthenticated || (firstName.trim().length > 0 && email.trim().length > 0 && password.length >= 6);
       case 1: return selectedTrade.length > 0;
       case 2: return selectedSkills.length > 0;
       case 4: return !!dayRate && parseInt(dayRate) > 0;
