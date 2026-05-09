@@ -16,7 +16,7 @@ public class ReviewsControllerTests : IClassFixture<TestWebApplicationFactory>, 
     public ReviewsControllerTests(TestWebApplicationFactory factory)
     {
         _factory = factory;
-        _client = factory.CreateClient();
+        _client = factory.CreateAuthenticatedClient();
     }
 
     public async Task InitializeAsync()

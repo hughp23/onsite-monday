@@ -3,6 +3,7 @@ using Moq;
 using OnsiteMonday.Api.Domain;
 using OnsiteMonday.Api.Repositories;
 using OnsiteMonday.Api.Services;
+using OnsiteMonday.Api.Stubs;
 using OnsiteMonday.Api.Tests.Infrastructure;
 
 namespace OnsiteMonday.Api.Tests.Unit.Services;
@@ -11,11 +12,12 @@ public class ConversationServiceTests
 {
     private readonly Mock<IConversationRepository> _convRepoMock = new();
     private readonly Mock<IUserRepository> _userRepoMock = new();
+    private readonly Mock<INotificationPushService> _pushServiceMock = new();
     private readonly ConversationService _sut;
 
     public ConversationServiceTests()
     {
-        _sut = new ConversationService(_convRepoMock.Object, _userRepoMock.Object);
+        _sut = new ConversationService(_convRepoMock.Object, _userRepoMock.Object, _pushServiceMock.Object);
     }
 
     [Fact]

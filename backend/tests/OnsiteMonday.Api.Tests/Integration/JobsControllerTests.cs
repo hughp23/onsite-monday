@@ -14,7 +14,7 @@ public class JobsControllerTests : IClassFixture<TestWebApplicationFactory>, IAs
     public JobsControllerTests(TestWebApplicationFactory factory)
     {
         _factory = factory;
-        _client = factory.CreateClient();
+        _client = factory.CreateAuthenticatedClient();
     }
 
     public async Task InitializeAsync()

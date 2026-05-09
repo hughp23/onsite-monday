@@ -16,7 +16,7 @@ public class UsersControllerTests : IClassFixture<TestWebApplicationFactory>, IA
     public UsersControllerTests(TestWebApplicationFactory factory)
     {
         _factory = factory;
-        _client = factory.CreateClient();
+        _client = factory.CreateAuthenticatedClient();
     }
 
     public async Task InitializeAsync()
