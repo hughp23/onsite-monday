@@ -6,22 +6,24 @@ import {
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
+import { MaterialCommunityIcons, Ionicons, AntDesign } from '@expo/vector-icons';
 import Animated, {
   useSharedValue, useAnimatedStyle, withTiming, withDelay, withSpring, Easing,
 } from 'react-native-reanimated';
 import { useAuth } from '@/context/AuthContext';
 import { colors } from '@/constants/colors';
+import Constants, { ExecutionEnvironment } from 'expo-constants';
 
 const EASE = { duration: 380, easing: Easing.out(Easing.cubic) };
 
 export default function SignInScreen() {
-  const { signInWithEmail } = useAuth();
+  const { signInWithEmail, signInWithGoogle } = useAuth();
   const insets = useSafeAreaInsets();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isSigningIn, setIsSigningIn] = useState(false);
+  const [isGoogleSigningIn, setIsGoogleSigningIn] = useState(false);
 
   // Animation values
   const logoScale   = useSharedValue(0.5);
@@ -69,6 +71,19 @@ export default function SignInScreen() {
       Alert.alert('Sign in failed', 'Invalid email or password.');
     } finally {
       setIsSigningIn(false);
+    }
+  };
+
+  const handleGoogleSignIn = async () => {
+    setIsGoogleSigningIn(true);
+    try {
+      await signInWithGoogle();
+      router.replace('/(tabs)/jobs');
+    } catch (err: unknown) {
+      if ((err as Error).message === 'cancelled') return;
+      Alert.alert('Google sign-in failed', 'Please try again.');
+    } finally {
+      setIsGoogleSigningIn(false);
     }
   };
 
@@ -156,6 +171,28 @@ export default function SignInScreen() {
               <Text style={styles.primaryBtnText}>Sign In</Text>
             )}
           </TouchableOpacity>
+          {Constants.executionEnvironment !== ExecutionEnvironment.StoreClient && (
+            <>
+              <View style={styles.dividerRow}>
+                <View style={styles.dividerLine} />
+                <Text style={styles.dividerText}>or</Text>
+                <View style={styles.dividerLine} />
+              </View>
+              <TouchableOpacity
+                style={[styles.googleBtn, isGoogleSigningIn && { opacity: 0.7 }]}
+                onPress={handleGoogleSignIn}
+                activeOpacity={0.85}
+                disabled={isGoogleSigningIn}
+              >
+                {isGoogleSigningIn ? (
+                  <ActivityIndicator color={colors.text} size="small" />
+                ) : (
+                  <AntDesign name="google" size={18} color="#DB4437" />
+                )}
+                <Text style={styles.googleBtnText}>Continue with Google</Text>
+              </TouchableOpacity>
+            </>
+          )}
         </Animated.View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -215,4 +252,24 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   primaryBtnText: { color: colors.white, fontSize: 16, fontWeight: '700' },
+  dividerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 20,
+    gap: 12,
+  },
+  dividerLine: { flex: 1, height: 1, backgroundColor: colors.border },
+  dividerText: { fontSize: 13, color: colors.textLight },
+  googleBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    borderWidth: 1.5,
+    borderColor: colors.primary,
+    borderRadius: 12,
+    paddingVertical: 16,
+    backgroundColor: colors.white,
+  },
+  googleBtnText: { fontSize: 16, fontWeight: '600', color: colors.text },
 });
