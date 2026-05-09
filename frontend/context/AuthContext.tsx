@@ -5,8 +5,10 @@ import {
   signOut as firebaseSignOut,
   onAuthStateChanged,
   User as FirebaseUser,
+  type UserCredential,
 } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
+import { signInWithGoogle as googleSignIn } from '@/lib/googleAuth';
 
 interface AuthContextType {
   firebaseUser: FirebaseUser | null;
@@ -14,6 +16,7 @@ interface AuthContextType {
   signInWithEmail: (email: string, password: string) => Promise<void>;
   signUpWithEmail: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
+  signInWithGoogle: () => Promise<UserCredential>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -42,8 +45,12 @@ export function AuthContextProvider({ children }: { children: React.ReactNode })
     await firebaseSignOut(auth);
   };
 
+  const signInWithGoogle = (): Promise<UserCredential> => {
+    return googleSignIn();
+  };
+
   return (
-    <AuthContext.Provider value={{ firebaseUser, isAuthLoading, signInWithEmail, signUpWithEmail, signOut }}>
+    <AuthContext.Provider value={{ firebaseUser, isAuthLoading, signInWithEmail, signUpWithEmail, signOut, signInWithGoogle }}>
       {children}
     </AuthContext.Provider>
   );
