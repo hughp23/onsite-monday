@@ -15,6 +15,11 @@ const getGoogleSignIn = (): (() => Promise<UserCredential>) =>
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   (require('@/lib/googleAuth') as { signInWithGoogle: () => Promise<UserCredential> }).signInWithGoogle;
 
+// Lazy import: same pattern for expo-apple-authentication.
+const getAppleSignIn = (): (() => Promise<UserCredential>) =>
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  (require('@/lib/appleAuth') as { signInWithApple: () => Promise<UserCredential> }).signInWithApple;
+
 interface AuthContextType {
   firebaseUser: FirebaseUser | null;
   isAuthLoading: boolean;
@@ -22,6 +27,7 @@ interface AuthContextType {
   signUpWithEmail: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
   signInWithGoogle: () => Promise<UserCredential>;
+  signInWithApple: () => Promise<UserCredential>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -62,8 +68,12 @@ export function AuthContextProvider({ children }: { children: React.ReactNode })
     return getGoogleSignIn()();
   };
 
+  const signInWithApple = (): Promise<UserCredential> => {
+    return getAppleSignIn()();
+  };
+
   return (
-    <AuthContext.Provider value={{ firebaseUser, isAuthLoading, signInWithEmail, signUpWithEmail, signOut, signInWithGoogle }}>
+    <AuthContext.Provider value={{ firebaseUser, isAuthLoading, signInWithEmail, signUpWithEmail, signOut, signInWithGoogle, signInWithApple }}>
       {children}
     </AuthContext.Provider>
   );
