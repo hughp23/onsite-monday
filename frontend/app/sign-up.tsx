@@ -15,6 +15,7 @@ import { colors } from '@/constants/colors';
 import { TRADES, SKILLS_BY_TRADE, ACCREDITATIONS } from '@/constants/trades';
 import { SubscriptionTier } from '@/constants/types';
 import Constants, { ExecutionEnvironment } from 'expo-constants';
+import * as AppleAuthentication from 'expo-apple-authentication';
 
 const TIER_NAMES: Record<SubscriptionTier, string> = {
   bronze: 'Bronze',
@@ -27,7 +28,7 @@ const TOTAL_SLIDES = 9;
 
 export default function SignUpScreen() {
   const { updateCurrentUser, completeOnboarding, updateSubscription, currentUser, isAuthenticated } = useApp();
-  const { signUpWithEmail, signInWithGoogle } = useAuth();
+  const { signUpWithEmail, signInWithGoogle, signInWithApple } = useAuth();
   const isReturningUser = isAuthenticated && !!currentUser;
 
   const insets = useSafeAreaInsets();
@@ -59,9 +60,11 @@ export default function SignUpScreen() {
   const [isCompleting, setIsCompleting] = useState(false);
   const [isGoogleSigningIn, setIsGoogleSigningIn] = useState(false);
   const [googleAuthenticated, setGoogleAuthenticated] = useState(false);
+  const [isAppleSigningIn, setIsAppleSigningIn] = useState(false);
+  const [appleAuthenticated, setAppleAuthenticated] = useState(false);
   const [selectedTier, setSelectedTier] = useState<SubscriptionTier | null>(null);
 
-  const minSlide = isReturningUser || googleAuthenticated ? 1 : 0;
+  const minSlide = isReturningUser || googleAuthenticated || appleAuthenticated ? 1 : 0;
 
   useEffect(() => {
     if (currentSlide > 0) {
@@ -73,7 +76,7 @@ export default function SignUpScreen() {
 
   const isSlideValid = (slide: number): boolean => {
     switch (slide) {
-      case 0: return googleAuthenticated || (firstName.trim().length > 0 && email.trim().length > 0 && password.length >= 6);
+      case 0: return googleAuthenticated || appleAuthenticated || (firstName.trim().length > 0 && email.trim().length > 0 && password.length >= 6);
       case 1: return selectedTrade.length > 0;
       case 2: return selectedSkills.length > 0;
       case 4: return !!dayRate && parseInt(dayRate) > 0;
@@ -138,6 +141,26 @@ export default function SignUpScreen() {
       Alert.alert('Google sign-in failed', 'Please try again.');
     } finally {
       setIsGoogleSigningIn(false);
+    }
+  };
+
+  const handleAppleSignIn = async () => {
+    setIsAppleSigningIn(true);
+    try {
+      const result = await signInWithApple();
+      const displayName = result.user.displayName ?? '';
+      const parts = displayName.trim().split(/\s+/);
+      setFirstName(parts[0] ?? '');
+      setLastName(parts.slice(1).join(' '));
+      setAppleAuthenticated(true);
+      pagerRef.current?.scrollToIndex({ index: 1, animated: true });
+      setCurrentSlide(1);
+    } catch (err: unknown) {
+      const code = (err as { code?: string }).code;
+      if (code === 'ERR_REQUEST_CANCELED') return;
+      Alert.alert('Apple sign-in failed', 'Please try again.');
+    } finally {
+      setIsAppleSigningIn(false);
     }
   };
 
@@ -222,13 +245,31 @@ export default function SignUpScreen() {
         <View style={styles.illustrationWrap}>
           <MaterialCommunityIcons name="account-hard-hat-outline" size={80} color={colors.border} />
         </View>
-        {Constants.executionEnvironment !== ExecutionEnvironment.StoreClient && (
+        {Platform.OS === 'ios' && (
           <>
             <View style={styles.dividerRow}>
               <View style={styles.dividerLine} />
               <Text style={styles.dividerText}>or</Text>
               <View style={styles.dividerLine} />
             </View>
+            <AppleAuthentication.AppleAuthenticationButton
+              buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_UP}
+              buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.BLACK}
+              cornerRadius={8}
+              style={styles.appleBtn}
+              onPress={handleAppleSignIn}
+            />
+          </>
+        )}
+        {Constants.executionEnvironment !== ExecutionEnvironment.StoreClient && (
+          <>
+            {Platform.OS !== 'ios' && (
+              <View style={styles.dividerRow}>
+                <View style={styles.dividerLine} />
+                <Text style={styles.dividerText}>or</Text>
+                <View style={styles.dividerLine} />
+              </View>
+            )}
             <TouchableOpacity
               style={[styles.googleBtn, isGoogleSigningIn && { opacity: 0.7 }]}
               onPress={handleGoogleSignIn}
@@ -699,4 +740,8 @@ const styles = StyleSheet.create({
     backgroundColor: colors.white,
   },
   googleBtnText: { fontSize: 15, fontWeight: '600', color: colors.text },
+  appleBtn: {
+    width: '100%',
+    height: 48,
+  },
 });
