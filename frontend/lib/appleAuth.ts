@@ -3,17 +3,11 @@ import * as Crypto from 'expo-crypto';
 import { OAuthProvider, signInWithCredential } from 'firebase/auth';
 import { auth } from './firebase';
 
-function generateNonce(length: number): string {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-  let result = '';
-  for (let i = 0; i < length; i++) {
-    result += chars[Math.floor(Math.random() * chars.length)];
-  }
-  return result;
-}
-
 export async function signInWithApple() {
-  const rawNonce = generateNonce(32);
+  const randomBytes = await Crypto.getRandomBytesAsync(32);
+  const rawNonce = Array.from(randomBytes)
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('');
   const hashedNonce = await Crypto.digestStringAsync(
     Crypto.CryptoDigestAlgorithm.SHA256,
     rawNonce,
