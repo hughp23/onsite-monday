@@ -1,79 +1,99 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import {
-  signInWithEmailAndPassword,
-  createUserWithEmailAndPassword,
-  signOut as firebaseSignOut,
-  onAuthStateChanged,
-  User as FirebaseUser,
-  type UserCredential,
-} from 'firebase/auth';
-import { auth } from '@/lib/firebase';
-
-// Lazy import: @react-native-google-signin calls TurboModuleRegistry.getEnforcing at
-// module evaluation time, which crashes Expo Go. require() defers it to call time.
-const getGoogleSignIn = (): (() => Promise<UserCredential>) =>
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  (require('@/lib/googleAuth') as { signInWithGoogle: () => Promise<UserCredential> }).signInWithGoogle;
-
-// Lazy import: same pattern for expo-apple-authentication.
-const getAppleSignIn = (): (() => Promise<UserCredential>) =>
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  (require('@/lib/appleAuth') as { signInWithApple: () => Promise<UserCredential> }).signInWithApple;
+  getCurrentUser,
+  signIn,
+  signUp,
+  confirmSignUp,
+  signOut as amplifySignOut,
+  signInWithRedirect,
+  type AuthUser,
+} from 'aws-amplify/auth';
+import { Hub } from 'aws-amplify/utils';
 
 interface AuthContextType {
-  firebaseUser: FirebaseUser | null;
+  cognitoUser: AuthUser | null;
   isAuthLoading: boolean;
   signInWithEmail: (email: string, password: string) => Promise<void>;
-  signUpWithEmail: (email: string, password: string) => Promise<void>;
+  signUpWithEmail: (email: string, password: string) => Promise<{ needsConfirmation: boolean }>;
+  confirmSignUpCode: (email: string, code: string) => Promise<void>;
   signOut: () => Promise<void>;
-  signInWithGoogle: () => Promise<UserCredential>;
-  signInWithApple: () => Promise<UserCredential>;
+  signInWithGoogle: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthContextProvider({ children }: { children: React.ReactNode }) {
-  const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
+  const [cognitoUser, setCognitoUser] = useState<AuthUser | null>(null);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setFirebaseUser(user);
-      setIsAuthLoading(false);
+    getCurrentUser()
+      .then(user => setCognitoUser(user))
+      .catch(() => setCognitoUser(null))
+      .finally(() => setIsAuthLoading(false));
+
+    const unsubscribe = Hub.listen('auth', ({ payload }) => {
+      switch (payload.event) {
+        case 'signedIn':
+          setCognitoUser(payload.data as AuthUser);
+          break;
+        case 'signedOut':
+          setCognitoUser(null);
+          break;
+        case 'tokenRefresh':
+          getCurrentUser()
+            .then(user => setCognitoUser(user))
+            .catch(() => setCognitoUser(null));
+          break;
+      }
     });
+
     return unsubscribe;
   }, []);
 
   const signInWithEmail = async (email: string, password: string) => {
-    await signInWithEmailAndPassword(auth, email, password);
-  };
-
-  const signUpWithEmail = async (email: string, password: string) => {
-    await createUserWithEmailAndPassword(auth, email, password);
-  };
-
-  const signOut = async () => {
-    await firebaseSignOut(auth);
-    // Also clear the native Google session so the account picker shows next time.
-    try {
-      const { GoogleSignin } = require('@react-native-google-signin/google-signin') as
-        typeof import('@react-native-google-signin/google-signin');
-      await GoogleSignin.signOut();
-    } catch {
-      // Not available in Expo Go or if never signed in via Google — safe to ignore.
+    const { isSignedIn, nextStep } = await signIn({ username: email, password });
+    if (!isSignedIn && nextStep.signInStep !== 'DONE') {
+      throw new Error(`Unexpected sign-in step: ${nextStep.signInStep}`);
     }
   };
 
-  const signInWithGoogle = (): Promise<UserCredential> => {
-    return getGoogleSignIn()();
+  const signUpWithEmail = async (
+    email: string,
+    password: string
+  ): Promise<{ needsConfirmation: boolean }> => {
+    const { isSignUpComplete, nextStep } = await signUp({
+      username: email,
+      password,
+      options: { userAttributes: { email } },
+    });
+    return { needsConfirmation: !isSignUpComplete && nextStep.signUpStep === 'CONFIRM_SIGN_UP' };
   };
 
-  const signInWithApple = (): Promise<UserCredential> => {
-    return getAppleSignIn()();
+  const confirmSignUpCode = async (email: string, code: string) => {
+    await confirmSignUp({ username: email, confirmationCode: code });
+  };
+
+  const signOut = async () => {
+    await amplifySignOut();
+  };
+
+  const signInWithGoogle = async () => {
+    await signInWithRedirect({ provider: 'Google' });
   };
 
   return (
-    <AuthContext.Provider value={{ firebaseUser, isAuthLoading, signInWithEmail, signUpWithEmail, signOut, signInWithGoogle, signInWithApple }}>
+    <AuthContext.Provider
+      value={{
+        cognitoUser,
+        isAuthLoading,
+        signInWithEmail,
+        signUpWithEmail,
+        confirmSignUpCode,
+        signOut,
+        signInWithGoogle,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
