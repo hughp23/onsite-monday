@@ -36,19 +36,23 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddDbContext<AppDbContext>(opts =>
     opts.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// Firebase JWT Authentication
-var firebaseProjectId = builder.Configuration["Firebase:ProjectId"]!;
+// Cognito JWT Authentication
+var awsRegion = builder.Configuration["Aws:Region"]!;
+var cognitoUserPoolId = builder.Configuration["Aws:CognitoUserPoolId"]!;
+var cognitoClientId = builder.Configuration["Aws:CognitoClientId"]!;
+var cognitoAuthority = $"https://cognito-idp.{awsRegion}.amazonaws.com/{cognitoUserPoolId}";
+
 builder.Services
     .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(opts =>
     {
-        opts.Authority = $"https://securetoken.google.com/{firebaseProjectId}";
+        opts.Authority = cognitoAuthority;
         opts.TokenValidationParameters = new TokenValidationParameters
         {
             ValidateIssuer = true,
-            ValidIssuer = $"https://securetoken.google.com/{firebaseProjectId}",
+            ValidIssuer = cognitoAuthority,
             ValidateAudience = true,
-            ValidAudience = firebaseProjectId,
+            ValidAudience = cognitoClientId,
             ValidateLifetime = true,
         };
         // SignalR WebSocket can't send headers — read token from query string instead
