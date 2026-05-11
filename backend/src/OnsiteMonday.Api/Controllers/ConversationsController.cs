@@ -28,7 +28,7 @@ public class ConversationsController : ControllerBase
         _hub = hub;
     }
 
-    private string FirebaseUid =>
+    private string CognitoSub =>
         User.FindFirstValue(ClaimTypes.NameIdentifier)
             ?? throw new UnauthorizedAccessException("Missing user identifier.");
 
@@ -37,7 +37,7 @@ public class ConversationsController : ControllerBase
 
     private async Task<Guid> GetCurrentUserIdAsync()
     {
-        var user = await _userRepo.GetOrCreateByFirebaseUidAsync(FirebaseUid, Email);
+        var user = await _userRepo.GetOrCreateByCognitoSubAsync(CognitoSub, Email);
         return user.Id;
     }
 

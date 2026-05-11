@@ -16,7 +16,7 @@ public class UsersController : ControllerBase
 
     public UsersController(IUserService userService) => _userService = userService;
 
-    private string FirebaseUid =>
+    private string CognitoSub =>
         User.FindFirstValue(ClaimTypes.NameIdentifier)
             ?? throw new UnauthorizedAccessException("Missing user identifier.");
 
@@ -27,7 +27,7 @@ public class UsersController : ControllerBase
     [HttpGet("me")]
     public async Task<ActionResult<UserDto>> GetMe()
     {
-        var user = await _userService.GetOrCreateCurrentUserAsync(FirebaseUid, Email);
+        var user = await _userService.GetOrCreateCurrentUserAsync(CognitoSub, Email);
         return Ok(user);
     }
 
@@ -35,7 +35,7 @@ public class UsersController : ControllerBase
     [HttpPut("me")]
     public async Task<ActionResult<UserDto>> UpdateMe([FromBody] UpdateUserRequest request)
     {
-        var user = await _userService.UpdateCurrentUserAsync(FirebaseUid, Email, request);
+        var user = await _userService.UpdateCurrentUserAsync(CognitoSub, Email, request);
         return Ok(user);
     }
 
@@ -43,7 +43,7 @@ public class UsersController : ControllerBase
     [HttpPost("me/onboard")]
     public async Task<ActionResult<UserDto>> CompleteOnboarding()
     {
-        var user = await _userService.CompleteOnboardingAsync(FirebaseUid);
+        var user = await _userService.CompleteOnboardingAsync(CognitoSub);
         return Ok(user);
     }
 

@@ -17,7 +17,7 @@ public static class DataSeeder
         var tp1 = new User
         {
             Id = Guid.NewGuid(),
-            FirebaseUid = "seed-tp-1",
+            CognitoSub = "seed-tp-1",
             FirstName = "Harry", LastName = "Webb",
             BusinessName = "HW Builds",
             Email = "harry@hwbuilds.co.uk", Phone = "07712345601",
@@ -33,7 +33,7 @@ public static class DataSeeder
         var tp2 = new User
         {
             Id = Guid.NewGuid(),
-            FirebaseUid = "seed-tp-2",
+            CognitoSub = "seed-tp-2",
             FirstName = "Joe", LastName = "Bloggs",
             BusinessName = null,
             Email = "joe.bloggs@email.co.uk", Phone = "07712345602",
@@ -49,7 +49,7 @@ public static class DataSeeder
         var tp3 = new User
         {
             Id = Guid.NewGuid(),
-            FirebaseUid = "seed-tp-3",
+            CognitoSub = "seed-tp-3",
             FirstName = "Sarah", LastName = "Collins",
             BusinessName = "Collins Electrical",
             Email = "sarah@collinselectrical.co.uk", Phone = "07712345603",
@@ -65,7 +65,7 @@ public static class DataSeeder
         var tp4 = new User
         {
             Id = Guid.NewGuid(),
-            FirebaseUid = "seed-tp-4",
+            CognitoSub = "seed-tp-4",
             FirstName = "Mike", LastName = "Turner",
             BusinessName = "Turner Plumbing",
             Email = "mike@turnerplumbing.co.uk", Phone = "07712345604",
@@ -81,7 +81,7 @@ public static class DataSeeder
         var tp5 = new User
         {
             Id = Guid.NewGuid(),
-            FirebaseUid = "seed-tp-5",
+            CognitoSub = "seed-tp-5",
             FirstName = "Aisha", LastName = "Patel",
             BusinessName = "AP Plastering",
             Email = "aisha@appastering.co.uk", Phone = "07712345605",
@@ -97,7 +97,7 @@ public static class DataSeeder
         var tp6 = new User
         {
             Id = Guid.NewGuid(),
-            FirebaseUid = "seed-tp-6",
+            CognitoSub = "seed-tp-6",
             FirstName = "Tom", LastName = "Bradley",
             BusinessName = "Bradley Roofing",
             Email = "tom@bradleyroofing.co.uk", Phone = "07712345606",
@@ -113,7 +113,7 @@ public static class DataSeeder
         var tp7 = new User
         {
             Id = Guid.NewGuid(),
-            FirebaseUid = "seed-tp-7",
+            CognitoSub = "seed-tp-7",
             FirstName = "Ryan", LastName = "O'Connor",
             BusinessName = "O'Connor Joinery",
             Email = "ryan@oconnorjoinery.co.uk", Phone = "07712345607",
@@ -129,7 +129,7 @@ public static class DataSeeder
         var tp8 = new User
         {
             Id = Guid.NewGuid(),
-            FirebaseUid = "seed-tp-8",
+            CognitoSub = "seed-tp-8",
             FirstName = "Jim", LastName = "Blocks",
             BusinessName = "JB Bricklaying",
             Email = "jim@jbbricklaying.co.uk", Phone = "07712345608",
@@ -145,7 +145,7 @@ public static class DataSeeder
         var tp9 = new User
         {
             Id = Guid.NewGuid(),
-            FirebaseUid = "seed-tp-9",
+            CognitoSub = "seed-tp-9",
             FirstName = "Lucy", LastName = "Greenwood",
             BusinessName = "Greenwood Painters",
             Email = "lucy@greenwoodpainters.co.uk", Phone = "07712345609",
@@ -163,7 +163,7 @@ public static class DataSeeder
         var poster1 = new User
         {
             Id = Guid.NewGuid(),
-            FirebaseUid = "seed-poster-1",
+            CognitoSub = "seed-poster-1",
             FirstName = "Dave", LastName = "C",
             BusinessName = "DC Joinery",
             Email = "dave@dcjoinery.co.uk", Phone = "07800000001",
@@ -173,7 +173,7 @@ public static class DataSeeder
         var poster2 = new User
         {
             Id = Guid.NewGuid(),
-            FirebaseUid = "seed-poster-2",
+            CognitoSub = "seed-poster-2",
             FirstName = "Sarah", LastName = "K",
             BusinessName = "SK Property Management",
             Email = "sarah@skproperty.co.uk", Phone = "07800000002",
@@ -183,7 +183,7 @@ public static class DataSeeder
         var poster3 = new User
         {
             Id = Guid.NewGuid(),
-            FirebaseUid = "seed-poster-3",
+            CognitoSub = "seed-poster-3",
             FirstName = "Neil", LastName = "B",
             BusinessName = "NB Developments",
             Email = "neil@nbdevelopments.co.uk", Phone = "07800000003",

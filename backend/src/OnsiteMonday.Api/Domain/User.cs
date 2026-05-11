@@ -5,7 +5,7 @@ namespace OnsiteMonday.Api.Domain;
 public class User
 {
     public Guid Id { get; set; }
-    public string FirebaseUid { get; set; } = null!;
+    public string CognitoSub { get; set; } = null!;
     public string FirstName { get; set; } = null!;
     public string LastName { get; set; } = null!;
     public string? BusinessName { get; set; }

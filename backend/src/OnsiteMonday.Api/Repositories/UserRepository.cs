@@ -13,18 +13,18 @@ public class UserRepository : IUserRepository
     public Task<User?> GetByIdAsync(Guid id) =>
         _db.Users.Include(u => u.Subscriptions).FirstOrDefaultAsync(u => u.Id == id);
 
-    public Task<User?> GetByFirebaseUidAsync(string firebaseUid) =>
-        _db.Users.Include(u => u.Subscriptions).FirstOrDefaultAsync(u => u.FirebaseUid == firebaseUid);
+    public Task<User?> GetByCognitoSubAsync(string cognitoSub) =>
+        _db.Users.Include(u => u.Subscriptions).FirstOrDefaultAsync(u => u.CognitoSub == cognitoSub);
 
-    public async Task<User> GetOrCreateByFirebaseUidAsync(string firebaseUid, string email)
+    public async Task<User> GetOrCreateByCognitoSubAsync(string cognitoSub, string email)
     {
-        var user = await GetByFirebaseUidAsync(firebaseUid);
+        var user = await GetByCognitoSubAsync(cognitoSub);
         if (user != null) return user;
 
         user = new User
         {
             Id = Guid.NewGuid(),
-            FirebaseUid = firebaseUid,
+            CognitoSub = cognitoSub,
             Email = email,
             FirstName = string.Empty,
             LastName = string.Empty,
@@ -42,7 +42,7 @@ public class UserRepository : IUserRepository
         {
             // A concurrent request already created this user — fetch theirs
             _db.ChangeTracker.Clear();
-            return await GetByFirebaseUidAsync(firebaseUid)
+            return await GetByCognitoSubAsync(cognitoSub)
                 ?? throw new InvalidOperationException("User creation conflict could not be resolved.");
         }
     }

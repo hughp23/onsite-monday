@@ -15,9 +15,9 @@ public class UserService : IUserService
         _mapper = mapper;
     }
 
-    public async Task<UserDto> GetOrCreateCurrentUserAsync(string firebaseUid, string email)
+    public async Task<UserDto> GetOrCreateCurrentUserAsync(string cognitoSub, string email)
     {
-        var user = await _repo.GetOrCreateByFirebaseUidAsync(firebaseUid, email);
+        var user = await _repo.GetOrCreateByCognitoSubAsync(cognitoSub, email);
         return _mapper.Map<UserDto>(user);
     }
 
@@ -28,9 +28,9 @@ public class UserService : IUserService
         return _mapper.Map<UserDto>(user);
     }
 
-    public async Task<UserDto> UpdateCurrentUserAsync(string firebaseUid, string email, UpdateUserRequest request)
+    public async Task<UserDto> UpdateCurrentUserAsync(string cognitoSub, string email, UpdateUserRequest request)
     {
-        var user = await _repo.GetByFirebaseUidAsync(firebaseUid)
+        var user = await _repo.GetByCognitoSubAsync(cognitoSub)
             ?? throw new KeyNotFoundException("User not found.");
 
         if (request.FirstName != null) user.FirstName = request.FirstName;
@@ -51,9 +51,9 @@ public class UserService : IUserService
         return _mapper.Map<UserDto>(user);
     }
 
-    public async Task<UserDto> CompleteOnboardingAsync(string firebaseUid)
+    public async Task<UserDto> CompleteOnboardingAsync(string cognitoSub)
     {
-        var user = await _repo.GetByFirebaseUidAsync(firebaseUid)
+        var user = await _repo.GetByCognitoSubAsync(cognitoSub)
             ?? throw new KeyNotFoundException("User not found.");
 
         user.IsOnboarded = true;

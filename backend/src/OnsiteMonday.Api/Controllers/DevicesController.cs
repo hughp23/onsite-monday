@@ -22,7 +22,7 @@ public class DevicesController : ControllerBase
         _userRepo = userRepo;
     }
 
-    private string FirebaseUid =>
+    private string CognitoSub =>
         User.FindFirstValue(ClaimTypes.NameIdentifier)
             ?? throw new UnauthorizedAccessException("Missing user identifier.");
 
@@ -33,7 +33,7 @@ public class DevicesController : ControllerBase
     [HttpPost("token")]
     public async Task<IActionResult> RegisterToken([FromBody] RegisterTokenRequest request)
     {
-        var user = await _userRepo.GetOrCreateByFirebaseUidAsync(FirebaseUid, Email);
+        var user = await _userRepo.GetOrCreateByCognitoSubAsync(CognitoSub, Email);
 
         var existing = await _db.DeviceTokens
             .FirstOrDefaultAsync(d => d.UserId == user.Id && d.Token == request.Token);

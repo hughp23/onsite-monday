@@ -52,7 +52,7 @@ public class AppDbContext : DbContext
         mb.Entity<User>(e =>
         {
             e.HasIndex(u => u.Email).IsUnique();
-            e.HasIndex(u => u.FirebaseUid).IsUnique();
+            e.HasIndex(u => u.CognitoSub).IsUnique();
             if (isNpgsql)
             {
                 e.Property(u => u.Skills).HasColumnType("text[]");
