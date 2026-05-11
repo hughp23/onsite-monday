@@ -13,19 +13,17 @@ import Animated, {
 import { useAuth } from '@/context/AuthContext';
 import { colors } from '@/constants/colors';
 import Constants, { ExecutionEnvironment } from 'expo-constants';
-import * as AppleAuthentication from 'expo-apple-authentication';
 
 const EASE = { duration: 380, easing: Easing.out(Easing.cubic) };
 
 export default function SignInScreen() {
-  const { signInWithEmail, signInWithGoogle, signInWithApple } = useAuth();
+  const { signInWithEmail, signInWithGoogle } = useAuth();
   const insets = useSafeAreaInsets();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isSigningIn, setIsSigningIn] = useState(false);
-  const [isGoogleSigningIn, setIsGoogleSigningIn] = useState(false);
-  const [isAppleSigningIn, setIsAppleSigningIn] = useState(false);
+
 
   // Animation values
   const logoScale   = useSharedValue(0.5);
@@ -77,29 +75,11 @@ export default function SignInScreen() {
   };
 
   const handleGoogleSignIn = async () => {
-    setIsGoogleSigningIn(true);
     try {
       await signInWithGoogle();
-      router.replace('/(tabs)/jobs');
-    } catch (err: unknown) {
-      if ((err as Error).message === 'cancelled') return;
-      Alert.alert('Google sign-in failed', 'Please try again.');
-    } finally {
-      setIsGoogleSigningIn(false);
-    }
-  };
-
-  const handleAppleSignIn = async () => {
-    setIsAppleSigningIn(true);
-    try {
-      await signInWithApple();
-      router.replace('/(tabs)/jobs');
-    } catch (err: unknown) {
-      const code = (err as { code?: string }).code;
-      if (code === 'ERR_REQUEST_CANCELED') return;
-      Alert.alert('Apple sign-in failed', 'Please try again.');
-    } finally {
-      setIsAppleSigningIn(false);
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : 'Google sign-in failed';
+      Alert.alert('Error', msg);
     }
   };
 
@@ -187,45 +167,20 @@ export default function SignInScreen() {
               <Text style={styles.primaryBtnText}>Sign In</Text>
             )}
           </TouchableOpacity>
-          {Platform.OS === 'ios' && (
+          {Constants.executionEnvironment !== ExecutionEnvironment.StoreClient && (
             <>
               <View style={styles.dividerRow}>
                 <View style={styles.dividerLine} />
                 <Text style={styles.dividerText}>or</Text>
                 <View style={styles.dividerLine} />
               </View>
-              <AppleAuthentication.AppleAuthenticationButton
-                buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN}
-                buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.BLACK}
-                cornerRadius={8}
-                style={styles.appleBtn}
-                onPress={handleAppleSignIn}
-              />
-            </>
-          )}
-          {Constants.executionEnvironment !== ExecutionEnvironment.StoreClient && (
-            <>
-              {Platform.OS !== 'ios' && (
-                <View style={styles.dividerRow}>
-                  <View style={styles.dividerLine} />
-                  <Text style={styles.dividerText}>or</Text>
-                  <View style={styles.dividerLine} />
-                </View>
-              )}
               <TouchableOpacity
-                style={[styles.googleBtn, isGoogleSigningIn && { opacity: 0.7 }]}
+                style={styles.googleBtn}
                 onPress={handleGoogleSignIn}
                 activeOpacity={0.85}
-                disabled={isGoogleSigningIn}
               >
-                {isGoogleSigningIn ? (
-                  <ActivityIndicator color={colors.text} size="small" />
-                ) : (
-                  <>
-                    <AntDesign name="google" size={18} color="#DB4437" />
-                    <Text style={styles.googleBtnText}>Continue with Google</Text>
-                  </>
-                )}
+                <AntDesign name="google" size={18} color="#DB4437" />
+                <Text style={styles.googleBtnText}>Continue with Google</Text>
               </TouchableOpacity>
             </>
           )}
@@ -308,8 +263,4 @@ const styles = StyleSheet.create({
     backgroundColor: colors.white,
   },
   googleBtnText: { fontSize: 16, fontWeight: '600', color: colors.text },
-  appleBtn: {
-    width: '100%',
-    height: 48,
-  },
 });
