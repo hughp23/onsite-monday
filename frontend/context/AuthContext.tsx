@@ -45,6 +45,9 @@ export function AuthContextProvider({ children }: { children: React.ReactNode })
             .then(user => setCognitoUser(user))
             .catch(() => setCognitoUser(null));
           break;
+        case 'signInWithRedirect_failure':
+          console.error('Hosted UI sign-in failed:', payload.data);
+          break;
       }
     });
 

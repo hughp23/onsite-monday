@@ -58,7 +58,6 @@ export default function SignUpScreen() {
   const [isCreatingAccount, setIsCreatingAccount] = useState(false);
   const [isCompleting, setIsCompleting] = useState(false);
   const [isGoogleSigningIn, setIsGoogleSigningIn] = useState(false);
-  const [googleAuthenticated, setGoogleAuthenticated] = useState(false);
   const [selectedTier, setSelectedTier] = useState<SubscriptionTier | null>(null);
   const [pendingEmail, setPendingEmail] = useState('');
   const [pendingPassword, setPendingPassword] = useState('');
@@ -66,7 +65,7 @@ export default function SignUpScreen() {
   const [confirmationCode, setConfirmationCode] = useState('');
   const [confirmError, setConfirmError] = useState('');
 
-  const minSlide = isReturningUser || googleAuthenticated ? 1 : 0;
+  const minSlide = isReturningUser ? 1 : 0;
 
   useEffect(() => {
     if (currentSlide > 0) {
@@ -78,7 +77,7 @@ export default function SignUpScreen() {
 
   const isSlideValid = (slide: number): boolean => {
     switch (slide) {
-      case 0: return googleAuthenticated || (firstName.trim().length > 0 && email.trim().length > 0 && password.length >= 6);
+      case 0: return firstName.trim().length > 0 && email.trim().length > 0 && password.length >= 6;
       case 1: return selectedTrade.length > 0;
       case 2: return selectedSkills.length > 0;
       case 4: return !!dayRate && parseInt(dayRate) > 0;
@@ -153,7 +152,6 @@ export default function SignUpScreen() {
     setIsGoogleSigningIn(true);
     try {
       await signInWithGoogle();
-      setGoogleAuthenticated(true);
     } catch (err: unknown) {
       if ((err as Error).message === 'cancelled') return;
       Alert.alert('Google sign-in failed', 'Please try again.');
