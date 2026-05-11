@@ -49,14 +49,7 @@
           "color": "#8B2020"
         }
       ],
-      "@react-native-community/datetimepicker",
-      [
-        "@react-native-google-signin/google-signin",
-        {
-          "iosUrlScheme": "com.googleusercontent.apps.838911528327-ninil92kp7cv5v579o2kacleam90c4n7"
-        }
-      ],
-      "expo-apple-authentication"
+      "@react-native-community/datetimepicker"
     ],
     "experiments": {
       "typedRoutes": true
