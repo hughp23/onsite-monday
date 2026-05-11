@@ -50,7 +50,7 @@ interface AppContextType {
 const AppContext = createContext<AppContextType | null>(null);
 
 export function AppContextProvider({ children }: { children: React.ReactNode }) {
-  const { firebaseUser } = useAuth();
+  const { cognitoUser } = useAuth();
 
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -60,9 +60,9 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
 
-  // Load all app data when Firebase user becomes available
+  // Load all app data when Cognito user becomes available
   useEffect(() => {
-    if (!firebaseUser) {
+    if (!cognitoUser) {
       setCurrentUser(null);
       setJobs([]);
       setMyJobs({ accepted: [], posted: [] });
@@ -106,7 +106,7 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
     };
 
     loadAppData();
-  }, [firebaseUser]);
+  }, [cognitoUser]);
 
   const addIncomingMessage = useCallback((message: import('@/constants/types').Message) => {
     setConversations(prev => prev.map(conv =>
@@ -128,7 +128,7 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
   const joinedConvIds = useRef(new Set<string>());
 
   useEffect(() => {
-    if (!firebaseUser) {
+    if (!cognitoUser) {
       joinedConvIds.current.clear();
       return;
     }
@@ -141,17 +141,17 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
       cleanup();
       signalRService.stop().catch(() => {});
     };
-  }, [firebaseUser, addIncomingMessage]);
+  }, [cognitoUser, addIncomingMessage]);
 
   useEffect(() => {
-    if (!firebaseUser || conversations.length === 0) return;
+    if (!cognitoUser || conversations.length === 0) return;
     conversations.forEach(c => {
       if (!joinedConvIds.current.has(c.id)) {
         joinedConvIds.current.add(c.id);
         signalRService.joinConversation(c.id).catch(() => {});
       }
     });
-  }, [firebaseUser, conversations]);
+  }, [cognitoUser, conversations]);
 
   const updateCurrentUser = useCallback(async (updates: Partial<User>) => {
     // Treat empty strings as undefined so they are omitted from the JSON body
@@ -384,7 +384,7 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
   return (
     <AppContext.Provider value={{
       currentUser,
-      isAuthenticated: !!firebaseUser,
+      isAuthenticated: !!cognitoUser,
       isLoading,
       tradespeople,
       jobs,
