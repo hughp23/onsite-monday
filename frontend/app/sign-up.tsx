@@ -15,7 +15,6 @@ import { colors } from '@/constants/colors';
 import { TRADES, SKILLS_BY_TRADE, ACCREDITATIONS } from '@/constants/trades';
 import { SubscriptionTier } from '@/constants/types';
 import Constants, { ExecutionEnvironment } from 'expo-constants';
-import * as AppleAuthentication from 'expo-apple-authentication';
 
 const TIER_NAMES: Record<SubscriptionTier, string> = {
   bronze: 'Bronze',
@@ -28,7 +27,7 @@ const TOTAL_SLIDES = 9;
 
 export default function SignUpScreen() {
   const { updateCurrentUser, completeOnboarding, updateSubscription, currentUser, isAuthenticated } = useApp();
-  const { signUpWithEmail, signInWithGoogle, signInWithApple } = useAuth();
+  const { signUpWithEmail, confirmSignUpCode, signInWithEmail, signInWithGoogle } = useAuth();
   const isReturningUser = isAuthenticated && !!currentUser;
 
   const insets = useSafeAreaInsets();
@@ -60,11 +59,14 @@ export default function SignUpScreen() {
   const [isCompleting, setIsCompleting] = useState(false);
   const [isGoogleSigningIn, setIsGoogleSigningIn] = useState(false);
   const [googleAuthenticated, setGoogleAuthenticated] = useState(false);
-  const [isAppleSigningIn, setIsAppleSigningIn] = useState(false);
-  const [appleAuthenticated, setAppleAuthenticated] = useState(false);
   const [selectedTier, setSelectedTier] = useState<SubscriptionTier | null>(null);
+  const [pendingEmail, setPendingEmail] = useState('');
+  const [pendingPassword, setPendingPassword] = useState('');
+  const [showConfirmation, setShowConfirmation] = useState(false);
+  const [confirmationCode, setConfirmationCode] = useState('');
+  const [confirmError, setConfirmError] = useState('');
 
-  const minSlide = isReturningUser || googleAuthenticated || appleAuthenticated ? 1 : 0;
+  const minSlide = isReturningUser || googleAuthenticated ? 1 : 0;
 
   useEffect(() => {
     if (currentSlide > 0) {
@@ -76,7 +78,7 @@ export default function SignUpScreen() {
 
   const isSlideValid = (slide: number): boolean => {
     switch (slide) {
-      case 0: return googleAuthenticated || appleAuthenticated || (firstName.trim().length > 0 && email.trim().length > 0 && password.length >= 6);
+      case 0: return googleAuthenticated || (firstName.trim().length > 0 && email.trim().length > 0 && password.length >= 6);
       case 1: return selectedTrade.length > 0;
       case 2: return selectedSkills.length > 0;
       case 4: return !!dayRate && parseInt(dayRate) > 0;
@@ -110,16 +112,38 @@ export default function SignUpScreen() {
     }
     setIsCreatingAccount(true);
     try {
-      await signUpWithEmail(email.trim(), password);
-      goNext();
-    } catch (error: unknown) {
-      const code = (error as { code?: string }).code;
-      const message =
-        code === 'auth/email-already-in-use' ? 'An account with this email already exists. Please sign in instead.' :
-        code === 'auth/weak-password' ? 'Password must be at least 6 characters.' :
-        code === 'auth/invalid-email' ? 'Please enter a valid email address.' :
-        'Could not create your account. Please try again.';
-      Alert.alert('Sign up failed', message);
+      const { needsConfirmation } = await signUpWithEmail(email.trim(), password);
+      if (needsConfirmation) {
+        setPendingEmail(email.trim());
+        setPendingPassword(password);
+        setShowConfirmation(true);
+      } else {
+        setCurrentSlide(1);
+      }
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : 'Sign-up failed';
+      Alert.alert('Error', msg);
+    } finally {
+      setIsCreatingAccount(false);
+    }
+  };
+
+  const handleConfirmCode = async () => {
+    if (confirmationCode.length !== 6) {
+      setConfirmError('Please enter the 6-digit code from your email.');
+      return;
+    }
+    try {
+      setIsCreatingAccount(true);
+      setConfirmError('');
+      await confirmSignUpCode(pendingEmail, confirmationCode);
+      await signInWithEmail(pendingEmail, pendingPassword);
+      setShowConfirmation(false);
+      const next = 1;
+      pagerRef.current?.scrollToIndex({ index: next, animated: true });
+      setCurrentSlide(next);
+    } catch (error) {
+      setConfirmError('Verification failed. Check the code and try again.');
     } finally {
       setIsCreatingAccount(false);
     }
@@ -128,39 +152,13 @@ export default function SignUpScreen() {
   const handleGoogleSignIn = async () => {
     setIsGoogleSigningIn(true);
     try {
-      const result = await signInWithGoogle();
-      const displayName = result.user.displayName ?? '';
-      const parts = displayName.trim().split(/\s+/);
-      setFirstName(parts[0] ?? '');
-      setLastName(parts.slice(1).join(' '));
+      await signInWithGoogle();
       setGoogleAuthenticated(true);
-      pagerRef.current?.scrollToIndex({ index: 1, animated: true });
-      setCurrentSlide(1);
     } catch (err: unknown) {
       if ((err as Error).message === 'cancelled') return;
       Alert.alert('Google sign-in failed', 'Please try again.');
     } finally {
       setIsGoogleSigningIn(false);
-    }
-  };
-
-  const handleAppleSignIn = async () => {
-    setIsAppleSigningIn(true);
-    try {
-      const result = await signInWithApple();
-      const displayName = result.user.displayName ?? '';
-      const parts = displayName.trim().split(/\s+/);
-      setFirstName(parts[0] ?? '');
-      setLastName(parts.slice(1).join(' '));
-      setAppleAuthenticated(true);
-      pagerRef.current?.scrollToIndex({ index: 1, animated: true });
-      setCurrentSlide(1);
-    } catch (err: unknown) {
-      const code = (err as { code?: string }).code;
-      if (code === 'ERR_REQUEST_CANCELED') return;
-      Alert.alert('Apple sign-in failed', 'Please try again.');
-    } finally {
-      setIsAppleSigningIn(false);
     }
   };
 
@@ -245,31 +243,13 @@ export default function SignUpScreen() {
         <View style={styles.illustrationWrap}>
           <MaterialCommunityIcons name="account-hard-hat-outline" size={80} color={colors.border} />
         </View>
-        {Platform.OS === 'ios' && (
+        {Constants.executionEnvironment !== ExecutionEnvironment.StoreClient && (
           <>
             <View style={styles.dividerRow}>
               <View style={styles.dividerLine} />
               <Text style={styles.dividerText}>or</Text>
               <View style={styles.dividerLine} />
             </View>
-            <AppleAuthentication.AppleAuthenticationButton
-              buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_UP}
-              buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.BLACK}
-              cornerRadius={8}
-              style={styles.appleBtn}
-              onPress={handleAppleSignIn}
-            />
-          </>
-        )}
-        {Constants.executionEnvironment !== ExecutionEnvironment.StoreClient && (
-          <>
-            {Platform.OS !== 'ios' && (
-              <View style={styles.dividerRow}>
-                <View style={styles.dividerLine} />
-                <Text style={styles.dividerText}>or</Text>
-                <View style={styles.dividerLine} />
-              </View>
-            )}
             <TouchableOpacity
               style={[styles.googleBtn, isGoogleSigningIn && { opacity: 0.7 }]}
               onPress={handleGoogleSignIn}
@@ -549,6 +529,38 @@ export default function SignUpScreen() {
           </TouchableOpacity>
         </View>
       )}
+
+      {showConfirmation && (
+        <View style={styles.confirmationOverlay}>
+          <View style={styles.confirmationCard}>
+            <Text style={styles.confirmationTitle}>Check your email</Text>
+            <Text style={styles.confirmationSubtitle}>
+              We sent a 6-digit code to {pendingEmail}
+            </Text>
+            <TextInput
+              style={styles.confirmationInput}
+              value={confirmationCode}
+              onChangeText={setConfirmationCode}
+              placeholder="000000"
+              keyboardType="number-pad"
+              maxLength={6}
+              autoFocus
+            />
+            {confirmError ? (
+              <Text style={styles.confirmationError}>{confirmError}</Text>
+            ) : null}
+            <TouchableOpacity
+              style={styles.confirmationButton}
+              onPress={handleConfirmCode}
+              disabled={isCreatingAccount}
+            >
+              <Text style={styles.confirmationButtonText}>
+                {isCreatingAccount ? 'Verifying…' : 'Verify'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
     </KeyboardAvoidingView>
   );
 }
@@ -740,8 +752,60 @@ const styles = StyleSheet.create({
     backgroundColor: colors.white,
   },
   googleBtnText: { fontSize: 15, fontWeight: '600', color: colors.text },
-  appleBtn: {
+  confirmationOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 100,
+  },
+  confirmationCard: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 28,
+    width: '85%',
+    alignItems: 'center',
+  },
+  confirmationTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#8B2020',
+    marginBottom: 8,
+  },
+  confirmationSubtitle: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
+    marginBottom: 24,
+  },
+  confirmationInput: {
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 8,
+    fontSize: 28,
+    letterSpacing: 8,
+    textAlign: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
     width: '100%',
-    height: 48,
+    marginBottom: 8,
+  },
+  confirmationError: {
+    color: '#8B2020',
+    fontSize: 13,
+    textAlign: 'center',
+    marginBottom: 12,
+  },
+  confirmationButton: {
+    backgroundColor: '#8B2020',
+    borderRadius: 8,
+    paddingVertical: 14,
+    paddingHorizontal: 32,
+    marginTop: 8,
+  },
+  confirmationButtonText: {
+    color: '#fff',
+    fontWeight: '700',
+    fontSize: 16,
   },
 });
