@@ -1,11 +1,8 @@
-import { auth } from '@/lib/firebase';
+import { fetchAuthSession } from 'aws-amplify/auth';
 import Constants from 'expo-constants';
 
-// In dev, derive the host from Expo's dev server so the app works on
-// simulators, Android emulators, and physical devices alike.
-// Falls back to localhost for plain Node/Jest environments.
 function devHost(): string {
-  const uri = Constants.expoConfig?.hostUri; // e.g. "192.168.1.42:8081"
+  const uri = Constants.expoConfig?.hostUri;
   if (uri) return uri.split(':')[0];
   return 'localhost';
 }
@@ -26,8 +23,13 @@ export async function apiRequest<T>(
   path: string,
   body?: unknown
 ): Promise<T> {
-  const user = auth.currentUser;
-  const token = user ? await user.getIdToken() : null;
+  let token: string | null = null;
+  try {
+    const session = await fetchAuthSession();
+    token = session.tokens?.idToken?.toString() ?? null;
+  } catch {
+    // Not authenticated — proceed without token
+  }
 
   const response = await fetch(`${BASE_URL}${path}`, {
     method,
@@ -40,8 +42,6 @@ export async function apiRequest<T>(
 
   if (!response.ok) {
     const errorBody = await response.json().catch(() => ({}));
-    // Handle both { error: "..." } (custom errors) and
-    // { title: "...", errors: { Field: ["msg"] } } (ASP.NET Core validation)
     const message: string =
       errorBody.error ??
       (errorBody.errors
@@ -54,7 +54,6 @@ export async function apiRequest<T>(
     throw new ApiError(response.status, message);
   }
 
-  // Handle 204 No Content
   if (response.status === 204) return undefined as T;
 
   return response.json() as Promise<T>;

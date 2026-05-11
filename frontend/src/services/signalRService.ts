@@ -1,6 +1,6 @@
 import * as signalR from '@microsoft/signalr';
 import Constants from 'expo-constants';
-import { auth } from '@/lib/firebase';
+import { fetchAuthSession } from 'aws-amplify/auth';
 import { Message } from '@/constants/types';
 
 function hubUrl(): string {
@@ -9,12 +9,10 @@ function hubUrl(): string {
     (__DEV__
       ? `http://${(Constants.expoConfig?.hostUri ?? 'localhost:8081').split(':')[0]}:5236/api`
       : 'https://api.onsitemonday.co.uk/api');
-  // Strip trailing /api — the hub is at /hubs/chat, not /api/hubs/chat
   const baseUrl = apiUrl.replace(/\/api$/, '');
   return `${baseUrl}/hubs/chat`;
 }
 
-// Backend sends MessageDto with sentAt; map to our Message type
 interface ApiMessage {
   id: string;
   conversationId: string;
@@ -45,8 +43,12 @@ function getConnection(): signalR.HubConnection {
     connection = new signalR.HubConnectionBuilder()
       .withUrl(hubUrl(), {
         accessTokenFactory: async () => {
-          const token = await auth.currentUser?.getIdToken();
-          return token ?? '';
+          try {
+            const session = await fetchAuthSession();
+            return session.tokens?.idToken?.toString() ?? '';
+          } catch {
+            return '';
+          }
         },
       })
       .withAutomaticReconnect()
