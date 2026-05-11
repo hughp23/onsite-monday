@@ -7,7 +7,7 @@ export const CANCELLED = 'cancelled' as const;
 
 /**
  * Prompts the user to pick a photo from their library, uploads it to
- * Firebase Storage, and returns the public download URL.
+ * AWS S3 via Amplify Storage, and returns the public download URL.
  *
  * Returns `CANCELLED` if the user dismissed the picker.
  * Throws on permission denial or upload failure.
