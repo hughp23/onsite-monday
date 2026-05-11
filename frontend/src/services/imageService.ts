@@ -1,6 +1,6 @@
 import * as ImagePicker from 'expo-image-picker';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { auth, storage } from '@/lib/firebase';
+import { uploadData, getUrl } from 'aws-amplify/storage';
+import { getCurrentUser } from 'aws-amplify/auth';
 
 /** Sentinel returned when the user dismisses the picker without selecting. */
 export const CANCELLED = 'cancelled' as const;
@@ -34,8 +34,8 @@ export async function pickAndUploadProfileImage(): Promise<string | typeof CANCE
   const uri = result.assets[0].uri;
 
   // 3. Convert local file URI → Blob
-  // fetch().blob() is unreliable in React Native with the Firebase JS SDK
-  // (causes storage/unknown). XMLHttpRequest is the correct approach here.
+  // fetch().blob() is unreliable in React Native with the AWS SDK.
+  // XMLHttpRequest is the correct approach here.
   const blob = await new Promise<Blob>((resolve, reject) => {
     const xhr = new XMLHttpRequest();
     xhr.onload = () => resolve(xhr.response as Blob);
@@ -45,13 +45,14 @@ export async function pickAndUploadProfileImage(): Promise<string | typeof CANCE
     xhr.send(null);
   });
 
-  // 4. Upload to Firebase Storage (overwrites previous photo)
-  const uid = auth.currentUser?.uid;
-  if (!uid) throw new Error('Not signed in.');
+  // 4. Upload to AWS S3 via Amplify Storage (overwrites previous photo)
+  const user = await getCurrentUser();
+  if (!user) throw new Error('Not signed in.');
 
-  const storageRef = ref(storage, `profile-images/${uid}.jpg`);
-  await uploadBytes(storageRef, blob, { contentType: 'image/jpeg' });
+  const key = `profile-images/${user.userId}.jpg`;
+  await uploadData({ key, data: blob, options: { contentType: 'image/jpeg' } }).result;
 
-  // 5. Return the permanent download URL
-  return getDownloadURL(storageRef);
+  // 5. Return the signed URL
+  const url = await getUrl({ key });
+  return url.url.toString();
 }

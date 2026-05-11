@@ -32,7 +32,7 @@ import {
 SplashScreen.preventAutoHideAsync();
 
 function NotificationBootstrap() {
-  const { firebaseUser } = useAuth();
+  const { cognitoUser } = useAuth();
   const { refreshNotifications } = useApp();
 
   useEffect(() => {
@@ -41,11 +41,11 @@ function NotificationBootstrap() {
   }, [refreshNotifications]);
 
   useEffect(() => {
-    if (!firebaseUser) return;
+    if (!cognitoUser) return;
     requestNotificationPermissions().then(granted => {
       if (granted) registerDeviceToken();
     });
-  }, [firebaseUser]);
+  }, [cognitoUser]);
 
   return null;
 }
@@ -82,7 +82,6 @@ export default function RootLayout() {
               headerTitleStyle: {
                 fontFamily: 'BarlowCondensed_800ExtraBold',
                 fontSize: 22,
-                letterSpacing: 0.5,
               },
               contentStyle: { backgroundColor: colors.background },
               headerShadowVisible: true,
