@@ -12,6 +12,14 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useAuth } from '@/context/AuthContext';
 import { colors } from '@/constants/colors';
+import {
+  isBiometricAvailable,
+  isBiometricEnabled,
+  getBiometricLabel,
+  getCredentials,
+  promptBiometric,
+  saveCredentials,
+} from '@/services/biometricAuth';
 
 const EASE = { duration: 380, easing: Easing.out(Easing.cubic) };
 
@@ -22,7 +30,8 @@ export default function SignInScreen() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isSigningIn, setIsSigningIn] = useState(false);
-
+  const [biometricLabel, setBiometricLabel] = useState<string | null>(null);
+  const [isBiometricSigningIn, setIsBiometricSigningIn] = useState(false);
 
   // Animation values
   const logoScale   = useSharedValue(0.5);
@@ -34,6 +43,15 @@ export default function SignInScreen() {
   const formOpacity = useSharedValue(0);
 
   useEffect(() => {
+    (async () => {
+      const available = await isBiometricAvailable();
+      const enabled = await isBiometricEnabled();
+      if (available && enabled) {
+        const label = await getBiometricLabel();
+        setBiometricLabel(label);
+      }
+    })();
+
     logoOpacity.value  = withTiming(1, { duration: 280 });
     logoScale.value    = withSpring(1, { damping: 18, stiffness: 180 });
     titleOpacity.value = withDelay(150, withTiming(1, EASE));
@@ -57,6 +75,31 @@ export default function SignInScreen() {
     transform: [{ translateY: formTransY.value }],
   }));
 
+  const offerBiometricIfAvailable = async (emailVal: string, passwordVal: string) => {
+    const available = await isBiometricAvailable();
+    const alreadyEnabled = await isBiometricEnabled();
+    if (!available || alreadyEnabled) return;
+
+    const label = await getBiometricLabel();
+    await new Promise<void>((resolve) => {
+      Alert.alert(
+        `Enable ${label}?`,
+        `Sign in faster next time using ${label} instead of your password.`,
+        [
+          { text: 'Not now', style: 'cancel', onPress: () => resolve() },
+          {
+            text: `Enable ${label}`,
+            onPress: async () => {
+              await saveCredentials(emailVal, passwordVal);
+              resolve();
+            },
+          },
+        ],
+        { cancelable: false }
+      );
+    });
+  };
+
   const handleSignIn = async () => {
     if (!email.trim() || !password.trim()) {
       Alert.alert('Missing fields', 'Please enter your email and password.');
@@ -65,6 +108,7 @@ export default function SignInScreen() {
     setIsSigningIn(true);
     try {
       await signInWithEmail(email.trim(), password);
+      await offerBiometricIfAvailable(email.trim(), password);
       router.replace('/(tabs)/jobs');
     } catch {
       Alert.alert('Sign in failed', 'Invalid email or password.');
@@ -79,6 +123,26 @@ export default function SignInScreen() {
     } catch (error) {
       const msg = error instanceof Error ? error.message : 'Google sign-in failed';
       Alert.alert('Error', msg);
+    }
+  };
+
+  const handleBiometricSignIn = async () => {
+    if (!biometricLabel) return;
+    setIsBiometricSigningIn(true);
+    try {
+      const ok = await promptBiometric(biometricLabel);
+      if (!ok) return;
+      const credentials = await getCredentials();
+      if (!credentials) {
+        Alert.alert('Biometric sign-in unavailable', 'Please sign in with your password.');
+        return;
+      }
+      await signInWithEmail(credentials.email, credentials.password);
+      router.replace('/(tabs)/jobs');
+    } catch {
+      Alert.alert('Sign in failed', 'Biometric sign-in failed. Please use your password.');
+    } finally {
+      setIsBiometricSigningIn(false);
     }
   };
 
@@ -116,6 +180,35 @@ export default function SignInScreen() {
         keyboardShouldPersistTaps="handled"
       >
         <Animated.View style={formStyle}>
+          {biometricLabel && (
+            <>
+              <TouchableOpacity
+                style={[styles.biometricBtn, isBiometricSigningIn && { opacity: 0.7 }]}
+                onPress={handleBiometricSignIn}
+                activeOpacity={0.85}
+                disabled={isBiometricSigningIn}
+              >
+                {isBiometricSigningIn ? (
+                  <ActivityIndicator color={colors.primary} size="small" />
+                ) : (
+                  <>
+                    <Ionicons
+                      name={biometricLabel === 'Face ID' ? 'scan-outline' : 'finger-print-outline'}
+                      size={22}
+                      color={colors.primary}
+                    />
+                    <Text style={styles.biometricBtnText}>Sign in with {biometricLabel}</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+              <View style={styles.dividerRow}>
+                <View style={styles.dividerLine} />
+                <Text style={styles.dividerText}>or use password</Text>
+                <View style={styles.dividerLine} />
+              </View>
+            </>
+          )}
+
           <Text style={styles.signupLink}>
             Don't have an account?{' '}
             <Text style={styles.link} onPress={() => router.push('/sign-up')}>Sign up</Text>
@@ -258,4 +351,17 @@ const styles = StyleSheet.create({
     backgroundColor: colors.white,
   },
   googleBtnText: { fontSize: 16, fontWeight: '600', color: colors.text },
+  biometricBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    borderWidth: 1.5,
+    borderColor: colors.primary,
+    borderRadius: 12,
+    paddingVertical: 16,
+    backgroundColor: colors.white,
+    marginBottom: 16,
+  },
+  biometricBtnText: { fontSize: 16, fontWeight: '600', color: colors.primary },
 });
