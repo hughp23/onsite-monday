@@ -12,7 +12,6 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useAuth } from '@/context/AuthContext';
 import { colors } from '@/constants/colors';
-import Constants, { ExecutionEnvironment } from 'expo-constants';
 
 const EASE = { duration: 380, easing: Easing.out(Easing.cubic) };
 
@@ -167,23 +166,19 @@ export default function SignInScreen() {
               <Text style={styles.primaryBtnText}>Sign In</Text>
             )}
           </TouchableOpacity>
-          {Constants.executionEnvironment !== ExecutionEnvironment.StoreClient && (
-            <>
-              <View style={styles.dividerRow}>
-                <View style={styles.dividerLine} />
-                <Text style={styles.dividerText}>or</Text>
-                <View style={styles.dividerLine} />
-              </View>
-              <TouchableOpacity
-                style={styles.googleBtn}
-                onPress={handleGoogleSignIn}
-                activeOpacity={0.85}
-              >
-                <AntDesign name="google" size={18} color="#DB4437" />
-                <Text style={styles.googleBtnText}>Continue with Google</Text>
-              </TouchableOpacity>
-            </>
-          )}
+          <View style={styles.dividerRow}>
+            <View style={styles.dividerLine} />
+            <Text style={styles.dividerText}>or</Text>
+            <View style={styles.dividerLine} />
+          </View>
+          <TouchableOpacity
+            style={styles.googleBtn}
+            onPress={handleGoogleSignIn}
+            activeOpacity={0.85}
+          >
+            <AntDesign name="google" size={18} color="#DB4437" />
+            <Text style={styles.googleBtnText}>Continue with Google</Text>
+          </TouchableOpacity>
         </Animated.View>
       </ScrollView>
     </KeyboardAvoidingView>

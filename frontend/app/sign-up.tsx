@@ -14,7 +14,6 @@ import SubscriptionCard from '@/components/SubscriptionCard';
 import { colors } from '@/constants/colors';
 import { TRADES, SKILLS_BY_TRADE, ACCREDITATIONS } from '@/constants/trades';
 import { SubscriptionTier } from '@/constants/types';
-import Constants, { ExecutionEnvironment } from 'expo-constants';
 
 const TIER_NAMES: Record<SubscriptionTier, string> = {
   bronze: 'Bronze',
@@ -241,30 +240,26 @@ export default function SignUpScreen() {
         <View style={styles.illustrationWrap}>
           <MaterialCommunityIcons name="account-hard-hat-outline" size={80} color={colors.border} />
         </View>
-        {Constants.executionEnvironment !== ExecutionEnvironment.StoreClient && (
-          <>
-            <View style={styles.dividerRow}>
-              <View style={styles.dividerLine} />
-              <Text style={styles.dividerText}>or</Text>
-              <View style={styles.dividerLine} />
-            </View>
-            <TouchableOpacity
-              style={[styles.googleBtn, isGoogleSigningIn && { opacity: 0.7 }]}
-              onPress={handleGoogleSignIn}
-              activeOpacity={0.85}
-              disabled={isGoogleSigningIn}
-            >
-              {isGoogleSigningIn ? (
-                <ActivityIndicator color={colors.text} size="small" />
-              ) : (
-                <>
-                  <AntDesign name="google" size={18} color="#DB4437" />
-                  <Text style={styles.googleBtnText}>Continue with Google</Text>
-                </>
-              )}
-            </TouchableOpacity>
-          </>
-        )}
+        <View style={styles.dividerRow}>
+          <View style={styles.dividerLine} />
+          <Text style={styles.dividerText}>or</Text>
+          <View style={styles.dividerLine} />
+        </View>
+        <TouchableOpacity
+          style={[styles.googleBtn, isGoogleSigningIn && { opacity: 0.7 }]}
+          onPress={handleGoogleSignIn}
+          activeOpacity={0.85}
+          disabled={isGoogleSigningIn}
+        >
+          {isGoogleSigningIn ? (
+            <ActivityIndicator color={colors.text} size="small" />
+          ) : (
+            <>
+              <AntDesign name="google" size={18} color="#DB4437" />
+              <Text style={styles.googleBtnText}>Continue with Google</Text>
+            </>
+          )}
+        </TouchableOpacity>
       </View>
     </View>,
 
