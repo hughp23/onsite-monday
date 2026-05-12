@@ -91,6 +91,8 @@ export default function RootLayout() {
             <Stack.Screen name="index" options={{ headerShown: false }} />
             <Stack.Screen name="sign-in" options={{ headerShown: false }} />
             <Stack.Screen name="sign-up" options={{ headerShown: false }} />
+            <Stack.Screen name="forgot-password" options={{ headerShown: false }} />
+            <Stack.Screen name="reset-password" options={{ headerShown: false }} />
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
             <Stack.Screen name="job/[id]" options={{ title: 'Job Details', headerBackTitle: 'Back' }} />
             <Stack.Screen name="person/[id]" options={{ title: 'Profile', headerBackTitle: 'Back' }} />
