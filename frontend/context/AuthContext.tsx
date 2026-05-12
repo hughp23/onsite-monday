@@ -6,6 +6,8 @@ import {
   confirmSignUp,
   signOut as amplifySignOut,
   signInWithRedirect,
+  resetPassword,
+  confirmResetPassword,
   type AuthUser,
 } from 'aws-amplify/auth';
 import { Hub } from 'aws-amplify/utils';
@@ -14,10 +16,12 @@ interface AuthContextType {
   cognitoUser: AuthUser | null;
   isAuthLoading: boolean;
   signInWithEmail: (email: string, password: string) => Promise<void>;
-  signUpWithEmail: (email: string, password: string) => Promise<{ needsConfirmation: boolean }>;
+  signUpWithEmail: (email: string, password: string, firstName: string, lastName: string) => Promise<{ needsConfirmation: boolean }>;
   confirmSignUpCode: (email: string, code: string) => Promise<void>;
   signOut: () => Promise<void>;
   signInWithGoogle: () => Promise<void>;
+  requestPasswordReset: (email: string) => Promise<void>;
+  confirmPasswordReset: (email: string, code: string, newPassword: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -63,12 +67,20 @@ export function AuthContextProvider({ children }: { children: React.ReactNode })
 
   const signUpWithEmail = async (
     email: string,
-    password: string
+    password: string,
+    firstName: string,
+    lastName: string,
   ): Promise<{ needsConfirmation: boolean }> => {
     const { isSignUpComplete, nextStep } = await signUp({
       username: email,
       password,
-      options: { userAttributes: { email } },
+      options: {
+        userAttributes: {
+          email,
+          given_name: firstName,
+          family_name: lastName,
+        },
+      },
     });
     return { needsConfirmation: !isSignUpComplete && nextStep.signUpStep === 'CONFIRM_SIGN_UP' };
   };
@@ -85,6 +97,14 @@ export function AuthContextProvider({ children }: { children: React.ReactNode })
     await signInWithRedirect({ provider: 'Google' });
   };
 
+  const requestPasswordReset = async (email: string): Promise<void> => {
+    await resetPassword({ username: email });
+  };
+
+  const confirmPasswordReset = async (email: string, code: string, newPassword: string): Promise<void> => {
+    await confirmResetPassword({ username: email, confirmationCode: code, newPassword });
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -95,6 +115,8 @@ export function AuthContextProvider({ children }: { children: React.ReactNode })
         confirmSignUpCode,
         signOut,
         signInWithGoogle,
+        requestPasswordReset,
+        confirmPasswordReset,
       }}
     >
       {children}
