@@ -25,7 +25,7 @@ const { width } = Dimensions.get('window');
 const TOTAL_SLIDES = 9;
 
 export default function SignUpScreen() {
-  const { updateCurrentUser, completeOnboarding, updateSubscription, currentUser, isAuthenticated } = useApp();
+  const { updateCurrentUser, completeOnboarding, updateSubscription, currentUser, isAuthenticated, isLoading } = useApp();
   const { signUpWithEmail, confirmSignUpCode, signInWithEmail, signInWithGoogle } = useAuth();
   const isReturningUser = isAuthenticated && !!currentUser;
 
@@ -72,11 +72,20 @@ export default function SignUpScreen() {
         pagerRef.current?.scrollToIndex({ index: currentSlide, animated: false });
       }, 50);
     }
-  }, []); // Run once on mount
+  }, []);
+
+  const passwordValid = {
+    length: password.length >= 8,
+    upper: /[A-Z]/.test(password),
+    lower: /[a-z]/.test(password),
+    digit: /[0-9]/.test(password),
+    special: /[^A-Za-z0-9]/.test(password),
+  };
+  const isPasswordValid = Object.values(passwordValid).every(Boolean);
 
   const isSlideValid = (slide: number): boolean => {
     switch (slide) {
-      case 0: return firstName.trim().length > 0 && email.trim().length > 0 && password.length >= 6;
+      case 0: return firstName.trim().length > 0 && lastName.trim().length > 0 && email.trim().length > 0 && isPasswordValid;
       case 1: return selectedTrade.length > 0;
       case 2: return selectedSkills.length > 0;
       case 4: return !!dayRate && parseInt(dayRate) > 0;
@@ -104,13 +113,13 @@ export default function SignUpScreen() {
   };
 
   const handleCreateAccount = async () => {
-    if (!firstName.trim() || !email.trim() || password.length < 6) {
-      Alert.alert('Missing fields', 'Please fill in your first name, email and a password (min. 6 characters).');
+    if (!firstName.trim() || !lastName.trim() || !email.trim() || !isPasswordValid) {
+      Alert.alert('Missing fields', 'Please fill in your name, email and a valid password.');
       return;
     }
     setIsCreatingAccount(true);
     try {
-      const { needsConfirmation } = await signUpWithEmail(email.trim(), password);
+      const { needsConfirmation } = await signUpWithEmail(email.trim(), password, firstName.trim(), lastName.trim());
       if (needsConfirmation) {
         setPendingEmail(email.trim());
         setPendingPassword(password);
@@ -153,7 +162,7 @@ export default function SignUpScreen() {
       await signInWithGoogle();
     } catch (err: unknown) {
       if ((err as Error).message === 'cancelled') return;
-      Alert.alert('Google sign-in failed', 'Please try again.');
+      Alert.alert('Google sign-in failed', err instanceof Error ? err.message : String(err));
     } finally {
       setIsGoogleSigningIn(false);
     }
@@ -182,8 +191,10 @@ export default function SignUpScreen() {
         }
       }
       router.replace('/(tabs)/jobs');
-    } catch {
-      Alert.alert('Profile setup failed', 'Could not save your profile. Please try again.');
+    } catch (err) {
+      console.error('[handleComplete] profile save failed:', err);
+      const msg = err instanceof Error ? err.message : String(err);
+      Alert.alert('Profile setup failed', msg);
     } finally {
       setIsCompleting(false);
     }
@@ -236,6 +247,26 @@ export default function SignUpScreen() {
             <Ionicons name="lock-closed-outline" size={18} color={colors.textLight} style={styles.inputIcon} />
             <TextInput style={styles.input} placeholder="Create a password" placeholderTextColor={colors.textLight} value={password} onChangeText={setPassword} secureTextEntry />
           </View>
+          {password.length > 0 && (
+            <View style={styles.pwReqs}>
+              {([
+                [passwordValid.length, '8+ characters'],
+                [passwordValid.upper, 'Uppercase letter'],
+                [passwordValid.lower, 'Lowercase letter'],
+                [passwordValid.digit, 'Number'],
+                [passwordValid.special, 'Special character'],
+              ] as [boolean, string][]).map(([met, label]) => (
+                <View key={label} style={styles.pwReqRow}>
+                  <Ionicons
+                    name={met ? 'checkmark-circle' : 'ellipse-outline'}
+                    size={14}
+                    color={met ? colors.success : colors.textLight}
+                  />
+                  <Text style={[styles.pwReqText, met && styles.pwReqMet]}>{label}</Text>
+                </View>
+              ))}
+            </View>
+          )}
         </View>
         <View style={styles.illustrationWrap}>
           <MaterialCommunityIcons name="account-hard-hat-outline" size={80} color={colors.border} />
@@ -450,15 +481,15 @@ export default function SignUpScreen() {
           <Text style={styles.summaryRow}>💳 {selectedTier ? TIER_NAMES[selectedTier] : 'Bronze'} plan</Text>
         </View>
         <TouchableOpacity
-          style={[styles.primaryBtn, isCompleting && styles.primaryBtnDisabled]}
+          style={[styles.primaryBtn, (isCompleting || isLoading) && styles.primaryBtnDisabled]}
           onPress={handleComplete}
           activeOpacity={0.85}
-          disabled={isCompleting}
+          disabled={isCompleting || isLoading}
         >
           <Text style={styles.primaryBtnText}>
-            {isCompleting ? 'Setting up your profile...' : 'Go to Jobs Board'}
+            {isCompleting ? 'Setting up your profile...' : isLoading ? 'Loading...' : 'Go to Jobs Board'}
           </Text>
-          {!isCompleting && <Ionicons name="arrow-forward" size={20} color={colors.white} />}
+          {!isCompleting && !isLoading && <Ionicons name="arrow-forward" size={20} color={colors.white} />}
         </TouchableOpacity>
       </View>
     </View>,
@@ -725,6 +756,10 @@ const styles = StyleSheet.create({
   nextBtnWrap: { paddingHorizontal: 24, backgroundColor: colors.background },
   illustrationWrap: { alignItems: 'center', marginTop: 24 },
   success: { color: '#22C55E' },
+  pwReqs: { marginTop: 8, gap: 4 },
+  pwReqRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  pwReqText: { fontSize: 12, color: colors.textLight },
+  pwReqMet: { color: colors.success },
   dividerRow: {
     flexDirection: 'row',
     alignItems: 'center',

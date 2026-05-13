@@ -7,8 +7,13 @@ namespace OnsiteMonday.Api.Repositories;
 public class UserRepository : IUserRepository
 {
     private readonly AppDbContext _db;
+    private readonly IDbContextFactory<AppDbContext> _dbFactory;
 
-    public UserRepository(AppDbContext db) => _db = db;
+    public UserRepository(AppDbContext db, IDbContextFactory<AppDbContext> dbFactory)
+    {
+        _db = db;
+        _dbFactory = dbFactory;
+    }
 
     public Task<User?> GetByIdAsync(Guid id) =>
         _db.Users.Include(u => u.Subscriptions).FirstOrDefaultAsync(u => u.Id == id);
@@ -40,9 +45,11 @@ public class UserRepository : IUserRepository
         }
         catch (DbUpdateException)
         {
-            // A concurrent request already created this user — fetch theirs
             _db.ChangeTracker.Clear();
-            return await GetByCognitoSubAsync(cognitoSub)
+            await using var freshDb = await _dbFactory.CreateDbContextAsync();
+            return await freshDb.Users
+                .Include(u => u.Subscriptions)
+                .FirstOrDefaultAsync(u => u.CognitoSub == cognitoSub)
                 ?? throw new InvalidOperationException("User creation conflict could not be resolved.");
         }
     }

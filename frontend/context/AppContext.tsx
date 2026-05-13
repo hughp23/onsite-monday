@@ -45,6 +45,7 @@ interface AppContextType {
   getConversation: (id: string) => Conversation | undefined;
   fetchConversation: (id: string) => Promise<void>;
   addIncomingMessage: (message: import('@/constants/types').Message) => void;
+  refreshAppData: () => void;
 }
 
 const AppContext = createContext<AppContextType | null>(null);
@@ -54,6 +55,8 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
 
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
+  const refreshAppData = useCallback(() => setRefreshKey(k => k + 1), []);
   const [tradespeople, setTradespeople] = useState<Tradesperson[]>([]);
   const [jobs, setJobs] = useState<Job[]>([]);
   const [myJobs, setMyJobs] = useState<{ accepted: Job[]; posted: Job[] }>({ accepted: [], posted: [] });
@@ -106,7 +109,7 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
     };
 
     loadAppData();
-  }, [cognitoUser]);
+  }, [cognitoUser, refreshKey]);
 
   const addIncomingMessage = useCallback((message: import('@/constants/types').Message) => {
     setConversations(prev => prev.map(conv =>
@@ -417,6 +420,7 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
       getConversation,
       fetchConversation,
       addIncomingMessage,
+      refreshAppData,
     }}>
       {children}
     </AppContext.Provider>

@@ -43,7 +43,7 @@ public class UsersController : ControllerBase
     [HttpPost("me/onboard")]
     public async Task<ActionResult<UserDto>> CompleteOnboarding()
     {
-        var user = await _userService.CompleteOnboardingAsync(CognitoSub);
+        var user = await _userService.CompleteOnboardingAsync(CognitoSub, Email);
         return Ok(user);
     }
 

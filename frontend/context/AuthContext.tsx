@@ -26,6 +26,11 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
+function rethrowUnlessAlreadyAuthenticated(err: unknown): void {
+  if (err instanceof Error && err.name === 'UserAlreadyAuthenticatedException') return;
+  throw err;
+}
+
 export function AuthContextProvider({ children }: { children: React.ReactNode }) {
   const [cognitoUser, setCognitoUser] = useState<AuthUser | null>(null);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
@@ -59,9 +64,13 @@ export function AuthContextProvider({ children }: { children: React.ReactNode })
   }, []);
 
   const signInWithEmail = async (email: string, password: string) => {
-    const { isSignedIn, nextStep } = await signIn({ username: email, password });
-    if (!isSignedIn && nextStep.signInStep !== 'DONE') {
-      throw new Error(`Unexpected sign-in step: ${nextStep.signInStep}`);
+    try {
+      const { isSignedIn, nextStep } = await signIn({ username: email, password, options: { authFlowType: 'USER_PASSWORD_AUTH' } });
+      if (!isSignedIn && nextStep.signInStep !== 'DONE') {
+        throw new Error(`Unexpected sign-in step: ${nextStep.signInStep}`);
+      }
+    } catch (err: unknown) {
+      rethrowUnlessAlreadyAuthenticated(err);
     }
   };
 
@@ -94,7 +103,11 @@ export function AuthContextProvider({ children }: { children: React.ReactNode })
   };
 
   const signInWithGoogle = async () => {
-    await signInWithRedirect({ provider: 'Google' });
+    try {
+      await signInWithRedirect({ provider: 'Google' });
+    } catch (err: unknown) {
+      rethrowUnlessAlreadyAuthenticated(err);
+    }
   };
 
   const requestPasswordReset = async (email: string): Promise<void> => {

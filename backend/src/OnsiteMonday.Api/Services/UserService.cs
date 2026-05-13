@@ -30,8 +30,7 @@ public class UserService : IUserService
 
     public async Task<UserDto> UpdateCurrentUserAsync(string cognitoSub, string email, UpdateUserRequest request)
     {
-        var user = await _repo.GetByCognitoSubAsync(cognitoSub)
-            ?? throw new KeyNotFoundException("User not found.");
+        var user = await _repo.GetOrCreateByCognitoSubAsync(cognitoSub, email);
 
         if (request.FirstName != null) user.FirstName = request.FirstName;
         if (request.LastName != null) user.LastName = request.LastName;
@@ -51,10 +50,9 @@ public class UserService : IUserService
         return _mapper.Map<UserDto>(user);
     }
 
-    public async Task<UserDto> CompleteOnboardingAsync(string cognitoSub)
+    public async Task<UserDto> CompleteOnboardingAsync(string cognitoSub, string email)
     {
-        var user = await _repo.GetByCognitoSubAsync(cognitoSub)
-            ?? throw new KeyNotFoundException("User not found.");
+        var user = await _repo.GetOrCreateByCognitoSubAsync(cognitoSub, email);
 
         user.IsOnboarded = true;
         await _repo.UpdateAsync(user);

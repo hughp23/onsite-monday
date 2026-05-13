@@ -9,30 +9,28 @@
 
 Apple's App Store guidelines (guideline 4.8) require that any app offering third-party social login must also offer Sign in with Apple. To comply — and to improve sign-in conversion — we are adding Google OAuth as the first social login method. Firebase Auth handles the credential exchange; the token acquisition method varies by runtime environment.
 
-The project currently runs in Expo Go for development and will have a co-founder dev build in parallel. This dual-environment requirement drives the need for two token acquisition paths behind a single abstraction.
+The project currently runs in Expo Go for development and will have a co-founder dev build in parallel. Google OAuth is **not supported in Expo Go** — Google's web OAuth client rejects custom URI schemes, and the Expo auth proxy (`auth.expo.io`) was deprecated in SDK 50. Google sign-in is therefore only available in dev builds and production. Email/password auth remains the only sign-in method in Expo Go.
 
 ---
 
 ## Architecture
 
-All Google sign-in logic is behind a single `signInWithGoogle()` function in `lib/googleAuth.ts`. It detects the runtime environment and picks the correct token acquisition path. Both paths produce a Google ID token, which is exchanged for a Firebase credential via `GoogleAuthProvider.credential(idToken)` — identical from that point on.
+All Google sign-in logic is behind a single `signInWithGoogle()` function in `lib/googleAuth.ts`. In Expo Go the function throws immediately with a clear message; in dev builds and production it uses the native Google account picker sheet.
 
 ```
 signInWithGoogle()
     ├── Expo Go  (Constants.appOwnership === 'expo')
-    │     └── expo-auth-session + expo-web-browser
-    │           → browser redirect → Google ID token
+    │     └── throws Error('Google sign-in is not available in Expo Go')
+    │           (button hidden in UI — this is a safety net only)
     └── Dev build / production
           └── @react-native-google-signin/google-signin
                 → native Google account picker sheet → Google ID token
-
-    Both paths:
-        → GoogleAuthProvider.credential(idToken)
-        → Firebase signInWithCredential(auth, credential)
-        → firebaseUser populated (displayName, email, photoURL)
-        → AuthContext updates state
-        → AppContext checks isOnboarded
-        → Route: new user → sign-up (slide 1) | returning user → /(tabs)/jobs
+                → GoogleAuthProvider.credential(idToken)
+                → Firebase signInWithCredential(auth, credential)
+                → firebaseUser populated (displayName, email, photoURL)
+                → AuthContext updates state
+                → AppContext checks isOnboarded
+                → Route: new user → sign-up (slide 1) | returning user → /(tabs)/jobs
 ```
 
 ---
@@ -41,12 +39,12 @@ signInWithGoogle()
 
 | File | Change |
 |---|---|
-| `lib/googleAuth.ts` | **New.** Environment-aware `signInWithGoogle()` |
+| `lib/googleAuth.ts` | **New.** `signInWithGoogle()` — native path only; throws in Expo Go |
 | `context/AuthContext.tsx` | Add `signInWithGoogle` method + expose on context type |
-| `app/sign-in.tsx` | Add "Continue with Google" button + "or" divider |
-| `app/sign-up.tsx` | Add "Continue with Google" button on slide 0; on success skip to slide 1 with pre-filled name/email |
+| `app/sign-in.tsx` | Add "Continue with Google" button + "or" divider (hidden in Expo Go) |
+| `app/sign-up.tsx` | Add "Continue with Google" button on slide 0 (hidden in Expo Go); on success skip to slide 1 with pre-filled name/email |
 | `app.json` | Add `@react-native-google-signin/google-signin` plugin + `ios.googleServicesFile` |
-| `frontend/package.json` | Add `expo-auth-session`, `expo-web-browser`, `@react-native-google-signin/google-signin` |
+| `frontend/package.json` | Add `@react-native-google-signin/google-signin` |
 
 ---
 
@@ -54,62 +52,26 @@ signInWithGoogle()
 
 ```ts
 import Constants from 'expo-constants';
-import * as AuthSession from 'expo-auth-session';
-import * as WebBrowser from 'expo-web-browser';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import { GoogleAuthProvider, signInWithCredential } from 'firebase/auth';
 import { auth } from './firebase';
 
-WebBrowser.maybeCompleteAuthSession();
-
-const WEB_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID!;
-const IOS_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID!;
-
 GoogleSignin.configure({
-  webClientId: WEB_CLIENT_ID,
-  iosClientId: IOS_CLIENT_ID,
+  webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID!,
+  iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID!,
 });
 
 export async function signInWithGoogle() {
-  const isExpoGo = Constants.appOwnership === 'expo';
-
-  let idToken: string;
-
-  if (isExpoGo) {
-    // expo-auth-session path (browser redirect)
-    // useProxy was deprecated when Expo shut down auth.expo.io — use custom scheme instead
-    const redirectUri = AuthSession.makeRedirectUri({
-      scheme: 'onsite-monday',
-      path: 'oauth2redirect',
-    });
-    const discovery = await AuthSession.fetchDiscoveryAsync(
-      'https://accounts.google.com'
-    );
-    const request = new AuthSession.AuthRequest({
-      clientId: WEB_CLIENT_ID,
-      scopes: ['openid', 'profile', 'email'],
-      redirectUri,
-    });
-    const result = await request.promptAsync(discovery);
-    if (result.type !== 'success') throw new Error('cancelled');
-    const tokenResult = await AuthSession.exchangeCodeAsync(
-      {
-        clientId: WEB_CLIENT_ID,
-        code: result.params.code,
-        redirectUri,
-        extraParams: { code_verifier: request.codeVerifier! },
-      },
-      discovery
-    );
-    idToken = tokenResult.idToken!;
-  } else {
-    // Native Google Sign-In path (dev build / production)
-    await GoogleSignin.hasPlayServices();
-    const userInfo = await GoogleSignin.signIn();
-    idToken = userInfo.idToken!;
+  if (Constants.appOwnership === 'expo') {
+    // Google OAuth cannot run in Expo Go — Google rejects custom URI schemes
+    // and the Expo auth proxy was deprecated in SDK 50.
+    // The UI hides the button in Expo Go; this throw is a safety net.
+    throw new Error('Google sign-in is not available in Expo Go. Use the dev build.');
   }
 
-  const credential = GoogleAuthProvider.credential(idToken);
+  await GoogleSignin.hasPlayServices();
+  const userInfo = await GoogleSignin.signIn();
+  const credential = GoogleAuthProvider.credential(userInfo.idToken!);
   return signInWithCredential(auth, credential);
 }
 ```
@@ -149,6 +111,8 @@ Returning Google users (already onboarded) follow the same path as email users: 
 
 ## UI
 
+The "Continue with Google" button is **hidden when running in Expo Go** (`Constants.appOwnership === 'expo'`). It appears only in dev builds and production.
+
 Both sign-in and sign-up screens get the same button + divider pattern, on slide 0 only for sign-up:
 
 ```
@@ -171,8 +135,8 @@ Both sign-in and sign-up screens get the same button + divider pattern, on slide
 Before implementation, the following must be in place:
 
 ### Google Cloud Console
-1. Add **Web application** OAuth 2.0 client (if not already present) — this gives the Web Client ID used by both paths
-2. Add authorised redirect URI: `onsite-monday://oauth2redirect` (for expo-auth-session custom scheme path in Expo Go)
+1. Add **Web application** OAuth 2.0 client (if not already present) — this gives the Web Client ID passed to `GoogleSignin.configure`
+2. No redirect URI configuration needed — the native SDK handles the OAuth exchange internally via the Android/iOS clients
 3. The Android OAuth client already exists in `google-services.json`
 
 ### Firebase Console
@@ -204,9 +168,10 @@ The `iosUrlScheme` is the `REVERSED_CLIENT_ID` value from `GoogleService-Info.pl
 
 | Scenario | Expected |
 |---|---|
-| Expo Go: tap "Continue with Google", complete browser auth | Signs in, routes to onboarding slide 1 (new) or `/(tabs)/jobs` (returning) |
-| Expo Go: cancel browser auth | Alert: "Google sign-in was cancelled" |
+| Expo Go: sign-in screen | "Continue with Google" button not rendered |
+| Expo Go: sign-up screen (slide 0) | "Continue with Google" button not rendered |
 | Dev build: tap "Continue with Google", select account | Native sheet appears, signs in correctly |
+| Dev build: dismiss native sheet | Alert: "Google sign-in was cancelled" |
 | New Google user: complete onboarding | Profile created with pre-filled email/name; trade/skills/location still required |
 | Returning Google user on sign-in screen | Bypasses onboarding, lands on `/(tabs)/jobs` |
 | Network error during token exchange | Alert: "Google sign-in failed. Please try again." |

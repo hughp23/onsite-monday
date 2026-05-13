@@ -33,7 +33,8 @@ public class DevicesController : ControllerBase
     [HttpPost("token")]
     public async Task<IActionResult> RegisterToken([FromBody] RegisterTokenRequest request)
     {
-        var user = await _userRepo.GetOrCreateByCognitoSubAsync(CognitoSub, Email);
+        var user = await _userRepo.GetByCognitoSubAsync(CognitoSub);
+        if (user is null) return NoContent(); // user record not yet created — registration will succeed on next launch
 
         var existing = await _db.DeviceTokens
             .FirstOrDefaultAsync(d => d.UserId == user.Id && d.Token == request.Token);

@@ -24,7 +24,7 @@ import {
 const EASE = { duration: 380, easing: Easing.out(Easing.cubic) };
 
 export default function SignInScreen() {
-  const { signInWithEmail, signInWithGoogle } = useAuth();
+  const { signInWithEmail, signInWithGoogle, cognitoUser } = useAuth();
   const insets = useSafeAreaInsets();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -41,6 +41,11 @@ export default function SignInScreen() {
   const illusOpacity = useSharedValue(0);
   const formTransY  = useSharedValue(28);
   const formOpacity = useSharedValue(0);
+
+  // Redirect already-authenticated users and handle async Google OAuth callbacks
+  useEffect(() => {
+    if (cognitoUser) router.replace('/(tabs)/jobs');
+  }, [cognitoUser]);
 
   useEffect(() => {
     (async () => {
@@ -110,8 +115,10 @@ export default function SignInScreen() {
       await signInWithEmail(email.trim(), password);
       await offerBiometricIfAvailable(email.trim(), password);
       router.replace('/(tabs)/jobs');
-    } catch {
-      Alert.alert('Sign in failed', 'Invalid email or password.');
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error('[SignIn] signIn failed:', err);
+      Alert.alert('Sign in failed', msg);
     } finally {
       setIsSigningIn(false);
     }
