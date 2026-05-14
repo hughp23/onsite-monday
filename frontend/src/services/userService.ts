@@ -37,6 +37,7 @@ export interface ApiUser {
   gallery: string[];
   isOnboarded: boolean;
   subscription: string;
+  kycStatus?: string;
 }
 
 function toUser(u: ApiUser): User {
@@ -60,6 +61,7 @@ function toUser(u: ApiUser): User {
     gallery: u.gallery,
     subscription: (u.subscription as User['subscription']) ?? 'bronze',
     isOnboarded: u.isOnboarded,
+    kycStatus: (u.kycStatus as User['kycStatus']) ?? 'none',
   };
 }
 

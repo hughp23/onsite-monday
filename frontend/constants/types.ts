@@ -1,4 +1,13 @@
 export type SubscriptionTier = 'bronze' | 'silver' | 'gold';
+export type KycStatus = 'none' | 'pending' | 'verified' | 'failed';
+
+export interface WalletDto {
+  balance: number;
+  balancePence: number;
+  kycStatus: KycStatus;
+  hasBankAccount: boolean;
+  autoWithdraw: boolean;
+}
 export type JobStatus = 'open' | 'applied' | 'accepted' | 'in_progress' | 'completed' | 'cancelled';
 export type DayLetter = 'M' | 'T' | 'W' | 'Th' | 'F' | 'S' | 'Su';
 export type NotificationType = 'application' | 'accepted' | 'payment' | 'review' | 'profile_view';
@@ -23,6 +32,7 @@ export interface User {
   gallery: string[];
   subscription: SubscriptionTier;
   isOnboarded: boolean;
+  kycStatus: KycStatus;
 }
 
 export interface Review {
