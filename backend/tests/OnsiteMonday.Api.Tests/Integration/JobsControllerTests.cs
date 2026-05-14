@@ -19,14 +19,19 @@ public class JobsControllerTests : IClassFixture<TestWebApplicationFactory>, IAs
 
     public async Task InitializeAsync()
     {
-        // Seed the test user so GetOrCreateByFirebaseUidAsync resolves
+        // Seed the test user and ensure KYC is verified (reset between tests)
         await _factory.SeedAsync(async db =>
         {
-            if (!db.Users.Any(u => u.CognitoSub == FakeAuthHandler.TestFirebaseUid))
+            var existing = db.Users.FirstOrDefault(u => u.CognitoSub == FakeAuthHandler.TestFirebaseUid);
+            if (existing == null)
             {
                 db.Users.Add(TestBuilders.MakeUser());
-                await db.SaveChangesAsync();
             }
+            else
+            {
+                existing.MangopayKycStatus = "verified";
+            }
+            await db.SaveChangesAsync();
         });
     }
 
@@ -47,6 +52,61 @@ public class JobsControllerTests : IClassFixture<TestWebApplicationFactory>, IAs
         DayRate = 300,
         PaymentTerms = "30 days",
     };
+
+    [Fact]
+    public async Task CreateJob_WhenKycNotVerified_Returns403()
+    {
+        await _factory.SeedAsync(async db =>
+        {
+            var user = db.Users.First(u => u.CognitoSub == FakeAuthHandler.TestFirebaseUid);
+            user.MangopayKycStatus = "pending"; // submitted but not verified
+            await db.SaveChangesAsync();
+        });
+
+        var response = await _client.PostAsJsonAsync("/api/jobs", MakeValidJobRequest());
+
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+
+    [Fact]
+    public async Task CreateJob_WhenKycVerified_Returns201()
+    {
+        await _factory.SeedAsync(async db =>
+        {
+            var user = db.Users.First(u => u.CognitoSub == FakeAuthHandler.TestFirebaseUid);
+            user.MangopayKycStatus = "verified";
+            await db.SaveChangesAsync();
+        });
+
+        var response = await _client.PostAsJsonAsync("/api/jobs", MakeValidJobRequest());
+
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+    }
+
+    [Fact]
+    public async Task ToggleInterest_WhenKycNotVerified_Returns403()
+    {
+        Guid otherJobId = Guid.Empty;
+        await _factory.SeedAsync(async db =>
+        {
+            // Set calling user KYC to pending (not verified)
+            var caller = db.Users.First(u => u.CognitoSub == FakeAuthHandler.TestFirebaseUid);
+            caller.MangopayKycStatus = "pending";
+
+            var poster = TestBuilders.MakeUser("uid-poster-kyc-check", "poster-kyc-check@test.com");
+            db.Users.Add(poster);
+            await db.SaveChangesAsync();
+
+            var job = TestBuilders.MakeJob(poster.Id);
+            db.Jobs.Add(job);
+            await db.SaveChangesAsync();
+            otherJobId = job.Id;
+        });
+
+        var response = await _client.PostAsync($"/api/jobs/{otherJobId}/interest", null);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
 
     [Fact]
     public async Task GetJobs_Returns200WithJsonArray()

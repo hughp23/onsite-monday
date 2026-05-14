@@ -22,6 +22,7 @@ public static class TestBuilders
             FirstName = firstName,
             LastName = lastName,
             IsOnboarded = true,
+            MangopayKycStatus = "verified",
             CreatedAt = DateTimeOffset.UtcNow,
             UpdatedAt = DateTimeOffset.UtcNow,
         };
