@@ -77,6 +77,43 @@ public class UsersControllerTests : IClassFixture<TestWebApplicationFactory>, IA
     }
 
     [Fact]
+    public async Task Onboard_WhenKycNotSubmitted_Returns400()
+    {
+        await _factory.SeedAsync(async db =>
+        {
+            var user = db.Users.FirstOrDefault(u => u.CognitoSub == FakeAuthHandler.TestFirebaseUid);
+            if (user != null)
+            {
+                user.IsOnboarded = false;
+                user.MangopayKycStatus = "none";
+                user.MangopayBankAccountId = null;
+                await db.SaveChangesAsync();
+            }
+        });
+
+        var response = await _client.PostAsync("/api/users/me/onboard", null);
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task Onboard_WhenKycPendingAndBankSet_Returns200()
+    {
+        await _factory.SeedAsync(async db =>
+        {
+            var user = db.Users.First(u => u.CognitoSub == FakeAuthHandler.TestFirebaseUid);
+            user.IsOnboarded = false;
+            user.MangopayKycStatus = "pending";
+            user.MangopayBankAccountId = "stub_bank_001";
+            await db.SaveChangesAsync();
+        });
+
+        var response = await _client.PostAsync("/api/users/me/onboard", null);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Fact]
     public async Task GetTradespeople_Returns200WithList()
     {
         // Seed a tradesperson if not already present

@@ -43,6 +43,14 @@ public class UsersController : ControllerBase
     [HttpPost("me/onboard")]
     public async Task<ActionResult<UserDto>> CompleteOnboarding()
     {
+        var current = await _userService.GetOrCreateCurrentUserAsync(CognitoSub, Email);
+
+        if (current.KycStatus == "none")
+            return BadRequest(new { error = "Please complete identity verification before finishing setup." });
+
+        if (!current.HasBankAccount)
+            return BadRequest(new { error = "Please add your bank account details before finishing setup." });
+
         var user = await _userService.CompleteOnboardingAsync(CognitoSub, Email);
         return Ok(user);
     }
