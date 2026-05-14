@@ -138,13 +138,16 @@ public class MangopayService : IMangopayService
     }
 
     public async Task<string> CreateBankAccountAsync(
-        string mangopayUserId, string accountHolderName, string iban)
+        string mangopayUserId, string accountHolderName, string sortCode, string accountNumber)
     {
-        var bankAccount = new BankAccountIbanPostDTO(
+        var bankAccount = new BankAccountGbPostDTO(
             accountHolderName,
             new Address { Country = CountryIso.GB },
-            iban);
-        var result = await Task.Run(() => _api.Users.CreateBankAccountIban(mangopayUserId, bankAccount));
+            accountNumber)
+        {
+            SortCode = sortCode.Replace("-", ""),
+        };
+        var result = await Task.Run(() => _api.Users.CreateBankAccountGb(mangopayUserId, bankAccount));
         _logger.LogInformation("BankAccount {AccountId} registered for user {UserId}", result.Id, mangopayUserId);
         return result.Id;
     }

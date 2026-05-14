@@ -75,7 +75,8 @@ public class KycController : ControllerBase
         var bankAccountId = await _mangopay.CreateBankAccountAsync(
             user.MangopayUserId,
             request.HolderName,
-            request.Iban);
+            request.SortCode,
+            request.AccountNumber);
 
         user.MangopayBankAccountId = bankAccountId;
         await _db.SaveChangesAsync();
@@ -86,4 +87,4 @@ public class KycController : ControllerBase
     }
 }
 
-public record RegisterBankAccountRequest(string Iban, string HolderName);
+public record RegisterBankAccountRequest(string SortCode, string AccountNumber, string HolderName);

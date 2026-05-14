@@ -9,6 +9,6 @@ public interface IMangopayService
     Task<string> ReleaseFundsAsync(string mangopayUserId, string mangopayWalletId, string mangopayBankAccountId, decimal amount, string reference);
     Task<(long BalancePence, decimal Balance)> GetWalletBalanceAsync(string mangopayWalletId);
     Task<string> SubmitKycDocumentAsync(string mangopayUserId, byte[] fileBytes, string fileName);
-    Task<string> CreateBankAccountAsync(string mangopayUserId, string accountHolderName, string iban);
+    Task<string> CreateBankAccountAsync(string mangopayUserId, string accountHolderName, string sortCode, string accountNumber);
     bool ValidateWebhookSignature(string rawBody, string mangopayEventType);
 }

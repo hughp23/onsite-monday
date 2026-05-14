@@ -58,10 +58,10 @@ public class StubMangopayService : IMangopayService
         return Task.FromResult(id);
     }
 
-    public Task<string> CreateBankAccountAsync(string mangopayUserId, string accountHolderName, string iban)
+    public Task<string> CreateBankAccountAsync(string mangopayUserId, string accountHolderName, string sortCode, string accountNumber)
     {
         var id = "stub_bank_" + Guid.NewGuid().ToString("N")[..8];
-        _logger.LogInformation("[STUB] BankAccount registered for {UserId} → {AccountId}", mangopayUserId, id);
+        _logger.LogInformation("[STUB] BankAccount registered for {UserId} (sort code {SortCode}) → {AccountId}", mangopayUserId, sortCode, id);
         return Task.FromResult(id);
     }
 

@@ -75,7 +75,7 @@ public class TestWebApplicationFactory : WebApplicationFactory<Program>
                 .ReturnsAsync((25000L, 250.00m));
             mangopayMock.Setup(m => m.SubmitKycDocumentAsync(It.IsAny<string>(), It.IsAny<byte[]>(), It.IsAny<string>()))
                 .ReturnsAsync("stub_kyc_doc_test");
-            mangopayMock.Setup(m => m.CreateBankAccountAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()))
+            mangopayMock.Setup(m => m.CreateBankAccountAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()))
                 .ReturnsAsync("stub_bank_test");
             mangopayMock.Setup(m => m.ValidateWebhookSignature(It.IsAny<string>(), It.IsAny<string>()))
                 .Returns(true);

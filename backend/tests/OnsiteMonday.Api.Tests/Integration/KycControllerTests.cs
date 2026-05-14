@@ -72,7 +72,7 @@ public class KycControllerTests : IClassFixture<TestWebApplicationFactory>, IAsy
     public async Task RegisterBankAccount_WhenKycNotVerified_Returns400()
     {
         var response = await _client.PutAsJsonAsync("/api/users/me/bank-account",
-            new { iban = "GB29NWBK60161331926819", holderName = "James Hartley" });
+            new { sortCode = "20-00-00", accountNumber = "55779911", holderName = "James Hartley" });
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
@@ -88,7 +88,7 @@ public class KycControllerTests : IClassFixture<TestWebApplicationFactory>, IAsy
         });
 
         var response = await _client.PutAsJsonAsync("/api/users/me/bank-account",
-            new { iban = "GB29NWBK60161331926819", holderName = "James Hartley" });
+            new { sortCode = "20-00-00", accountNumber = "55779911", holderName = "James Hartley" });
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
 
