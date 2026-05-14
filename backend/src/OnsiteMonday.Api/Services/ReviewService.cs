@@ -1,5 +1,7 @@
+using Hangfire;
 using OnsiteMonday.Api.Domain;
 using OnsiteMonday.Api.DTOs.Reviews;
+using OnsiteMonday.Api.Jobs;
 using OnsiteMonday.Api.Repositories;
 
 namespace OnsiteMonday.Api.Services;
@@ -9,15 +11,21 @@ public class ReviewService : IReviewService
     private readonly IReviewRepository _reviewRepo;
     private readonly IUserRepository _userRepo;
     private readonly INotificationRepository _notificationRepo;
+    private readonly IJobRepository _jobRepo;
+    private readonly IBackgroundJobClient _backgroundJobs;
 
     public ReviewService(
         IReviewRepository reviewRepo,
         IUserRepository userRepo,
-        INotificationRepository notificationRepo)
+        INotificationRepository notificationRepo,
+        IJobRepository jobRepo,
+        IBackgroundJobClient backgroundJobs)
     {
         _reviewRepo = reviewRepo;
         _userRepo = userRepo;
         _notificationRepo = notificationRepo;
+        _jobRepo = jobRepo;
+        _backgroundJobs = backgroundJobs;
     }
 
     public async Task<ReviewDto> SubmitReviewAsync(Guid reviewerId, Guid revieweeId, SubmitReviewRequest request)
@@ -61,7 +69,31 @@ public class ReviewService : IReviewService
             CreatedAt = DateTimeOffset.UtcNow,
         });
 
+        // Gate payout on review: schedule Hangfire job if job is completed+escrowed
+        await MaybeSchedulePayoutAsync(reviewee, request.JobId);
+
         return ToDto(review, reviewer);
+    }
+
+    private async Task MaybeSchedulePayoutAsync(User tradesperson, Guid jobId)
+    {
+        var job = await _jobRepo.GetByIdRawAsync(jobId);
+        if (job is null) return;
+        if (job.Status != "completed") return;
+        if (job.PaymentStatus != "escrowed") return;
+
+        var payoutDays = tradesperson.ActiveSubscription?.PayoutDays ?? 30;
+        var scheduleAt = DateTimeOffset.UtcNow.AddDays(payoutDays);
+
+        var hangfireJobId = _backgroundJobs.Schedule<IPayoutReleaseJob>(
+            j => j.ExecuteAsync(jobId),
+            scheduleAt);
+
+        job.PaymentStatus = "payout_pending";
+        job.PayoutScheduledAt = scheduleAt;
+        job.HangfireJobId = hangfireJobId;
+
+        await _jobRepo.UpdateAsync(job);
     }
 
     public async Task<List<ReviewDto>> GetReviewsAsync(Guid revieweeId)

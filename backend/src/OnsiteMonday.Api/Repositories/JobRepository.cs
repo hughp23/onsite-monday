@@ -101,6 +101,9 @@ public class JobRepository : IJobRepository
         await _db.SaveChangesAsync();
     }
 
+    public async Task<Job?> GetByIdRawAsync(Guid jobId) =>
+        await _db.Jobs.FirstOrDefaultAsync(j => j.Id == jobId);
+
     public Task<JobApplication?> GetApplicationAsync(Guid jobId, Guid applicantId) =>
         _db.JobApplications.FirstOrDefaultAsync(a => a.JobId == jobId && a.ApplicantId == applicantId);
 

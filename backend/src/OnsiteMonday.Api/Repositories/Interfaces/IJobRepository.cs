@@ -17,6 +17,8 @@ public interface IJobRepository
     Task UpdateAsync(Job job);
     Task DeleteAsync(Job job);
 
+    Task<Job?> GetByIdRawAsync(Guid jobId);
+
     Task<JobApplication?> GetApplicationAsync(Guid jobId, Guid applicantId);
     Task AddApplicationAsync(JobApplication application);
     Task RemoveApplicationAsync(JobApplication application);
