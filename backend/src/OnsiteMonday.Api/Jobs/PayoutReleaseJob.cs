@@ -61,12 +61,30 @@ public class PayoutReleaseJob : IPayoutReleaseJob
             await _db.SaveChangesAsync();
         }
 
-        // Bank PayOut is deferred until KYC/bank-account registration is implemented.
-        // Funds are now in the tradesperson's Mangopay wallet and accessible.
-        _logger.LogInformation(
-            "PayoutReleaseJob: Transfer complete for job {JobId}. Bank payout deferred (KYC Phase 2). " +
-            "Funds in wallet {WalletId}.",
-            jobId, tradesperson.MangopayWalletId);
+        // Bank PayOut: auto-wire if the tradesperson has opted in, is KYC-verified, and has a bank account.
+        if (tradesperson.AutoWithdraw
+            && tradesperson.MangopayKycStatus == "verified"
+            && !string.IsNullOrEmpty(tradesperson.MangopayBankAccountId))
+        {
+            var reference = $"OM-AUTO-{jobId:N}"[..20];
+            var payoutId = await _mangopay.ReleaseFundsAsync(
+                tradesperson.MangopayUserId!,
+                tradesperson.MangopayWalletId!,
+                tradesperson.MangopayBankAccountId,
+                amount,
+                reference);
+            _logger.LogInformation(
+                "Auto-withdraw {PayoutId} for job {JobId}, user {UserId}, £{Amount}",
+                payoutId, jobId, tradesperson.Id, amount);
+        }
+        else
+        {
+            // Funds are in the tradesperson's Mangopay wallet; bank payout requires manual request or KYC/bank setup.
+            _logger.LogInformation(
+                "PayoutReleaseJob: Transfer complete for job {JobId}. Bank payout deferred (KYC Phase 2). " +
+                "Funds in wallet {WalletId}.",
+                jobId, tradesperson.MangopayWalletId);
+        }
 
         job.PaymentStatus = "paid";
         await _db.SaveChangesAsync();

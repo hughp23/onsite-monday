@@ -53,6 +53,12 @@ public class MangopayWebhookController : ControllerBase
             case "PAYIN_NORMAL_FAILED":
                 await HandlePayInFailedAsync(RessourceId);
                 break;
+            case "KYC_SUCCEEDED":
+                await HandleKycSucceededAsync(RessourceId);
+                break;
+            case "KYC_FAILED":
+                await HandleKycFailedAsync(RessourceId);
+                break;
             case "TRANSFER_NORMAL_SUCCEEDED":
                 _logger.LogInformation("Mangopay Transfer {ResourceId} succeeded", RessourceId);
                 break;
@@ -91,5 +97,27 @@ public class MangopayWebhookController : ControllerBase
         job.EscrowPayInId = null;
         await _db.SaveChangesAsync();
         _logger.LogWarning("PayIn failed for job {JobId}, reset to accepted", job.Id);
+    }
+
+    private async Task HandleKycSucceededAsync(string kycDocumentId)
+    {
+        var user = await _db.Users.FirstOrDefaultAsync(u => u.MangopayKycDocumentId == kycDocumentId);
+        if (user == null)
+        {
+            _logger.LogWarning("KYC_SUCCEEDED: no user found for doc {DocId}", kycDocumentId);
+            return;
+        }
+        user.MangopayKycStatus = "verified";
+        await _db.SaveChangesAsync();
+        _logger.LogInformation("KYC verified for user {UserId}", user.Id);
+    }
+
+    private async Task HandleKycFailedAsync(string kycDocumentId)
+    {
+        var user = await _db.Users.FirstOrDefaultAsync(u => u.MangopayKycDocumentId == kycDocumentId);
+        if (user == null) return;
+        user.MangopayKycStatus = "failed";
+        await _db.SaveChangesAsync();
+        _logger.LogWarning("KYC failed for user {UserId} — doc {DocId}", user.Id, kycDocumentId);
     }
 }

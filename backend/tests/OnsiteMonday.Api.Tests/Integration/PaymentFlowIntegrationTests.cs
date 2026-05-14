@@ -366,4 +366,110 @@ public class PaymentFlowIntegrationTests : IClassFixture<TestWebApplicationFacto
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
     }
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // Test 9: Webhook KYC_SUCCEEDED sets MangopayKycStatus to "verified"
+    // ──────────────────────────────────────────────────────────────────────────
+    [Fact]
+    public async Task Webhook_KycSucceeded_Sets_KycVerified()
+    {
+        string kycDocId = $"stub_kyc_doc_001_{_uniqueSuffix}";
+        await _factory.SeedAsync(async db =>
+        {
+            var user = db.Users.Find(_posterId);
+            user!.MangopayKycStatus = "pending";
+            user.MangopayKycDocumentId = kycDocId;
+            await db.SaveChangesAsync();
+        });
+
+        var response = await _webhookClient.PostAsync(
+            $"/api/webhooks/mangopay?EventType=KYC_SUCCEEDED&RessourceId={kycDocId}", null);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        await _factory.SeedAsync(async db =>
+        {
+            var user = db.Users.Find(_posterId);
+            user!.MangopayKycStatus.Should().Be("verified");
+        });
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // Test 10: Webhook KYC_FAILED sets MangopayKycStatus to "failed"
+    // ──────────────────────────────────────────────────────────────────────────
+    [Fact]
+    public async Task Webhook_KycFailed_Sets_KycFailed()
+    {
+        string kycDocId = $"stub_kyc_doc_002_{_uniqueSuffix}";
+        await _factory.SeedAsync(async db =>
+        {
+            var user = db.Users.Find(_posterId);
+            user!.MangopayKycStatus = "pending";
+            user.MangopayKycDocumentId = kycDocId;
+            await db.SaveChangesAsync();
+        });
+
+        var response = await _webhookClient.PostAsync(
+            $"/api/webhooks/mangopay?EventType=KYC_FAILED&RessourceId={kycDocId}", null);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        await _factory.SeedAsync(async db =>
+        {
+            var user = db.Users.Find(_posterId);
+            user!.MangopayKycStatus.Should().Be("failed");
+        });
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // Test 11: PayoutReleaseJob with AutoWithdraw=true completes and sets paid
+    // ──────────────────────────────────────────────────────────────────────────
+    [Fact]
+    public async Task PayoutReleaseJob_WithAutoWithdrawEnabled_CompletesSuccessfully()
+    {
+        var jobId = Guid.NewGuid();
+        var tradespersonId = _tradespersonId;
+        await _factory.SeedAsync(async db =>
+        {
+            var tp = db.Users.Find(tradespersonId);
+            tp!.MangopayKycStatus = "verified";
+            tp.MangopayBankAccountId = "stub_bank_001";
+            tp.AutoWithdraw = true;
+            await db.SaveChangesAsync();
+
+            var poster = db.Users.First(u => u.CognitoSub == FakeAuthHandler.TestFirebaseUid);
+            var job = TestBuilders.MakeJob(
+                poster.Id,
+                status: "completed",
+                id: jobId,
+                paymentStatus: "payout_pending",
+                escrowPayInId: "stub_payin_autowithdraw_001");
+            job.HangfireJobId = "fake-hangfire-job-id";
+            db.Jobs.Add(job);
+            await db.SaveChangesAsync();
+
+            db.JobApplications.Add(new JobApplication
+            {
+                Id = Guid.NewGuid(),
+                JobId = jobId,
+                ApplicantId = tradespersonId,
+                Status = "accepted",
+                AppliedAt = DateTimeOffset.UtcNow,
+                AcceptedAt = DateTimeOffset.UtcNow,
+            });
+            await db.SaveChangesAsync();
+        });
+
+        using var scope = _factory.Services.CreateScope();
+        var payoutJob = scope.ServiceProvider.GetRequiredService<IPayoutReleaseJob>();
+
+        // Should complete without exception
+        await payoutJob.ExecuteAsync(jobId);
+
+        await _factory.SeedAsync(async db =>
+        {
+            var job = await db.Jobs.FindAsync(jobId);
+            job!.PaymentStatus.Should().Be("paid");
+        });
+    }
 }
