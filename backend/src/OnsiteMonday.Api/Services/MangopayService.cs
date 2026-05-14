@@ -2,6 +2,7 @@ using MangoPay.SDK;
 using MangoPay.SDK.Core.Enumerations;
 using MangoPay.SDK.Entities;
 using MangoPay.SDK.Entities.POST;
+using MangoPay.SDK.Entities.PUT;
 using Microsoft.Extensions.Options;
 using OnsiteMonday.Api.Stubs;
 
@@ -112,6 +113,39 @@ public class MangopayService : IMangopayService
             reference);
         var result = await Task.Run(() => _api.PayOuts.CreateBankWire(payout));
         _logger.LogInformation("Mangopay: PayOut {PayoutId} from wallet {WalletId}", result.Id, mangopayWalletId);
+        return result.Id;
+    }
+
+    public async Task<(long BalancePence, decimal Balance)> GetWalletBalanceAsync(string mangopayWalletId)
+    {
+        var wallet = await Task.Run(() => _api.Wallets.Get(mangopayWalletId));
+        var pence = wallet.Balance.Amount;
+        return (pence, pence / 100m);
+    }
+
+    public async Task<string> SubmitKycDocumentAsync(string mangopayUserId, byte[] fileBytes, string fileName)
+    {
+        var doc = await Task.Run(() => _api.Users.CreateKycDocument(
+            mangopayUserId, KycDocumentType.IDENTITY_PROOF, fileName));
+
+        await Task.Run(() => _api.Users.CreateKycPage(mangopayUserId, doc.Id, fileBytes));
+
+        var putDto = new KycDocumentPutDTO { Status = KycStatus.VALIDATION_ASKED };
+        await Task.Run(() => _api.Users.UpdateKycDocument(mangopayUserId, putDto, doc.Id));
+
+        _logger.LogInformation("KYC document {DocId} submitted for user {UserId}", doc.Id, mangopayUserId);
+        return doc.Id;
+    }
+
+    public async Task<string> CreateBankAccountAsync(
+        string mangopayUserId, string accountHolderName, string iban)
+    {
+        var bankAccount = new BankAccountIbanPostDTO(
+            accountHolderName,
+            new Address { Country = CountryIso.GB },
+            iban);
+        var result = await Task.Run(() => _api.Users.CreateBankAccountIban(mangopayUserId, bankAccount));
+        _logger.LogInformation("BankAccount {AccountId} registered for user {UserId}", result.Id, mangopayUserId);
         return result.Id;
     }
 

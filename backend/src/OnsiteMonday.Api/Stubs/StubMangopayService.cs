@@ -45,5 +45,25 @@ public class StubMangopayService : IMangopayService
         return Task.FromResult(id);
     }
 
+    public Task<(long BalancePence, decimal Balance)> GetWalletBalanceAsync(string mangopayWalletId)
+    {
+        _logger.LogInformation("[STUB] GetWalletBalance for {WalletId} → £250.00", mangopayWalletId);
+        return Task.FromResult((25000L, 250.00m));
+    }
+
+    public Task<string> SubmitKycDocumentAsync(string mangopayUserId, byte[] fileBytes, string fileName)
+    {
+        var id = "stub_kyc_doc_" + Guid.NewGuid().ToString("N")[..8];
+        _logger.LogInformation("[STUB] KYC document submitted for {UserId} → {DocId}", mangopayUserId, id);
+        return Task.FromResult(id);
+    }
+
+    public Task<string> CreateBankAccountAsync(string mangopayUserId, string accountHolderName, string iban)
+    {
+        var id = "stub_bank_" + Guid.NewGuid().ToString("N")[..8];
+        _logger.LogInformation("[STUB] BankAccount registered for {UserId} → {AccountId}", mangopayUserId, id);
+        return Task.FromResult(id);
+    }
+
     public bool ValidateWebhookSignature(string rawBody, string mangopayEventType) => true;
 }
