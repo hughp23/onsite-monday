@@ -57,6 +57,21 @@
       "value": "",
       "type": "string",
       "description": "A notification ID (GUID). Set after listing notifications."
+    },
+    {
+      "key": "payInId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "transferId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "payoutId",
+      "value": "",
+      "type": "string"
     }
   ],
   "item": [
@@ -586,8 +601,37 @@
               "host": ["{{baseUrl}}"],
               "path": ["jobs", "{{jobId}}", "accept"]
             },
-            "description": "Job poster accepts a tradesperson for the job. Transitions job status from open → accepted. Triggers fund-hold via Stripe stub."
+            "description": "Job poster accepts a tradesperson for the job. Transitions job status from open → accepted. After accepting, call Start Job to initiate the Mangopay PayIn (escrow)."
           }
+        },
+        {
+          "name": "Start Job (Initiate Payment)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json && json.payInRedirectUrl) {",
+                  "    pm.collectionVariables.set('payInId', json.job?.escrowPayInId || '');",
+                  "    console.log('Mangopay PayIn redirect URL:', json.payInRedirectUrl);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/jobs/{{jobId}}/start",
+              "host": ["{{baseUrl}}"],
+              "path": ["jobs", "{{jobId}}", "start"]
+            },
+            "description": "Job poster initiates payment via Mangopay. Transitions job status to 'in_progress' and paymentStatus to 'payin_pending'. Returns the job plus a 'payInRedirectUrl' — open this URL in a browser to complete payment on the Mangopay-hosted card form.\n\nIn sandbox, use Mangopay test card: 4970105191923460 (VISA, CVV 123, any future expiry).\n\nAfter payment, Mangopay fires PAYIN_NORMAL_SUCCEEDED to your webhook endpoint — use the 'Simulate Webhook' requests below to replicate this locally."
+          },
+          "response": []
         },
         {
           "name": "Complete Job",
@@ -831,6 +875,87 @@
             },
             "description": "Changes the authenticated user's subscription tier. Deactivates the existing subscription and creates a new active one. Valid tiers: bronze (£29/mo, 30-day payout), silver (£59/mo, 14-day), gold (£129/mo, 7-day)."
           }
+        }
+      ]
+    },
+    {
+      "name": "Webhooks (Mangopay Simulation)",
+      "item": [
+        {
+          "name": "PayIn Succeeded (Escrow Funds)",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/../webhooks/mangopay?EventType=PAYIN_NORMAL_SUCCEEDED&RessourceId={{payInId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["..", "webhooks", "mangopay"],
+              "query": [
+                { "key": "EventType", "value": "PAYIN_NORMAL_SUCCEEDED" },
+                { "key": "RessourceId", "value": "{{payInId}}" }
+              ]
+            },
+            "description": "Simulates PAYIN_NORMAL_SUCCEEDED webhook. Sets job paymentStatus to 'escrowed'. Pre-condition: {{payInId}} must match a job's EscrowPayInId."
+          },
+          "response": []
+        },
+        {
+          "name": "PayIn Failed (Reset to Accepted)",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/../webhooks/mangopay?EventType=PAYIN_NORMAL_FAILED&RessourceId={{payInId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["..", "webhooks", "mangopay"],
+              "query": [
+                { "key": "EventType", "value": "PAYIN_NORMAL_FAILED" },
+                { "key": "RessourceId", "value": "{{payInId}}" }
+              ]
+            },
+            "description": "Simulates a failed card payment. Resets job to 'accepted' and paymentStatus to 'none'."
+          },
+          "response": []
+        },
+        {
+          "name": "Transfer Succeeded",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/../webhooks/mangopay?EventType=TRANSFER_NORMAL_SUCCEEDED&RessourceId={{transferId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["..", "webhooks", "mangopay"],
+              "query": [
+                { "key": "EventType", "value": "TRANSFER_NORMAL_SUCCEEDED" },
+                { "key": "RessourceId", "value": "{{transferId}}" }
+              ]
+            },
+            "description": "Fired when platform wallet → tradesperson wallet transfer completes. Currently logged only — PayoutReleaseJob already sets 'paid' synchronously."
+          },
+          "response": []
+        },
+        {
+          "name": "PayOut Succeeded (Bank Wire)",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/../webhooks/mangopay?EventType=PAYOUT_NORMAL_SUCCEEDED&RessourceId={{payoutId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["..", "webhooks", "mangopay"],
+              "query": [
+                { "key": "EventType", "value": "PAYOUT_NORMAL_SUCCEEDED" },
+                { "key": "RessourceId", "value": "{{payoutId}}" }
+              ]
+            },
+            "description": "Fired when bank wire PayOut succeeds. Currently logged only."
+          },
+          "response": []
         }
       ]
     }
