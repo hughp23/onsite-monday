@@ -143,7 +143,7 @@ public class MangopayService : IMangopayService
         var bankAccount = new BankAccountGbPostDTO(
             accountHolderName,
             new Address { Country = CountryIso.GB },
-            accountNumber)
+            accountNumber.PadLeft(8, '0'))
         {
             SortCode = sortCode.Replace("-", ""),
         };

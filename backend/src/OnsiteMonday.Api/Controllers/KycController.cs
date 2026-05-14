@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using OnsiteMonday.Api.Data;
+using OnsiteMonday.Api.DTOs.Users;
 using OnsiteMonday.Api.Stubs;
 using System.Security.Claims;
 
@@ -86,5 +87,3 @@ public class KycController : ControllerBase
         return Ok(new { bankAccountId });
     }
 }
-
-public record RegisterBankAccountRequest(string SortCode, string AccountNumber, string HolderName);

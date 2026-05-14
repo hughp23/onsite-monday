@@ -98,4 +98,31 @@ public class KycControllerTests : IClassFixture<TestWebApplicationFactory>, IAsy
             user.MangopayBankAccountId.Should().NotBeNullOrEmpty();
         });
     }
+
+    [Fact]
+    public async Task RegisterBankAccount_EmptySortCode_Returns400()
+    {
+        var response = await _client.PutAsJsonAsync("/api/users/me/bank-account",
+            new { sortCode = "", accountNumber = "55779911", holderName = "James Hartley" });
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task RegisterBankAccount_InvalidSortCodeFormat_Returns400()
+    {
+        var response = await _client.PutAsJsonAsync("/api/users/me/bank-account",
+            new { sortCode = "ABC", accountNumber = "55779911", holderName = "James Hartley" });
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task RegisterBankAccount_AccountNumberWrongLength_Returns400()
+    {
+        var response = await _client.PutAsJsonAsync("/api/users/me/bank-account",
+            new { sortCode = "20-00-00", accountNumber = "123", holderName = "James Hartley" });
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
 }
