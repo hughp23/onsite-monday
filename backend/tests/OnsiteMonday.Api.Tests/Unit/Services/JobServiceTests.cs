@@ -281,13 +281,51 @@ public class JobServiceTests
     }
 
     [Fact]
-    public async Task CompleteJob_UsesTradespersonSubscriptionTier_NotHardcoded30Days()
+    public async Task CompleteJob_DoesNotScheduleHangfire_PaymentStatusRemainsEscrowed()
     {
+        var poster = TestBuilders.MakeUser();
+        var tradesperson = TestBuilders.MakeUser("uid-tp", "tp@test.com");
+        var job = TestBuilders.MakeJob(poster.Id, "in_progress");
+        job.PaymentStatus = "escrowed";
+
+        var application = new JobApplication
+        {
+            Id = Guid.NewGuid(),
+            JobId = job.Id,
+            ApplicantId = tradesperson.Id,
+            Status = "accepted",
+            AppliedAt = DateTimeOffset.UtcNow,
+        };
+
+        _jobRepoMock.Setup(r => r.GetByIdAsync(job.Id, poster.Id))
+            .ReturnsAsync((job, false, 1));
+        _jobRepoMock.Setup(r => r.GetApplicantsAsync(job.Id))
+            .ReturnsAsync(new List<(User Applicant, JobApplication Application)>
+                { (tradesperson, application) });
+        _jobRepoMock.Setup(r => r.UpdateAsync(It.IsAny<Job>())).Returns(Task.CompletedTask);
+        _jobRepoMock.Setup(r => r.GetApplicationCountAsync(job.Id)).ReturnsAsync(1);
+        _userRepoMock.Setup(r => r.GetByIdAsync(tradesperson.Id)).ReturnsAsync(tradesperson);
+
+        var result = await _sut.CompleteJobAsync(job.Id, poster.Id);
+
+        result.Status.Should().Be("completed");
+        job.PaymentStatus.Should().Be("escrowed");
+        _backgroundJobsMock.Verify(
+            b => b.Create(It.IsAny<HangfireJob>(), It.IsAny<Hangfire.States.IState>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task CompleteJob_WithGoldTierTradesperson_DoesNotScheduleHangfire_PaymentStatusRemainsEscrowed()
+    {
+        // Payout scheduling was removed from CompleteJobAsync — it is now gated on review submission.
+        // This test ensures the subscription tier has no effect on payout scheduling at completion time.
         var posterId = Guid.NewGuid();
         var tradesperson = TestBuilders.MakeUser();
         tradesperson.Subscriptions.Add(new Subscription { Tier = "gold", PayoutDays = 7, IsActive = true });
         var application = new JobApplication { Id = Guid.NewGuid(), ApplicantId = tradesperson.Id, Status = "accepted" };
         var job = TestBuilders.MakeJob(posterId, "accepted");
+        job.PaymentStatus = "escrowed";
 
         _jobRepoMock.Setup(r => r.GetByIdAsync(job.Id, posterId)).ReturnsAsync((job, false, 1));
         _jobRepoMock.Setup(r => r.UpdateAsync(It.IsAny<Job>())).Returns(Task.CompletedTask);
@@ -296,22 +334,15 @@ public class JobServiceTests
             .ReturnsAsync(new List<(Domain.User, JobApplication)> { (tradesperson, application) });
         _userRepoMock.Setup(r => r.UpdateAsync(It.IsAny<User>())).Returns(Task.CompletedTask);
 
-        var before = DateTimeOffset.UtcNow;
         await _sut.CompleteJobAsync(job.Id, posterId);
-        var after = DateTimeOffset.UtcNow;
 
-        // Verify Hangfire scheduled with approximately 7-day delay (gold tier)
-        _backgroundJobsMock.Verify(b => b.Create(
-            It.IsAny<HangfireJob>(),
-            It.Is<Hangfire.States.IState>(s =>
-                s is Hangfire.States.ScheduledState &&
-                ((Hangfire.States.ScheduledState)s).EnqueueAt >= before.AddDays(7).DateTime &&
-                ((Hangfire.States.ScheduledState)s).EnqueueAt <= after.AddDays(7).DateTime)),
-            Times.Once);
+        // Hangfire must NOT be scheduled at completion — review submission gates the payout
+        _backgroundJobsMock.Verify(
+            b => b.Create(It.IsAny<HangfireJob>(), It.IsAny<Hangfire.States.IState>()),
+            Times.Never);
 
-        // Confirm job PaymentStatus
-        job.PaymentStatus.Should().Be("payout_pending");
-        job.PayoutScheduledAt.Should().NotBeNull();
-        job.PayoutScheduledAt!.Value.Should().BeCloseTo(DateTimeOffset.UtcNow.AddDays(7), TimeSpan.FromSeconds(5));
+        job.PaymentStatus.Should().Be("escrowed");
+        job.PayoutScheduledAt.Should().BeNull();
+        job.HangfireJobId.Should().BeNull();
     }
 }

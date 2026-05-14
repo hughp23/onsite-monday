@@ -282,21 +282,12 @@ public class JobService : IJobService
             }
         }
 
-        // Look up payout delay from the tradesperson's active subscription (fixes hardcoded 30-day bug)
-        var tradespersonUser = acceptedEntry.Applicant; // null if no accepted applicant found
-        var payoutDays = tradespersonUser?.ActiveSubscription?.PayoutDays ?? 30;
-
         var amount = job.DayRate * job.Duration;
-        var scheduleAt = DateTimeOffset.UtcNow.AddDays(payoutDays);
 
-        var hangfireJobId = _backgroundJobs.Schedule<IPayoutReleaseJob>(
-            j => j.ExecuteAsync(jobId),
-            scheduleAt);
-
+        // Payout is NOT scheduled here — it is gated on the tradesperson submitting a review.
+        // SubmitReviewAsync will schedule the Hangfire PayoutReleaseJob once the review is received.
         job.Status = "completed";
-        job.PaymentStatus = "payout_pending";
-        job.PayoutScheduledAt = scheduleAt;
-        job.HangfireJobId = hangfireJobId;
+        // PaymentStatus intentionally left as "escrowed" — funds remain held until review gates release.
         job.UpdatedAt = DateTimeOffset.UtcNow;
         await _jobRepo.UpdateAsync(job);
 
@@ -307,8 +298,8 @@ public class JobService : IJobService
                 Id = Guid.NewGuid(),
                 UserId = acceptedEntry.Applicant.Id,
                 Type = "payment",
-                Title = "Payment scheduled",
-                Description = $"The job \"{job.Title}\" is complete. Your payment of £{amount:0.00} will be released in {payoutDays} days.",
+                Title = "Submit your review to release payment",
+                Description = $"The job \"{job.Title}\" is complete. Submit your review to release payment of £{amount:0.00}.",
                 LinkedId = jobId,
                 CreatedAt = DateTimeOffset.UtcNow,
             });
