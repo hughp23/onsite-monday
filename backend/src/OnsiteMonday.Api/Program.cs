@@ -20,6 +20,9 @@ using System.Threading.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
 
+var useLivePayments = builder.Environment.IsProduction() ||
+                      builder.Environment.IsEnvironment("Sandbox");
+
 // Serilog
 builder.Host.UseSerilog((ctx, lc) => lc
     .ReadFrom.Configuration(ctx.Configuration)
@@ -89,16 +92,16 @@ builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<IConversationService, ConversationService>();
 builder.Services.AddScoped<ISubscriptionService, SubscriptionService>();
 
-// Mangopay — use stub in Development/Testing, real service in Production
+// Mangopay — use stub in Development/Testing, real service in Production or Sandbox
 builder.Services.Configure<MangopayOptions>(builder.Configuration.GetSection("Mangopay"));
-if (builder.Environment.IsProduction())
+if (useLivePayments)
     builder.Services.AddScoped<IMangopayService, MangopayService>();
 else
     builder.Services.AddScoped<IMangopayService, StubMangopayService>();
 
-// Stripe Billing — use stub in Development/Testing, real service in Production
+// Stripe Billing — use stub in Development/Testing, real service in Production or Sandbox
 builder.Services.Configure<StripeOptions>(builder.Configuration.GetSection("Stripe"));
-if (builder.Environment.IsProduction())
+if (useLivePayments)
 {
     Stripe.StripeConfiguration.ApiKey = builder.Configuration["Stripe:SecretKey"];
     builder.Services.AddScoped<IStripeBillingService, StripeBillingService>();
@@ -109,7 +112,7 @@ else
 }
 
 // Hangfire background jobs (scheduled payout release)
-if (builder.Environment.IsProduction())
+if (useLivePayments)
 {
     var connString = builder.Configuration.GetConnectionString("DefaultConnection")!;
     builder.Services.AddHangfire(config => config
@@ -126,8 +129,8 @@ else
 }
 builder.Services.AddScoped<IPayoutReleaseJob, PayoutReleaseJob>();
 
-// Push notifications — stub in Dev, real FCM in Production
-if (builder.Environment.IsProduction())
+// Push notifications — stub in Dev, real FCM in Production or Sandbox
+if (useLivePayments)
     builder.Services.AddScoped<INotificationPushService, FcmNotificationPushService>();
 else
     builder.Services.AddScoped<INotificationPushService, StubNotificationPushService>();
@@ -217,7 +220,7 @@ app.UseRateLimiter();
 app.UseMiddleware<ErrorHandlingMiddleware>();
 app.UseAuthentication();
 app.UseAuthorization();
-if (app.Environment.IsProduction())
+if (useLivePayments)
 {
     app.UseHangfireDashboard("/hangfire", new DashboardOptions
     {
