@@ -50,8 +50,13 @@ public class TestWebApplicationFactory : WebApplicationFactory<Program>
                 .AddScheme<AuthenticationSchemeOptions, FakeAuthHandler>(
                     FakeAuthHandler.SchemeName, _ => { });
 
-            // Prevent Hangfire from trying to connect to PostgreSQL in tests
-            services.AddSingleton<IBackgroundJobClient>(new Mock<IBackgroundJobClient>().Object);
+            // Prevent Hangfire from trying to connect to PostgreSQL in tests.
+            // Return a deterministic job ID so tests can assert HangfireJobId is set.
+            var bgJobMock = new Mock<IBackgroundJobClient>();
+            bgJobMock
+                .Setup(m => m.Create(It.IsAny<Hangfire.Common.Job>(), It.IsAny<Hangfire.States.IState>()))
+                .Returns("fake-hangfire-job-id");
+            services.AddSingleton<IBackgroundJobClient>(bgJobMock.Object);
         });
     }
 

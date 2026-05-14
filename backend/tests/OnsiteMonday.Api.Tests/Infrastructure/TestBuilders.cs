@@ -27,11 +27,25 @@ public static class TestBuilders
         };
     }
 
+    public static User MakeUserWithMangopay(
+        string cognitoSub,
+        string email,
+        string mangopayUserId,
+        string mangopayWalletId)
+    {
+        var user = MakeUser(cognitoSub, email);
+        user.MangopayUserId = mangopayUserId;
+        user.MangopayWalletId = mangopayWalletId;
+        return user;
+    }
+
     public static Job MakeJob(
         Guid postedById,
         string status = "open",
         string trade = "Builder",
-        Guid? id = null)
+        Guid? id = null,
+        string paymentStatus = "none",
+        string? escrowPayInId = null)
     {
         var today = DateOnly.FromDateTime(DateTime.UtcNow);
         return new Job
@@ -53,6 +67,8 @@ public static class TestBuilders
             PaymentTerms = "30 days",
             Photos = new List<string>(),
             Status = status,
+            PaymentStatus = paymentStatus,
+            EscrowPayInId = escrowPayInId,
             CreatedAt = DateTimeOffset.UtcNow,
             UpdatedAt = DateTimeOffset.UtcNow,
         };
