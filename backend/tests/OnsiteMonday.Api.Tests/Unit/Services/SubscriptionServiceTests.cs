@@ -141,7 +141,7 @@ public class SubscriptionServiceTests
         var user = new User
         {
             Id = userId,
-            FirebaseUid = "uid-test",
+            CognitoSub = "uid-test",
             FirstName = "Bob",
             LastName = "Smith",
             Email = "bob@test.com",
@@ -170,7 +170,7 @@ public class SubscriptionServiceTests
         var user = new User
         {
             Id = userId,
-            FirebaseUid = "uid-stripe-test",
+            CognitoSub = "uid-stripe-test",
             FirstName = "Jane",
             LastName = "Doe",
             Email = "jane@test.com",

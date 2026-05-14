@@ -17,7 +17,7 @@ public static class TestBuilders
         return new User
         {
             Id = id ?? Guid.NewGuid(),
-            FirebaseUid = firebaseUid,
+            CognitoSub = firebaseUid,
             Email = email,
             FirstName = firstName,
             LastName = lastName,

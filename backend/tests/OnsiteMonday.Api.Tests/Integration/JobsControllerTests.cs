@@ -22,7 +22,7 @@ public class JobsControllerTests : IClassFixture<TestWebApplicationFactory>, IAs
         // Seed the test user so GetOrCreateByFirebaseUidAsync resolves
         await _factory.SeedAsync(async db =>
         {
-            if (!db.Users.Any(u => u.FirebaseUid == FakeAuthHandler.TestFirebaseUid))
+            if (!db.Users.Any(u => u.CognitoSub == FakeAuthHandler.TestFirebaseUid))
             {
                 db.Users.Add(TestBuilders.MakeUser());
                 await db.SaveChangesAsync();

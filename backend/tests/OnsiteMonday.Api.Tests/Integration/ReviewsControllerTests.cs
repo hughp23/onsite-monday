@@ -24,14 +24,14 @@ public class ReviewsControllerTests : IClassFixture<TestWebApplicationFactory>, 
         await _factory.SeedAsync(async db =>
         {
             // Seed the current (reviewer) user if not already present
-            if (!db.Users.Any(u => u.FirebaseUid == FakeAuthHandler.TestFirebaseUid))
+            if (!db.Users.Any(u => u.CognitoSub == FakeAuthHandler.TestFirebaseUid))
             {
                 db.Users.Add(TestBuilders.MakeUser());
                 await db.SaveChangesAsync();
             }
 
             // Seed the reviewee user if not already present (unique per test class lifetime)
-            var reviewee = db.Users.FirstOrDefault(u => u.FirebaseUid == "uid-reviewee");
+            var reviewee = db.Users.FirstOrDefault(u => u.CognitoSub == "uid-reviewee");
             if (reviewee == null)
             {
                 reviewee = TestBuilders.MakeUser("uid-reviewee", "reviewee@test.com");
@@ -41,7 +41,7 @@ public class ReviewsControllerTests : IClassFixture<TestWebApplicationFactory>, 
             _revieweeId = reviewee.Id;
 
             // Each test gets a fresh job so reviews don't collide across tests
-            var poster = db.Users.First(u => u.FirebaseUid == FakeAuthHandler.TestFirebaseUid);
+            var poster = db.Users.First(u => u.CognitoSub == FakeAuthHandler.TestFirebaseUid);
             var job = TestBuilders.MakeJob(poster.Id, "completed");
             db.Jobs.Add(job);
             await db.SaveChangesAsync();
@@ -80,7 +80,7 @@ public class ReviewsControllerTests : IClassFixture<TestWebApplicationFactory>, 
         // Seed a pre-existing review for this job
         await _factory.SeedAsync(async db =>
         {
-            var reviewer = db.Users.First(u => u.FirebaseUid == FakeAuthHandler.TestFirebaseUid);
+            var reviewer = db.Users.First(u => u.CognitoSub == FakeAuthHandler.TestFirebaseUid);
             var job = TestBuilders.MakeJob(reviewer.Id, "completed", id: jobId);
             db.Jobs.Add(job);
             var existingReview = TestBuilders.MakeReview(_revieweeId, reviewer.Id, jobId);

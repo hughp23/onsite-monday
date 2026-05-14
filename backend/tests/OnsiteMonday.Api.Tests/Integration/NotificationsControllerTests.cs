@@ -25,14 +25,14 @@ public class NotificationsControllerTests : IClassFixture<TestWebApplicationFact
         {
             // Seed the test user
             var user = TestBuilders.MakeUser();
-            if (!db.Users.Any(u => u.FirebaseUid == FakeAuthHandler.TestFirebaseUid))
+            if (!db.Users.Any(u => u.CognitoSub == FakeAuthHandler.TestFirebaseUid))
             {
                 db.Users.Add(user);
                 await db.SaveChangesAsync();
             }
             else
             {
-                user = db.Users.First(u => u.FirebaseUid == FakeAuthHandler.TestFirebaseUid);
+                user = db.Users.First(u => u.CognitoSub == FakeAuthHandler.TestFirebaseUid);
             }
 
             _userId = user.Id;

@@ -24,7 +24,7 @@ public class UsersControllerTests : IClassFixture<TestWebApplicationFactory>, IA
         // Ensure the test user exists in DB before each test
         await _factory.SeedAsync(async db =>
         {
-            if (!db.Users.Any(u => u.FirebaseUid == FakeAuthHandler.TestFirebaseUid))
+            if (!db.Users.Any(u => u.CognitoSub == FakeAuthHandler.TestFirebaseUid))
             {
                 db.Users.Add(TestBuilders.MakeUser());
                 await db.SaveChangesAsync();
@@ -82,7 +82,7 @@ public class UsersControllerTests : IClassFixture<TestWebApplicationFactory>, IA
         // Seed a tradesperson if not already present
         await _factory.SeedAsync(async db =>
         {
-            if (!db.Users.Any(u => u.FirebaseUid == "uid-tp"))
+            if (!db.Users.Any(u => u.CognitoSub == "uid-tp"))
             {
                 var tp = TestBuilders.MakeUser("uid-tp", "tp@test.com", "Alice", "Smith");
                 tp.Trade = "Plumber";
