@@ -102,6 +102,7 @@ export default function RootLayout() {
             <Stack.Screen name="subscription" options={{ title: 'Choose Your Plan', presentation: 'modal' }} />
             <Stack.Screen name="review/[jobId]" options={{ title: 'Rate Your Experience', presentation: 'modal' }} />
             <Stack.Screen name="notifications" options={{ title: 'Notifications' }} />
+            <Stack.Screen name="wallet" options={{ title: 'Wallet', headerBackTitle: 'Back' }} />
             <Stack.Screen name="job-applicants/[id]" options={{ title: 'Applicants', headerBackTitle: 'Back' }} />
           </Stack>
         </AppContextProvider>
