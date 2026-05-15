@@ -211,6 +211,17 @@ export default function ProfileScreen() {
             </View>
           </View>
 
+          {/* Wallet */}
+          <TouchableOpacity
+            style={[styles.section, styles.menuRow]}
+            onPress={() => router.push('/wallet')}
+            activeOpacity={0.8}
+          >
+            <MaterialCommunityIcons name="wallet-outline" size={20} color={colors.primary} />
+            <Text style={styles.menuRowLabel}>Wallet</Text>
+            <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+          </TouchableOpacity>
+
           {/* Gallery */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Gallery</Text>
@@ -342,6 +353,17 @@ const styles = StyleSheet.create({
   locationText: { fontFamily: fonts.bodyMedium, fontSize: 15, color: colors.text },
   subscriptionSection: {},
   subHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
+  menuRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  menuRowLabel: {
+    fontFamily: fonts.bodyMedium,
+    fontSize: 15,
+    color: colors.text,
+    flex: 1,
+  },
   upgradeLink: { fontFamily: fonts.bodySemiBold, color: colors.primary, fontSize: 13 },
   tierBadge: {
     flexDirection: 'row',
