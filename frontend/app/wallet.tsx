@@ -157,11 +157,11 @@ export default function WalletScreen() {
   const handleAutoWithdraw = async (enabled: boolean) => {
     if (!wallet) return;
     const previous = wallet.autoWithdraw;
-    setWallet({ ...wallet, autoWithdraw: enabled });
+    setWallet(w => (w ? { ...w, autoWithdraw: enabled } : w));
     try {
       await walletService.setAutoWithdraw(enabled);
     } catch {
-      setWallet({ ...wallet, autoWithdraw: previous });
+      setWallet(w => (w ? { ...w, autoWithdraw: previous } : w));
       Alert.alert('Error', 'Could not update auto-withdraw setting. Please try again.');
     }
   };
@@ -179,8 +179,9 @@ export default function WalletScreen() {
     setWithdrawError(null);
     try {
       await walletService.withdraw();
-      setWithdrawSuccess(true);
       setWallet(w => (w ? { ...w, balance: 0, balancePence: 0 } : w));
+      setWithdrawSuccess(true);
+      setTimeout(closeSheet, 2500);
     } catch (e: any) {
       setWithdrawError(e?.message ?? 'Withdrawal failed. Please try again.');
     } finally {
