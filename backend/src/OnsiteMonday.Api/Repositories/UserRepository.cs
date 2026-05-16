@@ -46,11 +46,20 @@ public class UserRepository : IUserRepository
         catch (DbUpdateException)
         {
             _db.ChangeTracker.Clear();
-            await using var freshDb = await _dbFactory.CreateDbContextAsync();
-            return await freshDb.Users
-                .Include(u => u.Subscriptions)
-                .FirstOrDefaultAsync(u => u.CognitoSub == cognitoSub)
-                ?? throw new InvalidOperationException("User creation conflict could not be resolved.");
+            for (var attempt = 0; attempt < 3; attempt++)
+            {
+                if (attempt > 0)
+                    await Task.Delay(TimeSpan.FromMilliseconds(50 * attempt));
+
+                await using var freshDb = await _dbFactory.CreateDbContextAsync();
+                var found = await freshDb.Users
+                    .Include(u => u.Subscriptions)
+                    .FirstOrDefaultAsync(u => u.CognitoSub == cognitoSub);
+
+                if (found != null) return found;
+            }
+
+            throw new InvalidOperationException("User creation conflict could not be resolved.");
         }
     }
 

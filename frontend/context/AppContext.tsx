@@ -86,8 +86,10 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
           }
         };
 
-        const [user, jobList, acceptedJobs, postedJobs, convs, notifs] = await Promise.all([
-          call('getMe', () => userService.getMe()),
+        // Fetch user first — ensures the DB row exists before parallel calls fire
+        const user = await call('getMe', () => userService.getMe());
+
+        const [jobList, acceptedJobs, postedJobs, convs, notifs] = await Promise.all([
           call('getJobs', () => jobService.getJobs()),
           call('getMyAcceptedJobs', () => jobService.getMyAcceptedJobs()),
           call('getMyPostedJobs', () => jobService.getMyPostedJobs()),
