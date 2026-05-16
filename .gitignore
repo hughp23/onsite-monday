@@ -141,6 +141,9 @@ vite.config.ts.timestamp-*
 # Git worktrees
 .worktrees/
 
+# Superpowers plugin
+.superpowers/
+
 # .NET backend
 backend/src/OnsiteMonday.Api/secrets/
 backend/**/.env
