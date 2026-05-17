@@ -52,7 +52,7 @@ public class SubscriptionsController : ControllerBase
     public async Task<ActionResult<SubscriptionCheckoutResponse>> UpdateSubscription([FromBody] UpdateSubscriptionRequest request)
     {
         var userId = await GetCurrentUserIdAsync();
-        var response = await _subscriptionService.UpdateSubscriptionAsync(userId, request.Tier);
+        var response = await _subscriptionService.UpdateSubscriptionAsync(userId, request.Tier, request.UpdateCardAndUpgrade);
         return Ok(response);
     }
 }

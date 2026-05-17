@@ -33,7 +33,7 @@ interface AppContextType {
   sendMessage: (conversationId: string, text: string) => Promise<void>;
   markConversationRead: (conversationId: string) => Promise<void>;
   markNotificationRead: (notificationId: string) => Promise<void>;
-  updateSubscription: (tier: SubscriptionTier) => Promise<void>;
+  updateSubscription: (tier: SubscriptionTier, updateCardAndUpgrade?: boolean) => Promise<{ checkoutUrl: string | null }>;
   loadTradespeople: (params?: { trade?: string; location?: string }) => Promise<void>;
   refreshJobs: () => Promise<void>;
   refreshMyJobs: () => Promise<void>;
@@ -309,18 +309,14 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
     setNotifications(prev => prev.map(n => n.id === notificationId ? { ...n, isRead: true } : n));
   }, []);
 
-  const updateSubscription = useCallback(async (tier: SubscriptionTier) => {
-    try {
-      const { subscription, checkoutUrl } = await subscriptionService.update(tier);
-      setCurrentUser(prev => prev ? { ...prev, subscription: subscription.tier as SubscriptionTier } : prev);
-      if (checkoutUrl) {
-        const { Linking } = await import('react-native');
-        await Linking.openURL(checkoutUrl);
-      }
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : 'Failed to update subscription';
-      Alert.alert('Subscription error', msg);
+  const updateSubscription = useCallback(async (tier: SubscriptionTier, updateCardAndUpgrade = false) => {
+    const { subscription, checkoutUrl } = await subscriptionService.update(tier, updateCardAndUpgrade);
+    setCurrentUser(prev => prev ? { ...prev, subscription: subscription.tier as SubscriptionTier } : prev);
+    if (checkoutUrl) {
+      const { Linking } = await import('react-native');
+      await Linking.openURL(checkoutUrl);
     }
+    return { checkoutUrl };
   }, []);
 
   const loadTradespeople = useCallback(async (params?: { trade?: string; location?: string }) => {

@@ -54,7 +54,7 @@ public class StripeWebhookController : ControllerBase
                 break;
 
             case "customer.subscription.updated":
-                _logger.LogInformation("Stripe subscription updated: {SubscriptionId}", ((Stripe.Subscription)stripeEvent.Data.Object).Id);
+                await HandleSubscriptionUpdated((Stripe.Subscription)stripeEvent.Data.Object);
                 break;
 
             case "customer.subscription.deleted":
@@ -93,6 +93,45 @@ public class StripeWebhookController : ControllerBase
         sub.StripeSubscriptionId = session.SubscriptionId;
         await _db.SaveChangesAsync();
         _logger.LogInformation("Stripe: Set StripeSubscriptionId={SubId} on subscription {LocalSubId}", session.SubscriptionId, sub.Id);
+    }
+
+    private static readonly Dictionary<string, string> TierByPayoutDays = new()
+    {
+        { "price_bronze", "bronze" },
+        { "price_silver", "silver" },
+        { "price_gold",   "gold"   },
+    };
+
+    private async Task HandleSubscriptionUpdated(Stripe.Subscription stripeSub)
+    {
+        var sub = await _db.Subscriptions
+            .FirstOrDefaultAsync(s => s.StripeSubscriptionId == stripeSub.Id && s.IsActive);
+
+        if (sub == null) return;
+
+        // Derive tier from the price nickname/metadata on the subscription item
+        var priceId = stripeSub.Items?.Data?.FirstOrDefault()?.Price?.Id ?? string.Empty;
+        var nickname = (stripeSub.Items?.Data?.FirstOrDefault()?.Price?.Nickname ?? string.Empty).ToLowerInvariant();
+
+        string? tier = nickname switch
+        {
+            var n when n.Contains("bronze") => "bronze",
+            var n when n.Contains("silver") => "silver",
+            var n when n.Contains("gold")   => "gold",
+            _ => null,
+        };
+
+        if (tier == null)
+        {
+            _logger.LogWarning("Stripe: subscription.updated for {SubId} — could not determine tier from price {PriceId}", stripeSub.Id, priceId);
+            return;
+        }
+
+        var payoutDays = tier switch { "silver" => 14, "gold" => 7, _ => 30 };
+        sub.Tier = tier;
+        sub.PayoutDays = payoutDays;
+        await _db.SaveChangesAsync();
+        _logger.LogInformation("Stripe: Synced subscription {LocalSubId} to tier={Tier}", sub.Id, tier);
     }
 
     private async Task HandleSubscriptionDeleted(Stripe.Subscription stripeSub)

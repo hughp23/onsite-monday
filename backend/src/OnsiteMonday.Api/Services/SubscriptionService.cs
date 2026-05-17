@@ -31,20 +31,37 @@ public class SubscriptionService : ISubscriptionService
         return sub == null ? null : ToDto(sub);
     }
 
-    public async Task<SubscriptionCheckoutResponse> UpdateSubscriptionAsync(Guid userId, string tier)
+    public async Task<SubscriptionCheckoutResponse> UpdateSubscriptionAsync(Guid userId, string tier, bool updateCardAndUpgrade = false)
     {
         tier = tier.ToLowerInvariant();
 
         if (!PayoutDaysByTier.TryGetValue(tier, out var payoutDays))
             throw new ArgumentException($"Invalid tier '{tier}'. Must be bronze, silver, or gold.");
 
-        // Capture old Stripe subscription ID before deactivating (for cancellation)
-        var oldStripeSubId = await _db.Subscriptions
-            .Where(s => s.UserId == userId && s.IsActive && s.StripeSubscriptionId != null)
-            .Select(s => s.StripeSubscriptionId)
-            .FirstOrDefaultAsync();
+        var user = await _db.Users.FindAsync(userId);
 
-        // Deactivate any existing active subscription
+        // Existing subscriber path: update in-place without a new Checkout Session
+        var existingSub = await _db.Subscriptions
+            .FirstOrDefaultAsync(s => s.UserId == userId && s.IsActive && s.StripeSubscriptionId != null);
+
+        if (!updateCardAndUpgrade && existingSub?.StripeSubscriptionId != null)
+        {
+            await _stripe.UpdateSubscriptionInPlaceAsync(existingSub.StripeSubscriptionId, tier);
+
+            existingSub.Tier = tier;
+            existingSub.PayoutDays = payoutDays;
+            await _db.SaveChangesAsync();
+
+            return new SubscriptionCheckoutResponse
+            {
+                Subscription = ToDto(existingSub),
+                CheckoutUrl = null,
+            };
+        }
+
+        // New subscriber or "update card & upgrade" path: create a Checkout Session
+        var oldStripeSubId = existingSub?.StripeSubscriptionId;
+
         var now = DateTimeOffset.UtcNow;
         await _db.Subscriptions
             .Where(s => s.UserId == userId && s.IsActive)
@@ -67,14 +84,11 @@ public class SubscriptionService : ISubscriptionService
 
         string? checkoutUrl = null;
 
-        var user = await _db.Users.FindAsync(userId);
         if (user != null)
         {
-            // Provision Stripe customer if not already done
             if (string.IsNullOrEmpty(user.StripeCustomerId))
                 user.StripeCustomerId = await _stripe.EnsureCustomerAsync(userId, user.Email);
 
-            // Create Stripe Checkout Session for the subscription
             var (_, url) = await _stripe.CreateSubscriptionCheckoutAsync(
                 user.StripeCustomerId,
                 tier,
@@ -85,7 +99,6 @@ public class SubscriptionService : ISubscriptionService
             await _db.SaveChangesAsync();
         }
 
-        // Cancel old Stripe subscription if one existed
         if (!string.IsNullOrEmpty(oldStripeSubId))
             await _stripe.CancelSubscriptionAsync(oldStripeSubId);
 

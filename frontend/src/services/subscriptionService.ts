@@ -19,7 +19,7 @@ export const subscriptionService = {
     return apiRequest<SubscriptionDto>('GET', '/subscriptions/current');
   },
 
-  update: async (tier: SubscriptionTier): Promise<SubscriptionCheckoutResponse> => {
-    return apiRequest<SubscriptionCheckoutResponse>('POST', '/subscriptions', { tier });
+  update: async (tier: SubscriptionTier, updateCardAndUpgrade = false): Promise<SubscriptionCheckoutResponse> => {
+    return apiRequest<SubscriptionCheckoutResponse>('POST', '/subscriptions', { tier, updateCardAndUpgrade });
   },
 };

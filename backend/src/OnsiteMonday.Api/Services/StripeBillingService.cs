@@ -62,6 +62,28 @@ public class StripeBillingService : IStripeBillingService
         return (session.SubscriptionId ?? string.Empty, session.Url);
     }
 
+    public async Task UpdateSubscriptionInPlaceAsync(string stripeSubscriptionId, string tier)
+    {
+        var tierKey = char.ToUpper(tier[0]) + tier[1..].ToLower();
+        if (!_options.Prices.TryGetValue(tierKey, out var priceId) || string.IsNullOrEmpty(priceId))
+            throw new ArgumentException($"No Stripe Price ID configured for tier '{tier}'.");
+
+        var subscriptionService = new Stripe.SubscriptionService();
+        var existing = await subscriptionService.GetAsync(stripeSubscriptionId);
+        var itemId = existing.Items.Data[0].Id;
+
+        await subscriptionService.UpdateAsync(stripeSubscriptionId, new SubscriptionUpdateOptions
+        {
+            Items = new List<SubscriptionItemOptions>
+            {
+                new() { Id = itemId, Price = priceId },
+            },
+            ProrationBehavior = "create_prorations",
+        });
+
+        _logger.LogInformation("Stripe: Updated subscription {SubscriptionId} to tier={Tier}", stripeSubscriptionId, tier);
+    }
+
     public async Task CancelSubscriptionAsync(string stripeSubscriptionId)
     {
         var subscriptionService = new Stripe.SubscriptionService();

@@ -22,6 +22,12 @@ internal sealed class StubStripeBillingService : IStripeBillingService
         return Task.FromResult((subId, url));
     }
 
+    public Task UpdateSubscriptionInPlaceAsync(string stripeSubscriptionId, string tier)
+    {
+        _logger.LogInformation("[STUB] Stripe UpdateSubscriptionInPlace {SubscriptionId} → tier={Tier}", stripeSubscriptionId, tier);
+        return Task.CompletedTask;
+    }
+
     public Task CancelSubscriptionAsync(string stripeSubscriptionId)
     {
         _logger.LogInformation("[STUB] Stripe CancelSubscription {SubscriptionId}", stripeSubscriptionId);

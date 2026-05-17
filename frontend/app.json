@@ -2,7 +2,7 @@
   "expo": {
     "name": "Onsite Monday",
     "slug": "onsite-monday",
-    "scheme": "onsite-monday",
+    "scheme": "onsitemonday",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
