@@ -9,7 +9,6 @@ namespace OnsiteMonday.Api.Services;
 public class SubscriptionService : ISubscriptionService
 {
     private readonly AppDbContext _db;
-    private readonly IMangopayService _mangopay;
     private readonly IStripeBillingService _stripe;
 
     private static readonly Dictionary<string, int> PayoutDaysByTier = new()
@@ -19,10 +18,9 @@ public class SubscriptionService : ISubscriptionService
         { "gold",    7 },
     };
 
-    public SubscriptionService(AppDbContext db, IMangopayService mangopay, IStripeBillingService stripe)
+    public SubscriptionService(AppDbContext db, IStripeBillingService stripe)
     {
         _db = db;
-        _mangopay = mangopay;
         _stripe = stripe;
     }
 
@@ -72,13 +70,6 @@ public class SubscriptionService : ISubscriptionService
         var user = await _db.Users.FindAsync(userId);
         if (user != null)
         {
-            // Provision Mangopay user + wallet if not already done
-            if (string.IsNullOrEmpty(user.MangopayUserId))
-            {
-                user.MangopayUserId = await _mangopay.EnsureUserAsync(userId, user.Email, user.FirstName, user.LastName);
-                user.MangopayWalletId = await _mangopay.EnsureWalletAsync(user.MangopayUserId, $"Wallet for {user.Email}");
-            }
-
             // Provision Stripe customer if not already done
             if (string.IsNullOrEmpty(user.StripeCustomerId))
                 user.StripeCustomerId = await _stripe.EnsureCustomerAsync(userId, user.Email);

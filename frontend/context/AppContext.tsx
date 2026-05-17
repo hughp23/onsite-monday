@@ -310,11 +310,16 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
   }, []);
 
   const updateSubscription = useCallback(async (tier: SubscriptionTier) => {
-    const { subscription, checkoutUrl } = await subscriptionService.update(tier);
-    setCurrentUser(prev => prev ? { ...prev, subscription: subscription.tier as SubscriptionTier } : prev);
-    if (checkoutUrl) {
-      const { Linking } = await import('react-native');
-      await Linking.openURL(checkoutUrl);
+    try {
+      const { subscription, checkoutUrl } = await subscriptionService.update(tier);
+      setCurrentUser(prev => prev ? { ...prev, subscription: subscription.tier as SubscriptionTier } : prev);
+      if (checkoutUrl) {
+        const { Linking } = await import('react-native');
+        await Linking.openURL(checkoutUrl);
+      }
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Failed to update subscription';
+      Alert.alert('Subscription error', msg);
     }
   }, []);
 
