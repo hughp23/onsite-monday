@@ -327,14 +327,25 @@ flowchart TD
 </section>
 
 <script>
-  mermaid.initialize({ startOnLoad: true, theme: 'default', flowchart: { curve: 'basis', useMaxWidth: true } });
+  mermaid.initialize({ startOnLoad: false, theme: 'default', flowchart: { curve: 'basis', useMaxWidth: true } });
 
-  function show(id, btn) {
+  const rendered = new Set();
+
+  async function renderTab(id) {
+    if (rendered.has(id)) return;
+    rendered.add(id);
+    await mermaid.run({ nodes: document.querySelectorAll('#' + id + ' .mermaid') });
+  }
+
+  async function show(id, btn) {
     document.querySelectorAll('.diagram').forEach(s => s.classList.remove('active'));
     document.querySelectorAll('.tab-bar button').forEach(b => b.classList.remove('active'));
     document.getElementById(id).classList.add('active');
     btn.classList.add('active');
+    await renderTab(id);
   }
+
+  document.addEventListener('DOMContentLoaded', () => renderTab('auth'));
 </script>
 </body>
 </html>
