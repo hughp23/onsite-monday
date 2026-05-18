@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ônsite Monday — User Journeys</title>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #FFF8F6; color: #1a1a1a; }
+
+    header { background: #8B2020; color: white; padding: 16px 24px; }
+    header h1 { font-size: 1.15em; font-weight: 700; letter-spacing: 0.02em; }
+
+    .tab-bar { display: flex; flex-wrap: wrap; gap: 6px; padding: 12px 24px; background: white; border-bottom: 1px solid #e0d0d0; position: sticky; top: 0; z-index: 10; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+    .tab-bar button { padding: 7px 15px; border: 1.5px solid #d0c0c0; border-radius: 20px; background: white; color: #555; font-size: 0.82em; cursor: pointer; transition: all 0.15s; white-space: nowrap; }
+    .tab-bar button:hover { border-color: #8B2020; color: #8B2020; }
+    .tab-bar button.active { background: #8B2020; border-color: #8B2020; color: white; font-weight: 600; }
+
+    .legend { display: flex; flex-wrap: wrap; gap: 14px; padding: 10px 24px; background: #fff8f6; border-bottom: 1px solid #e8ddd8; font-size: 0.78em; color: #555; align-items: center; }
+    .legend strong { color: #333; margin-right: 4px; }
+    .legend-item { display: flex; align-items: center; gap: 6px; }
+    .dot { width: 13px; height: 13px; border-radius: 3px; flex-shrink: 0; }
+    .dot-done     { background: #c8e6c9; border: 1.5px solid #4caf50; }
+    .dot-partial  { background: #fff9c4; border: 1.5px solid #f9a825; }
+    .dot-todo     { background: #ffcdd2; border: 1.5px solid #e53935; }
+    .dot-decision { background: #e3f2fd; border: 1.5px solid #1976d2; }
+
+    .diagram { display: none; padding: 24px; }
+    .diagram.active { display: block; }
+    .diagram h2 { font-size: 1em; color: #8B2020; margin-bottom: 16px; font-weight: 600; }
+
+    .mermaid { background: white; border: 1px solid #e0d0d0; border-radius: 10px; padding: 20px; overflow-x: auto; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Ônsite Monday — User Journeys</h1>
+</header>
+
+<nav class="tab-bar">
+  <button class="active" onclick="show('auth', this)">Auth &amp; Onboarding</button>
+  <button onclick="show('tradesperson', this)">Tradesperson Job Flow</button>
+  <button onclick="show('poster', this)">Job Poster Flow</button>
+  <button onclick="show('payment', this)">Payment &amp; Escrow</button>
+  <button onclick="show('wallet', this)">Wallet &amp; KYC</button>
+  <button onclick="show('subscription', this)">Subscription</button>
+  <button onclick="show('messaging', this)">Messaging</button>
+</nav>
+
+<div class="legend">
+  <strong>Key:</strong>
+  <span class="legend-item"><span class="dot dot-done"></span> Implemented</span>
+  <span class="legend-item"><span class="dot dot-partial"></span> Partial / known gap</span>
+  <span class="legend-item"><span class="dot dot-todo"></span> Not yet built</span>
+  <span class="legend-item"><span class="dot dot-decision"></span> Decision / branch</span>
+</div>
+
+<section id="auth" class="diagram active">
+  <h2>Auth &amp; Onboarding</h2>
+  <div class="mermaid">
+flowchart TD
+    A([Open app]) --> B{Authenticated?}
+    B -->|Yes| MAIN([Main app tabs])
+    B -->|No| D[Welcome screen]
+    D --> E{New user?}
+    E -->|Sign in| SI[Email + password form]
+    E -->|Sign up| SU[Email + password\ncreate account]
+    E -->|Google OAuth| G[Google OAuth flow]
+    G --> MAIN
+    SI --> SI1{Biometric\navailable?}
+    SI1 -->|Yes| SI2[Offer biometric setup]
+    SI1 -->|No| MAIN
+    SI2 --> MAIN
+    SI --> FP[Forgot password?]
+    FP --> FP1[Request reset email]
+    FP1 --> FP2[Enter code +\nnew password]
+    FP2 --> MAIN
+    SU --> SU1[Verify email code]
+    SU1 --> S1[Slide 1: Name + role]
+    S1 --> S2[Slide 2: Trade]
+    S2 --> S3[Slide 3: Skills]
+    S3 --> S4[Slide 4: Accreditations]
+    S4 --> S5[Slide 5: Day rate]
+    S5 --> S6[Slide 6: Location +\ntravel radius]
+    S6 --> S7[Slide 7: Profile photo]
+    S7 --> S8[Slide 8: Subscription tier]
+    S8 --> S9[Slide 9: Confirm & complete]
+    S9 --> MAIN
+
+    classDef done     fill:#c8e6c9,stroke:#4caf50,color:#1b5e20
+    classDef partial  fill:#fff9c4,stroke:#f9a825,color:#5d4037
+    classDef todo     fill:#ffcdd2,stroke:#e53935,color:#b71c1c
+    classDef decision fill:#e3f2fd,stroke:#1976d2,color:#0d47a1
+    classDef endpoint fill:#ede7f6,stroke:#7b1fa2,color:#4a148c
+
+    class A,MAIN endpoint
+    class B,E,SI1 decision
+    class D,SI,SU,G,SI2,FP,FP1,FP2,SU1,S1,S2,S3,S4,S5,S6,S7,S8,S9 done
+  </div>
+</section>
+
+<section id="tradesperson" class="diagram">
+  <h2>Tradesperson Job Flow</h2>
+  <div class="mermaid">
+flowchart TD
+    A([Main app]) --> B[Jobs board tab]
+    B --> C[Sort / filter jobs\nnewest · highest pay · duration]
+    C --> D[Job card in feed]
+    D --> E[Job detail view]
+    E --> F[Express interest button]
+    F --> G[Interest confirmation modal]
+    G --> H[Wait for acceptance\nnotification]
+    H --> I[My Jobs — My Work tab]
+    I --> J[View accepted job details]
+    J --> K[Start job → Stripe redirect\npayment by poster]
+    K --> L[Job status: in_progress]
+    L --> M[Poster marks job complete]
+    M --> N[Review screen opens\nautomatically]
+    N --> O[Submit star rating + comment\nrequired before payout]
+    O --> P{Payout gated\nby review submission}
+    P --> Q[Payout triggered\nafter subscription-tier delay]
+    Q --> R[Funds appear in wallet]
+    R --> S[Withdraw to bank account]
+    E --> T[Message job poster\nopens chat]
+
+    classDef done     fill:#c8e6c9,stroke:#4caf50,color:#1b5e20
+    classDef partial  fill:#fff9c4,stroke:#f9a825,color:#5d4037
+    classDef todo     fill:#ffcdd2,stroke:#e53935,color:#b71c1c
+    classDef decision fill:#e3f2fd,stroke:#1976d2,color:#0d47a1
+    classDef endpoint fill:#ede7f6,stroke:#7b1fa2,color:#4a148c
+
+    class A endpoint
+    class P decision
+    class B,C,D,E,F,G,H,I,J,T done
+    class K,L,M,N,O partial
+    class Q,R,S partial
+  </div>
+</section>
+
+<section id="poster" class="diagram">
+  <h2>Job Poster Flow</h2>
+  <div class="mermaid">
+flowchart TD
+    A([Main app]) --> B[My Jobs — Posted tab]
+    B --> C[FAB + button]
+    C --> D[Create job form\ntitle · trade · location · dates · rate]
+    D --> E[Job posted\nstatus: open]
+    E --> F[Tradespeople express interest]
+    F --> G[View applicants list\njob-applicants screen]
+    G --> H{Accept a\ntradesperson?}
+    H -->|Yes| I[Accept applicant\nconfirmation modal]
+    I --> J[Job status: accepted]
+    J --> K[Start Job & Pay button]
+    K --> L[Stripe Checkout\nfunds held in escrow]
+    L --> M[Job status: in_progress]
+    M --> N[Mark Complete button]
+    N --> O[Tradesperson reviews\nthe job]
+    O --> P[Funds released\nafter tier delay]
+    H -->|No| Q[Delete job\nif no applicants]
+    J --> R[Cancel job\nwith optional reason]
+    R --> S[Refund issued\nto poster]
+
+    classDef done     fill:#c8e6c9,stroke:#4caf50,color:#1b5e20
+    classDef partial  fill:#fff9c4,stroke:#f9a825,color:#5d4037
+    classDef todo     fill:#ffcdd2,stroke:#e53935,color:#b71c1c
+    classDef decision fill:#e3f2fd,stroke:#1976d2,color:#0d47a1
+    classDef endpoint fill:#ede7f6,stroke:#7b1fa2,color:#4a148c
+
+    class A endpoint
+    class H decision
+    class B,C,D,E,F,G,I,J,K,L,M,N,Q done
+    class O,P partial
+    class R,S partial
+  </div>
+</section>
+
+<section id="payment" class="diagram">
+  <h2>Payment &amp; Escrow</h2>
+  <div class="mermaid">
+flowchart TD
+    A([Job accepted]) --> B[Poster taps\nStart Job & Pay]
+    B --> C[Stripe Checkout\nopens in browser]
+    C --> D{Payment\nsuccessful?}
+    D -->|Yes| E[Funds held in\nStripe escrow]
+    D -->|No| F[Stay on accepted\nretry payment]
+    E --> G[Job status: in_progress]
+    G --> H[Poster marks\njob complete]
+    H --> I[Tradesperson submits\nmandatory review]
+    I --> J{Review gates\npayout release}
+    J --> K[Payout countdown begins\nbased on subscription tier]
+    K --> L{Tier}
+    L -->|Bronze| M[Released after\n30 days]
+    L -->|Silver| N[Released after\n14 days]
+    L -->|Gold| O[Released after\n7 days]
+    M & N & O --> P[Funds in\ntradesperson wallet]
+    G --> Q[Job cancelled\nbefore completion]
+    Q --> R[Refund to poster]
+
+    classDef done     fill:#c8e6c9,stroke:#4caf50,color:#1b5e20
+    classDef partial  fill:#fff9c4,stroke:#f9a825,color:#5d4037
+    classDef todo     fill:#ffcdd2,stroke:#e53935,color:#b71c1c
+    classDef decision fill:#e3f2fd,stroke:#1976d2,color:#0d47a1
+    classDef endpoint fill:#ede7f6,stroke:#7b1fa2,color:#4a148c
+
+    class A endpoint
+    class D,J,L decision
+    class B,C,E,F,G,H done
+    class I,K,M,N,O,P partial
+    class Q,R partial
+  </div>
+</section>
+
+<section id="wallet" class="diagram">
+  <h2>Wallet &amp; KYC</h2>
+  <div class="mermaid">
+flowchart TD
+    A([Profile tab]) --> B[Wallet screen]
+    B --> C{KYC status?}
+    C -->|None| D[Start identity\nverification]
+    D --> E[KYC flow\nID document upload]
+    E --> F[Status: pending]
+    F --> G{Verification\nresult}
+    G -->|Verified| H[KYC: verified]
+    G -->|Failed| I[KYC: failed]
+    I --> J[Retry KYC]
+    J --> E
+    C -->|Verified| K[View wallet balance]
+    H --> K
+    K --> L{Bank account\nregistered?}
+    L -->|No| M[Add bank account\nsort code + account no +\nholder name]
+    M --> N[Bank account saved]
+    N --> O[Auto-withdraw toggle\nenabled]
+    L -->|Yes| O
+    O --> P{Withdraw method}
+    P -->|Manual| Q[Withdraw button\nconfirmation modal]
+    Q --> R[Processed in\n1-3 business days]
+    P -->|Auto| S[Auto-withdraw\non each payout]
+    K --> T[Transaction history]
+
+    classDef done     fill:#c8e6c9,stroke:#4caf50,color:#1b5e20
+    classDef partial  fill:#fff9c4,stroke:#f9a825,color:#5d4037
+    classDef todo     fill:#ffcdd2,stroke:#e53935,color:#b71c1c
+    classDef decision fill:#e3f2fd,stroke:#1976d2,color:#0d47a1
+    classDef endpoint fill:#ede7f6,stroke:#7b1fa2,color:#4a148c
+
+    class A endpoint
+    class C,G,L,P decision
+    class B,D,F,H,K,M,N,O,Q,R,S done
+    class E,I,J partial
+    class T todo
+  </div>
+</section>
+
+<section id="subscription" class="diagram">
+  <h2>Subscription</h2>
+  <div class="mermaid">
+flowchart TD
+    A([Profile tab\nor onboarding slide 8]) --> B[Subscription screen]
+    B --> C[View Bronze / Silver / Gold\ntier cards]
+    C --> D{Currently\nsubscribed?}
+    D -->|No| E[Select tier]
+    E --> F[Stripe Checkout\nredirect]
+    F --> G{Payment result}
+    G -->|Success| H[Deep link return\nonsitemonday://subscription/success]
+    G -->|Cancelled| I[Return to\nsubscription screen]
+    H --> J[Subscription active]
+    D -->|Yes| K[Upgrade modal\nappears]
+    K --> L{Card on file?}
+    L -->|Yes| M[Upgrade now\nusing saved card]
+    L -->|No| N[Update card\nthen upgrade]
+    M & N --> J
+    J --> O{Payout speed\nby tier}
+    O -->|Bronze 29/mo| P[30-day payout]
+    O -->|Silver 59/mo| Q[14-day payout]
+    O -->|Gold 129/mo| R[7-day payout]
+    J --> S[Cancel or\ndowngrade subscription]
+    B --> T[Platinum Enterprise\ntier - post-launch]
+
+    classDef done     fill:#c8e6c9,stroke:#4caf50,color:#1b5e20
+    classDef partial  fill:#fff9c4,stroke:#f9a825,color:#5d4037
+    classDef todo     fill:#ffcdd2,stroke:#e53935,color:#b71c1c
+    classDef decision fill:#e3f2fd,stroke:#1976d2,color:#0d47a1
+    classDef endpoint fill:#ede7f6,stroke:#7b1fa2,color:#4a148c
+
+    class A endpoint
+    class D,G,L,O decision
+    class B,C,E,F,H,I,J,K,M,N,P,Q,R done
+    class S todo
+    class T todo
+  </div>
+</section>
+
+<section id="messaging" class="diagram">
+  <h2>Messaging</h2>
+  <div class="mermaid">
+flowchart TD
+    A([Any screen]) --> B{Entry point}
+    B -->|Job detail screen| C[Message poster button]
+    B -->|Person profile screen| D[Message button]
+    B -->|Messages tab| E[Conversations list]
+    C & D --> F[Get or create\nconversation via API]
+    F --> G[Chat screen]
+    E --> G
+    G --> H[Type message\nin input bar]
+    H --> I[Send message]
+    I --> J[SignalR broadcasts\nto recipient in real-time]
+    J --> K[Message appears\nin conversation]
+    K --> L[Unread badge count\nupdated on Messages tab]
+    L --> M[Recipient opens\nconversation]
+    M --> N[Mark as read\nclear unread badge]
+    G --> O[File / image\nattachment button]
+    J --> P[Push notification\nto recipient]
+
+    classDef done     fill:#c8e6c9,stroke:#4caf50,color:#1b5e20
+    classDef partial  fill:#fff9c4,stroke:#f9a825,color:#5d4037
+    classDef todo     fill:#ffcdd2,stroke:#e53935,color:#b71c1c
+    classDef decision fill:#e3f2fd,stroke:#1976d2,color:#0d47a1
+    classDef endpoint fill:#ede7f6,stroke:#7b1fa2,color:#4a148c
+
+    class A endpoint
+    class B decision
+    class C,D,E,F,G,H,I,J,K,L,M,N,P done
+    class O todo
+  </div>
+</section>
+
+<script>
+  mermaid.initialize({ startOnLoad: true, theme: 'default', flowchart: { curve: 'basis', useMaxWidth: true } });
+
+  function show(id, btn) {
+    document.querySelectorAll('.diagram').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.tab-bar button').forEach(b => b.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+    btn.classList.add('active');
+  }
+</script>
+</body>
+</html>
