@@ -88,6 +88,30 @@ npx tsc --noEmit
 npx eslint src/
 ```
 
+## User Journey Diagrams
+
+All user journeys are documented in `docs/journeys/user-journeys.html` — a single HTML file with 7 tabbed Mermaid flowcharts.
+
+**After any change that affects a user-facing flow, update the relevant diagram(s).** This includes:
+- Adding, removing, or renaming screens
+- Changing navigation or flow logic
+- Implementing, fixing, or partially completing a feature
+- Any change to the payment, KYC, subscription, or messaging flows
+
+The diagrams use colour-coded nodes: **green** = implemented, **yellow** = partial/known gap, **red** = not yet built. When a feature moves from partial to complete (or a new gap is discovered), update the `class` assignments at the bottom of that diagram's Mermaid block.
+
+To update a diagram: find the `<section id="[name]">` block in `docs/journeys/user-journeys.html`, edit the Mermaid flowchart text, save.
+
+| Tab ID | Covers |
+|--------|--------|
+| `auth` | Sign-in, sign-up, onboarding slides, biometric, password reset |
+| `tradesperson` | Browse jobs → apply → accepted → execute → review → payout |
+| `poster` | Create job → applicants → hire → pay → complete |
+| `payment` | Stripe escrow, payout gating, tier delays, cancellation/refund |
+| `wallet` | KYC states, bank account, auto-withdraw, manual withdrawal |
+| `subscription` | Tier selection, Stripe checkout, upgrade, payout speed |
+| `messaging` | Initiate conversation, real-time chat, unread badges |
+
 ## Architecture Notes
 
 - Two-sided marketplace: every screen/component should consider which role (Tradesperson vs Job Poster) is active — store the active role in auth/user context.
