@@ -9,64 +9,53 @@ import { useApp } from '@/context/AppContext';
 import StarRating from '@/components/StarRating';
 import { colors } from '@/constants/colors';
 
-const PAYOUT_DAYS: Record<string, number> = {
-  bronze: 30,
-  silver: 14,
-  gold: 7,
-};
-
-export default function ReviewScreen() {
+export default function ReviewPosterScreen() {
   const { jobId } = useLocalSearchParams<{ jobId: string }>();
-  const { getJob, submitReview, currentUser, tradespeople } = useApp();
+  const { getJob, submitTradesPersonReview } = useApp();
   const job = getJob(jobId);
   const insets = useSafeAreaInsets();
   const [rating, setRating] = useState(0);
   const [reviewText, setReviewText] = useState('');
   const [showSuccess, setShowSuccess] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
-  // Find the tradesperson for this job (first in list for demo, or by matching)
-  const tradesperson = tradespeople.find(tp =>
-    tp.trade === job?.trade
-  ) || tradespeople[0];
+  if (!job) return null;
 
-  if (!currentUser) return null;
+  const totalPay = (job.dayRate || 0) * (job.duration || 1);
 
-  const payoutDays = PAYOUT_DAYS[currentUser.subscription];
-  const totalPay = (job?.dayRate || 0) * (job?.duration || 1);
-
-  const handleSubmit = () => {
-    if (rating === 0) return;
-    if (tradesperson) {
-      submitReview(tradesperson.id, {
+  const handleSubmit = async () => {
+    if (rating === 0 || submitting) return;
+    setSubmitting(true);
+    try {
+      await submitTradesPersonReview(jobId, {
         rating,
-        text: reviewText || 'Great work, would recommend.',
-        jobId: jobId,
+        text: reviewText || undefined,
       });
+      setShowSuccess(true);
+    } finally {
+      setSubmitting(false);
     }
-    setShowSuccess(true);
   };
 
   return (
     <View style={[styles.container, { paddingBottom: insets.bottom }]}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         {/* Job summary */}
-        {job && (
-          <View style={styles.jobCard}>
-            <Text style={styles.jobCardTitle}>{job.title}</Text>
-            <Text style={styles.jobCardMeta}>
-              {job.postedByName} // {job.postedByBusiness}
-            </Text>
-            <Text style={styles.jobCardMeta}>
-              {new Date(job.startDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })} –{' '}
-              {new Date(job.endDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
-            </Text>
-            <Text style={styles.jobCardPay}>Total: £{totalPay}</Text>
-          </View>
-        )}
+        <View style={styles.jobCard}>
+          <Text style={styles.jobCardTitle}>{job.title}</Text>
+          <Text style={styles.jobCardMeta}>
+            {job.postedByName} // {job.postedByBusiness}
+          </Text>
+          <Text style={styles.jobCardMeta}>
+            {new Date(job.startDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })} –{' '}
+            {new Date(job.endDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+          </Text>
+          <Text style={styles.jobCardPay}>Total: £{totalPay}</Text>
+        </View>
 
         {/* Star rating */}
         <View style={styles.ratingSection}>
-          <Text style={styles.ratingTitle}>How would you rate this job?</Text>
+          <Text style={styles.ratingTitle}>How would you rate this job poster?</Text>
           <View style={styles.starsWrap}>
             <StarRating
               rating={rating}
@@ -101,9 +90,9 @@ export default function ReviewScreen() {
         </View>
 
         <TouchableOpacity
-          style={[styles.submitBtn, rating === 0 && styles.submitBtnDisabled]}
+          style={[styles.submitBtn, (rating === 0 || submitting) && styles.submitBtnDisabled]}
           onPress={handleSubmit}
-          disabled={rating === 0}
+          disabled={rating === 0 || submitting}
           activeOpacity={0.85}
         >
           <MaterialCommunityIcons name="send-check" size={20} color={colors.white} />
@@ -118,7 +107,7 @@ export default function ReviewScreen() {
             <MaterialCommunityIcons name="star-circle" size={56} color={colors.accent} />
             <Text style={styles.modalTitle}>Review Submitted!</Text>
             <Text style={styles.modalDesc}>
-              Thank you for your review. Your rating helps build trust on the platform.
+              Thanks for your review. You can now apply for new jobs.
             </Text>
             <TouchableOpacity
               style={styles.confirmBtn}
@@ -204,9 +193,7 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   modalTitle: { fontSize: 22, fontWeight: '800', color: colors.text, marginTop: 12, marginBottom: 10 },
-  modalDesc: { fontSize: 15, color: colors.text, textAlign: 'center', lineHeight: 22, marginBottom: 10 },
-  payAmount: { color: colors.primary, fontWeight: '800' },
-  tierNote: { fontSize: 12, color: colors.textLight, textAlign: 'center', marginBottom: 24, lineHeight: 18 },
+  modalDesc: { fontSize: 15, color: colors.text, textAlign: 'center', lineHeight: 22, marginBottom: 20 },
   confirmBtn: {
     backgroundColor: colors.primary,
     borderRadius: 10,

@@ -16,6 +16,7 @@ public class AppDbContext : DbContext
     public DbSet<Conversation> Conversations => Set<Conversation>();
     public DbSet<Message> Messages => Set<Message>();
     public DbSet<Review> Reviews => Set<Review>();
+    public DbSet<TradesPersonReview> TradesPersonReviews => Set<TradesPersonReview>();
     public DbSet<Notification> Notifications => Set<Notification>();
     public DbSet<DeviceToken> DeviceTokens => Set<DeviceToken>();
 
@@ -164,6 +165,27 @@ public class AppDbContext : DbContext
             e.HasOne(r => r.Job)
              .WithOne(j => j.Review)
              .HasForeignKey<Review>(r => r.JobId)
+             .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // ── TradesPersonReview ────────────────────────────────────────────────
+        mb.Entity<TradesPersonReview>(e =>
+        {
+            e.HasIndex(r => r.JobId).IsUnique(); // one tradesperson review per job
+
+            e.HasOne(r => r.Reviewer)
+             .WithMany(u => u.TradesPersonReviewsGiven)
+             .HasForeignKey(r => r.ReviewerId)
+             .OnDelete(DeleteBehavior.Restrict);
+
+            e.HasOne(r => r.Reviewee)
+             .WithMany(u => u.TradesPersonReviewsReceived)
+             .HasForeignKey(r => r.RevieweeId)
+             .OnDelete(DeleteBehavior.Restrict);
+
+            e.HasOne(r => r.Job)
+             .WithOne(j => j.TradesPersonReview)
+             .HasForeignKey<TradesPersonReview>(r => r.JobId)
              .OnDelete(DeleteBehavior.Restrict);
         });
 

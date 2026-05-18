@@ -15,6 +15,8 @@ const ICONS: Record<NotificationType, string> = {
   payment: 'cash',
   review: 'star',
   profile_view: 'eye',
+  job_completion_pending: 'clipboard-check-outline',
+  job_autocompleted: 'check-circle-outline',
 };
 
 function timeAgo(timestamp: string): string {

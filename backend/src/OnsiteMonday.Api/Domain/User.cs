@@ -44,5 +44,7 @@ public class User
     public ICollection<JobApplication> Applications { get; set; } = new List<JobApplication>();
     public ICollection<Review> ReviewsReceived { get; set; } = new List<Review>();
     public ICollection<Review> ReviewsGiven { get; set; } = new List<Review>();
+    public ICollection<TradesPersonReview> TradesPersonReviewsGiven { get; set; } = new List<TradesPersonReview>();
+    public ICollection<TradesPersonReview> TradesPersonReviewsReceived { get; set; } = new List<TradesPersonReview>();
     public ICollection<Notification> Notifications { get; set; } = new List<Notification>();
 }

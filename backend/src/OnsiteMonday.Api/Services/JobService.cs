@@ -48,6 +48,9 @@ public class JobService : IJobService
 
     public async Task<JobDto> CreateJobAsync(Guid posterId, CreateJobRequest request)
     {
+        if (await _jobRepo.HasOutstandingPosterReviewAsync(posterId))
+            throw new InvalidOperationException("You have outstanding reviews to complete before posting new jobs.");
+
         var poster = await _userRepo.GetByIdAsync(posterId)
             ?? throw new KeyNotFoundException("Poster user not found.");
 
@@ -93,6 +96,9 @@ public class JobService : IJobService
 
     public async Task<JobDto> ToggleInterestAsync(Guid jobId, Guid userId)
     {
+        if (await _jobRepo.HasOutstandingTradesPersonReviewAsync(userId))
+            throw new InvalidOperationException("You have outstanding reviews to complete before applying for new jobs.");
+
         var result = await _jobRepo.GetByIdAsync(jobId, userId)
             ?? throw new KeyNotFoundException($"Job {jobId} not found.");
 
@@ -207,25 +213,25 @@ public class JobService : IJobService
         if (job.Status != "accepted")
             throw new ArgumentException("Job must be accepted before it can be started.");
 
-        // Ensure the poster has a Mangopay user and wallet
+        // PAYMENT BYPASSED — subscription-only model: direct payment between parties.
+        // Mangopay escrow code retained below for reactivation when escrow is reintroduced.
+        /*
         var poster = await _userRepo.GetByIdAsync(userId)
             ?? throw new KeyNotFoundException("Poster user not found.");
-
         if (string.IsNullOrEmpty(poster.MangopayUserId))
         {
             poster.MangopayUserId = await _mangopay.EnsureUserAsync(poster.Id, poster.Email, poster.FirstName, poster.LastName);
             poster.MangopayWalletId = await _mangopay.EnsureWalletAsync(poster.MangopayUserId, $"Wallet for {poster.Email}");
             await _userRepo.UpdateAsync(poster);
         }
-
         var escrowAmount = job.DayRate * job.Duration;
         var returnUrl = $"https://app.onsitemonday.co.uk/jobs/{jobId}/payment-return";
-
         var (payInId, redirectUrl) = await _mangopay.CreateWebPayInAsync(jobId, poster.MangopayUserId, escrowAmount, returnUrl);
-
-        job.Status = "in_progress";
         job.EscrowPayInId = payInId;
         job.PaymentStatus = "payin_pending";
+        */
+
+        job.Status = "in_progress";
         job.UpdatedAt = DateTimeOffset.UtcNow;
         await _jobRepo.UpdateAsync(job);
 
@@ -237,9 +243,9 @@ public class JobService : IJobService
             {
                 Id = Guid.NewGuid(),
                 UserId = acceptedApplicant.Applicant.Id,
-                Type = "payment",
-                Title = "Payment in progress",
-                Description = $"The job poster is completing payment of £{escrowAmount:0.00} for \"{job.Title}\". It will be held securely until the job is complete.",
+                Type = "accepted",
+                Title = "Job started",
+                Description = $"\"{job.Title}\" has been started. Settle payment directly with the job poster on completion.",
                 LinkedId = jobId,
                 CreatedAt = DateTimeOffset.UtcNow,
             });
@@ -249,7 +255,7 @@ public class JobService : IJobService
         return new JobStartResponse
         {
             Job = ToDto(job, result.IsInterested, count),
-            PayInRedirectUrl = redirectUrl,
+            PayInRedirectUrl = null,
         };
     }
 
@@ -266,11 +272,11 @@ public class JobService : IJobService
         if (job.Status != "accepted" && job.Status != "in_progress")
             throw new ArgumentException("Job must be accepted or in progress to be marked complete.");
 
-        // Find the accepted tradesperson to determine their payout delay
         var applicants = await _jobRepo.GetApplicantsAsync(jobId);
         var acceptedEntry = applicants.FirstOrDefault(a => a.Application.Status == "accepted");
 
-        // Ensure tradesperson has a Mangopay wallet for the eventual payout
+        // PAYMENT BYPASSED — Mangopay wallet provisioning retained for future reactivation.
+        /*
         if (acceptedEntry != default)
         {
             var tradesperson = acceptedEntry.Applicant;
@@ -281,29 +287,38 @@ public class JobService : IJobService
                 await _userRepo.UpdateAsync(tradesperson);
             }
         }
+        */
 
-        var amount = job.DayRate * job.Duration;
-
-        // Payout is NOT scheduled here — it is gated on the tradesperson submitting a review.
-        // SubmitReviewAsync will schedule the Hangfire PayoutReleaseJob once the review is received.
         job.Status = "completed";
-        // PaymentStatus intentionally left as "escrowed" — funds remain held until review gates release.
         job.UpdatedAt = DateTimeOffset.UtcNow;
         await _jobRepo.UpdateAsync(job);
 
+        // Notify tradesperson to submit their review
         if (acceptedEntry != default)
         {
             await _notificationRepo.CreateAsync(new Notification
             {
                 Id = Guid.NewGuid(),
                 UserId = acceptedEntry.Applicant.Id,
-                Type = "payment",
-                Title = "Submit your review to release payment",
-                Description = $"The job \"{job.Title}\" is complete. Submit your review to release payment of £{amount:0.00}.",
+                Type = "job_completion_pending",
+                Title = "Submit your review",
+                Description = $"The job \"{job.Title}\" has been marked complete. Please submit your review of the job poster.",
                 LinkedId = jobId,
                 CreatedAt = DateTimeOffset.UtcNow,
             });
         }
+
+        // Notify job poster to submit their review
+        await _notificationRepo.CreateAsync(new Notification
+        {
+            Id = Guid.NewGuid(),
+            UserId = job.PostedById,
+            Type = "job_completion_pending",
+            Title = "Leave a review",
+            Description = $"You've marked \"{job.Title}\" as complete. Please submit your review of the tradesperson.",
+            LinkedId = jobId,
+            CreatedAt = DateTimeOffset.UtcNow,
+        });
 
         var count = await _jobRepo.GetApplicationCountAsync(jobId);
         return ToDto(job, result.IsInterested, count);

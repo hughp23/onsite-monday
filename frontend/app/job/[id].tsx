@@ -151,14 +151,7 @@ export default function JobDetailScreen() {
           <Text style={styles.description}>{job.description}</Text>
         </View>
 
-        {/* Payment terms */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Payment Terms</Text>
-          <View style={styles.paymentRow}>
-            <MaterialCommunityIcons name="cash-check" size={20} color={colors.success} />
-            <Text style={styles.paymentText}>{job.paymentTerms}</Text>
-          </View>
-        </View>
+        {/* Payment terms — hidden until escrow is reintroduced */}
 
         {/* Message poster — hidden for own jobs */}
         {!isOwnJob && (

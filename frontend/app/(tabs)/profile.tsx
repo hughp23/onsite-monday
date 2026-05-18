@@ -211,7 +211,8 @@ export default function ProfileScreen() {
             </View>
           </View>
 
-          {/* Wallet */}
+          {/* Wallet — hidden until escrow is reintroduced */}
+          {false && (
           <TouchableOpacity
             style={[styles.section, styles.menuRow]}
             onPress={() => router.push('/wallet')}
@@ -221,6 +222,7 @@ export default function ProfileScreen() {
             <Text style={styles.menuRowLabel}>Wallet</Text>
             <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
           </TouchableOpacity>
+          )}
 
           {/* Gallery */}
           <View style={styles.section}>

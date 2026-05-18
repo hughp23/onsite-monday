@@ -32,7 +32,11 @@ public class Job
     public string PaymentStatus { get; set; } = "none"; // none|payin_pending|escrowed|refund_pending|payout_pending|paid
     public string? HangfireJobId { get; set; }
 
+    // Set when the end-of-job notification is first sent; used by autocomplete scan
+    public DateTimeOffset? CompletionNotifiedAt { get; set; }
+
     // Navigation
     public ICollection<JobApplication> Applications { get; set; } = new List<JobApplication>();
     public Review? Review { get; set; }
+    public TradesPersonReview? TradesPersonReview { get; set; }
 }

@@ -102,6 +102,51 @@ public class ReviewService : IReviewService
         return reviews.Select(r => ToDto(r, r.Reviewer)).ToList();
     }
 
+    public async Task SubmitTradesPersonReviewAsync(Guid tradespersonId, Guid jobId, SubmitTradesPersonReviewRequest request)
+    {
+        var job = await _jobRepo.GetByIdRawAsync(jobId)
+            ?? throw new KeyNotFoundException($"Job {jobId} not found.");
+
+        if (job.Status != "completed")
+            throw new InvalidOperationException("Reviews can only be submitted for completed jobs.");
+
+        var acceptedApp = (await _jobRepo.GetApplicantsAsync(jobId))
+            .FirstOrDefault(a => a.Application.Status == "accepted" && a.Applicant.Id == tradespersonId);
+
+        if (acceptedApp == default)
+            throw new UnauthorizedAccessException("Only the accepted tradesperson can submit this review.");
+
+        if (await _reviewRepo.TradesPersonReviewExistsForJobAsync(jobId))
+            throw new ArgumentException("A tradesperson review already exists for this job.");
+
+        var tradesperson = await _userRepo.GetByIdAsync(tradespersonId)
+            ?? throw new KeyNotFoundException("Tradesperson not found.");
+
+        var review = new TradesPersonReview
+        {
+            Id = Guid.NewGuid(),
+            ReviewerId = tradespersonId,
+            RevieweeId = job.PostedById,
+            JobId = jobId,
+            Rating = request.Rating,
+            Text = request.Text,
+            CreatedAt = DateTimeOffset.UtcNow,
+        };
+
+        await _reviewRepo.CreateTradesPersonReviewAsync(review);
+
+        await _notificationRepo.CreateAsync(new Notification
+        {
+            Id = Guid.NewGuid(),
+            UserId = job.PostedById,
+            Type = "review",
+            Title = "New review received",
+            Description = $"{tradesperson.FirstName} {tradesperson.LastName} left you a {request.Rating}-star review.",
+            LinkedId = jobId,
+            CreatedAt = DateTimeOffset.UtcNow,
+        });
+    }
+
     private static ReviewDto ToDto(Review review, Domain.User reviewer) => new()
     {
         Id = review.Id,

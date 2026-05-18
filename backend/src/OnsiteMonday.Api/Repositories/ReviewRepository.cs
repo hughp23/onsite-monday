@@ -37,4 +37,14 @@ public class ReviewRepository : IReviewRepository
 
     public Task<int> GetReviewCountAsync(Guid revieweeId) =>
         _db.Reviews.CountAsync(r => r.RevieweeId == revieweeId);
+
+    public Task<bool> TradesPersonReviewExistsForJobAsync(Guid jobId) =>
+        _db.TradesPersonReviews.AnyAsync(r => r.JobId == jobId);
+
+    public async Task<TradesPersonReview> CreateTradesPersonReviewAsync(TradesPersonReview review)
+    {
+        _db.TradesPersonReviews.Add(review);
+        await _db.SaveChangesAsync();
+        return review;
+    }
 }

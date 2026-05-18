@@ -277,6 +277,8 @@ export default function CreateJobScreen() {
           </View>
         </View>
 
+        {/* Payment Terms — hidden until escrow is reintroduced */}
+        {false && (
         <View style={styles.inputGroup}>
           <Text style={styles.label}>Payment Terms</Text>
           <View style={styles.paymentOptions}>
@@ -293,6 +295,7 @@ export default function CreateJobScreen() {
             ))}
           </View>
         </View>
+        )}
 
         <TouchableOpacity
           style={[styles.postBtn, (!title || !trade || !location || !dayRate) && styles.postBtnDisabled]}
