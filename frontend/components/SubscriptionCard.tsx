@@ -5,6 +5,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { SubscriptionTier } from '@/constants/types';
 import { colors } from '@/constants/colors';
 import { fonts } from '@/constants/typography';
+import { ESCROW_ENABLED } from '@/constants/featureFlags';
 
 interface SubscriptionCardProps {
   tier: SubscriptionTier;
@@ -64,7 +65,12 @@ export default function SubscriptionCard({ tier, isCurrentPlan, onSelect }: Subs
           </View>
         </View>
         <View style={[styles.divider, styles.dividerGold]} />
-        {/* Payout row hidden until escrow is reintroduced */}
+        {ESCROW_ENABLED && (
+          <View style={styles.detailRow}>
+            <Ionicons name="time-outline" size={15} color="rgba(255,255,255,0.6)" />
+            <Text style={styles.detailTextGold}>Payout in <Text style={styles.boldGold}>{info.paymentDays}</Text></Text>
+          </View>
+        )}
         <View style={styles.detailRow}>
           <Ionicons name="briefcase-outline" size={15} color="rgba(255,255,255,0.6)" />
           <Text style={styles.detailTextGold}>Live posts: <Text style={styles.boldGold}>{info.posts}</Text></Text>
@@ -105,7 +111,12 @@ export default function SubscriptionCard({ tier, isCurrentPlan, onSelect }: Subs
         </View>
       </View>
       <View style={styles.divider} />
-      {/* Payout row hidden until escrow is reintroduced */}
+      {ESCROW_ENABLED && (
+        <View style={styles.detailRow}>
+          <Ionicons name="time-outline" size={15} color={colors.textMuted} />
+          <Text style={styles.detailText}>Payout in <Text style={styles.bold}>{info.paymentDays}</Text></Text>
+        </View>
+      )}
       <View style={styles.detailRow}>
         <Ionicons name="briefcase-outline" size={15} color={colors.textMuted} />
         <Text style={styles.detailText}>Live posts: <Text style={styles.bold}>{info.posts}</Text></Text>

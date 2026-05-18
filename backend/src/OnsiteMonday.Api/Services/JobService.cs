@@ -1,5 +1,6 @@
 using AutoMapper;
 using Hangfire;
+using Microsoft.Extensions.Configuration;
 using OnsiteMonday.Api.Domain;
 using OnsiteMonday.Api.DTOs.Jobs;
 using OnsiteMonday.Api.Jobs;
@@ -16,6 +17,7 @@ public class JobService : IJobService
     private readonly IMangopayService _mangopay;
     private readonly IBackgroundJobClient _backgroundJobs;
     private readonly IMapper _mapper;
+    private readonly bool _escrowEnabled;
 
     public JobService(
         IJobRepository jobRepo,
@@ -23,7 +25,8 @@ public class JobService : IJobService
         INotificationRepository notificationRepo,
         IMangopayService mangopay,
         IBackgroundJobClient backgroundJobs,
-        IMapper mapper)
+        IMapper mapper,
+        IConfiguration configuration)
     {
         _jobRepo = jobRepo;
         _userRepo = userRepo;
@@ -31,6 +34,7 @@ public class JobService : IJobService
         _mangopay = mangopay;
         _backgroundJobs = backgroundJobs;
         _mapper = mapper;
+        _escrowEnabled = configuration.GetValue<bool>("Features:EscrowEnabled");
     }
 
     public async Task<List<JobDto>> GetJobsAsync(Guid currentUserId, string? trade, string? location, string? status, int page, int pageSize)
@@ -213,23 +217,24 @@ public class JobService : IJobService
         if (job.Status != "accepted")
             throw new ArgumentException("Job must be accepted before it can be started.");
 
-        // PAYMENT BYPASSED — subscription-only model: direct payment between parties.
-        // Mangopay escrow code retained below for reactivation when escrow is reintroduced.
-        /*
-        var poster = await _userRepo.GetByIdAsync(userId)
-            ?? throw new KeyNotFoundException("Poster user not found.");
-        if (string.IsNullOrEmpty(poster.MangopayUserId))
+        string? payInRedirectUrl = null;
+        if (_escrowEnabled)
         {
-            poster.MangopayUserId = await _mangopay.EnsureUserAsync(poster.Id, poster.Email, poster.FirstName, poster.LastName);
-            poster.MangopayWalletId = await _mangopay.EnsureWalletAsync(poster.MangopayUserId, $"Wallet for {poster.Email}");
-            await _userRepo.UpdateAsync(poster);
+            var poster = await _userRepo.GetByIdAsync(userId)
+                ?? throw new KeyNotFoundException("Poster user not found.");
+            if (string.IsNullOrEmpty(poster.MangopayUserId))
+            {
+                poster.MangopayUserId = await _mangopay.EnsureUserAsync(poster.Id, poster.Email, poster.FirstName, poster.LastName);
+                poster.MangopayWalletId = await _mangopay.EnsureWalletAsync(poster.MangopayUserId, $"Wallet for {poster.Email}");
+                await _userRepo.UpdateAsync(poster);
+            }
+            var escrowAmount = job.DayRate * job.Duration;
+            var returnUrl = $"https://app.onsitemonday.co.uk/jobs/{jobId}/payment-return";
+            var (payInId, redirectUrl) = await _mangopay.CreateWebPayInAsync(jobId, poster.MangopayUserId, escrowAmount, returnUrl);
+            job.EscrowPayInId = payInId;
+            job.PaymentStatus = "payin_pending";
+            payInRedirectUrl = redirectUrl;
         }
-        var escrowAmount = job.DayRate * job.Duration;
-        var returnUrl = $"https://app.onsitemonday.co.uk/jobs/{jobId}/payment-return";
-        var (payInId, redirectUrl) = await _mangopay.CreateWebPayInAsync(jobId, poster.MangopayUserId, escrowAmount, returnUrl);
-        job.EscrowPayInId = payInId;
-        job.PaymentStatus = "payin_pending";
-        */
 
         job.Status = "in_progress";
         job.UpdatedAt = DateTimeOffset.UtcNow;
@@ -245,7 +250,9 @@ public class JobService : IJobService
                 UserId = acceptedApplicant.Applicant.Id,
                 Type = "accepted",
                 Title = "Job started",
-                Description = $"\"{job.Title}\" has been started. Settle payment directly with the job poster on completion.",
+                Description = _escrowEnabled
+                    ? $"\"{job.Title}\" has been started. Your payment is held securely in escrow until the job is complete."
+                    : $"\"{job.Title}\" has been started. Settle payment directly with the job poster on completion.",
                 LinkedId = jobId,
                 CreatedAt = DateTimeOffset.UtcNow,
             });
@@ -255,7 +262,7 @@ public class JobService : IJobService
         return new JobStartResponse
         {
             Job = ToDto(job, result.IsInterested, count),
-            PayInRedirectUrl = null,
+            PayInRedirectUrl = payInRedirectUrl,
         };
     }
 
@@ -275,9 +282,7 @@ public class JobService : IJobService
         var applicants = await _jobRepo.GetApplicantsAsync(jobId);
         var acceptedEntry = applicants.FirstOrDefault(a => a.Application.Status == "accepted");
 
-        // PAYMENT BYPASSED — Mangopay wallet provisioning retained for future reactivation.
-        /*
-        if (acceptedEntry != default)
+        if (_escrowEnabled && acceptedEntry != default)
         {
             var tradesperson = acceptedEntry.Applicant;
             if (string.IsNullOrEmpty(tradesperson.MangopayUserId))
@@ -287,38 +292,44 @@ public class JobService : IJobService
                 await _userRepo.UpdateAsync(tradesperson);
             }
         }
-        */
 
         job.Status = "completed";
         job.UpdatedAt = DateTimeOffset.UtcNow;
         await _jobRepo.UpdateAsync(job);
 
-        // Notify tradesperson to submit their review
+        var amount = job.DayRate * job.Duration;
+
+        // Notify tradesperson
         if (acceptedEntry != default)
         {
             await _notificationRepo.CreateAsync(new Notification
             {
                 Id = Guid.NewGuid(),
                 UserId = acceptedEntry.Applicant.Id,
-                Type = "job_completion_pending",
-                Title = "Submit your review",
-                Description = $"The job \"{job.Title}\" has been marked complete. Please submit your review of the job poster.",
+                Type = _escrowEnabled ? "payment" : "job_completion_pending",
+                Title = _escrowEnabled ? "Submit your review to release payment" : "Submit your review",
+                Description = _escrowEnabled
+                    ? $"The job \"{job.Title}\" is complete. Submit your review to release payment of £{amount:0.00}."
+                    : $"The job \"{job.Title}\" has been marked complete. Please submit your review of the job poster.",
                 LinkedId = jobId,
                 CreatedAt = DateTimeOffset.UtcNow,
             });
         }
 
-        // Notify job poster to submit their review
-        await _notificationRepo.CreateAsync(new Notification
+        // In subscription-only mode both parties review; in escrow mode the poster already acted by marking complete
+        if (!_escrowEnabled)
         {
-            Id = Guid.NewGuid(),
-            UserId = job.PostedById,
-            Type = "job_completion_pending",
-            Title = "Leave a review",
-            Description = $"You've marked \"{job.Title}\" as complete. Please submit your review of the tradesperson.",
-            LinkedId = jobId,
-            CreatedAt = DateTimeOffset.UtcNow,
-        });
+            await _notificationRepo.CreateAsync(new Notification
+            {
+                Id = Guid.NewGuid(),
+                UserId = job.PostedById,
+                Type = "job_completion_pending",
+                Title = "Leave a review",
+                Description = $"You've marked \"{job.Title}\" as complete. Please submit your review of the tradesperson.",
+                LinkedId = jobId,
+                CreatedAt = DateTimeOffset.UtcNow,
+            });
+        }
 
         var count = await _jobRepo.GetApplicationCountAsync(jobId);
         return ToDto(job, result.IsInterested, count);

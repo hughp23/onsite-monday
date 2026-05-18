@@ -20,6 +20,7 @@ import AnimatedListItem from '@/components/AnimatedListItem';
 import { colors } from '@/constants/colors';
 import { fonts } from '@/constants/typography';
 import { Job } from '@/constants/types';
+import { ESCROW_ENABLED } from '@/constants/featureFlags';
 
 type TabType = 'accepted' | 'posted';
 
@@ -206,7 +207,7 @@ export default function MyJobsScreen() {
                 activeOpacity={0.8}
               >
                 <MaterialCommunityIcons name="play-circle-outline" size={18} color={colors.white} />
-                <Text style={styles.startBtnText}>Start Job</Text>
+                <Text style={styles.startBtnText}>{ESCROW_ENABLED ? 'Start Job & Pay' : 'Start Job'}</Text>
               </TouchableOpacity>
             )}
 
@@ -332,10 +333,12 @@ export default function MyJobsScreen() {
             <MaterialCommunityIcons name="play-circle" size={48} color={colors.primary} />
             <Text style={styles.modalTitle}>Start Job?</Text>
             <Text style={styles.modalDesc}>
-              Starting "{startModalJob?.title}" will notify the tradesperson to begin work. Payment is arranged directly between you.
+              {ESCROW_ENABLED
+                ? `Starting "${startModalJob?.title}" requires a payment of £${((startModalJob?.dayRate ?? 0) * (startModalJob?.duration ?? 1)).toLocaleString()} to be held securely until the job is complete. You will be redirected to complete payment.`
+                : `Starting "${startModalJob?.title}" will notify the tradesperson to begin work. Payment is arranged directly between you.`}
             </Text>
             <TouchableOpacity style={styles.confirmBtn} onPress={confirmStart}>
-              <Text style={styles.confirmBtnText}>Yes, Start Job</Text>
+              <Text style={styles.confirmBtnText}>{ESCROW_ENABLED ? 'Yes, Proceed to Payment' : 'Yes, Start Job'}</Text>
             </TouchableOpacity>
             <TouchableOpacity onPress={() => setStartModalJob(null)} style={styles.cancelBtn}>
               <Text style={styles.cancelBtnText}>Cancel</Text>
@@ -370,7 +373,9 @@ export default function MyJobsScreen() {
             <MaterialCommunityIcons name="close-circle" size={48} color={colors.error} />
             <Text style={styles.modalTitle}>Cancel Job?</Text>
             <Text style={styles.modalDesc}>
-              This cannot be undone. The tradesperson will be notified that the job has been cancelled.
+              {ESCROW_ENABLED
+                ? 'This cannot be undone. If payment was made, it will be refunded to the job poster.'
+                : 'This cannot be undone. The tradesperson will be notified that the job has been cancelled.'}
             </Text>
             <TextInput
               style={styles.cancelReasonInput}
@@ -398,7 +403,9 @@ export default function MyJobsScreen() {
             <MaterialCommunityIcons name="check-circle" size={48} color={colors.success} />
             <Text style={styles.modalTitle}>Mark as Complete?</Text>
             <Text style={styles.modalDesc}>
-              Marking "{completeModalJob?.title}" as complete will notify both parties to submit their reviews.
+              {ESCROW_ENABLED
+                ? `Marking "${completeModalJob?.title}" as complete will release the escrowed payment and trigger a review.`
+                : `Marking "${completeModalJob?.title}" as complete will notify both parties to submit their reviews.`}
             </Text>
             <TouchableOpacity style={styles.confirmBtn} onPress={confirmComplete}>
               <Text style={styles.confirmBtnText}>Yes, Mark Complete</Text>

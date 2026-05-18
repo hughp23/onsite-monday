@@ -14,6 +14,7 @@ import { useAuth } from '@/context/AuthContext';
 import StarRating from '@/components/StarRating';
 import { colors } from '@/constants/colors';
 import { fonts } from '@/constants/typography';
+import { ESCROW_ENABLED } from '@/constants/featureFlags';
 
 const TIER_LABELS = { bronze: 'Bronze', silver: 'Silver', gold: 'Gold' };
 const TIER_COLORS = { bronze: '#CD7F32', silver: '#A8A9AD', gold: colors.accent };
@@ -211,8 +212,8 @@ export default function ProfileScreen() {
             </View>
           </View>
 
-          {/* Wallet — hidden until escrow is reintroduced */}
-          {false && (
+          {/* Wallet */}
+          {ESCROW_ENABLED && (
           <TouchableOpacity
             style={[styles.section, styles.menuRow]}
             onPress={() => router.push('/wallet')}
