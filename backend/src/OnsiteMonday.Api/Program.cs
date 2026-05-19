@@ -128,6 +128,7 @@ else
     builder.Services.AddSingleton<IBackgroundJobClient, StubBackgroundJobClient>();
 }
 builder.Services.AddScoped<IPayoutReleaseJob, PayoutReleaseJob>();
+builder.Services.AddScoped<IJobCompletionScanJob, JobCompletionScanJob>();
 
 // Push notifications — stub in Dev, real FCM in Production or Sandbox
 if (useLivePayments)
@@ -227,6 +228,7 @@ if (useLivePayments)
         Authorization = new[] { new Hangfire.Dashboard.LocalRequestsOnlyAuthorizationFilter() }
     });
     app.MapHangfireDashboard();
+    RecurringJob.AddOrUpdate<IJobCompletionScanJob>("job-completion-scan", j => j.ExecuteAsync(), Cron.Daily);
 }
 app.MapControllers();
 app.MapHub<ChatHub>("/hubs/chat");

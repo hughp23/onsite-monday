@@ -20,13 +20,14 @@ import AnimatedListItem from '@/components/AnimatedListItem';
 import { colors } from '@/constants/colors';
 import { fonts } from '@/constants/typography';
 import { Job } from '@/constants/types';
+import { ESCROW_ENABLED } from '@/constants/featureFlags';
 
 type TabType = 'accepted' | 'posted';
 
 const SPRING = { damping: 22, stiffness: 200 };
 
 export default function MyJobsScreen() {
-  const { myJobs, markJobComplete, startJob, deleteJob, cancelJob, isLoading, refreshMyJobs } = useApp();
+  const { myJobs, markJobComplete, startJob, deleteJob, cancelJob, isLoading, refreshMyJobs, currentUser } = useApp();
   const insets = useSafeAreaInsets();
   const [activeTab, setActiveTab] = useState<TabType>('accepted');
   const [completeModalJob, setCompleteModalJob] = useState<Job | null>(null);
@@ -206,7 +207,7 @@ export default function MyJobsScreen() {
                 activeOpacity={0.8}
               >
                 <MaterialCommunityIcons name="play-circle-outline" size={18} color={colors.white} />
-                <Text style={styles.startBtnText}>Start Job &amp; Pay</Text>
+                <Text style={styles.startBtnText}>{ESCROW_ENABLED ? 'Start Job & Pay' : 'Start Job'}</Text>
               </TouchableOpacity>
             )}
 
@@ -280,6 +281,36 @@ export default function MyJobsScreen() {
         </View>
       </View>
 
+      {/* Outstanding review banner */}
+      {myJobs.posted.some(j => j.status === 'completed') && (
+        <TouchableOpacity
+          style={styles.reviewBanner}
+          onPress={() => {
+            const job = myJobs.posted.find(j => j.status === 'completed');
+            if (job) router.push(`/review/${job.id}`);
+          }}
+          activeOpacity={0.85}
+        >
+          <MaterialCommunityIcons name="star-outline" size={18} color={colors.accent} />
+          <Text style={styles.reviewBannerText}>Outstanding review — tap to complete</Text>
+          <Ionicons name="chevron-forward" size={16} color={colors.accent} />
+        </TouchableOpacity>
+      )}
+      {myJobs.accepted.some(j => j.status === 'completed') && (
+        <TouchableOpacity
+          style={styles.reviewBanner}
+          onPress={() => {
+            const job = myJobs.accepted.find(j => j.status === 'completed');
+            if (job) router.push(`/review-poster/${job.id}` as any);
+          }}
+          activeOpacity={0.85}
+        >
+          <MaterialCommunityIcons name="star-outline" size={18} color={colors.accent} />
+          <Text style={styles.reviewBannerText}>Outstanding review — tap to complete</Text>
+          <Ionicons name="chevron-forward" size={16} color={colors.accent} />
+        </TouchableOpacity>
+      )}
+
       <Animated.View style={contentStyle}>
         {activeTab === 'accepted' ? renderAccepted() : renderPosted()}
       </Animated.View>
@@ -302,14 +333,12 @@ export default function MyJobsScreen() {
             <MaterialCommunityIcons name="play-circle" size={48} color={colors.primary} />
             <Text style={styles.modalTitle}>Start Job?</Text>
             <Text style={styles.modalDesc}>
-              Starting "{startModalJob?.title}" requires a payment of{' '}
-              <Text style={styles.modalAmount}>
-                £{((startModalJob?.dayRate ?? 0) * (startModalJob?.duration ?? 1)).toLocaleString()}
-              </Text>{' '}
-              to be held securely until the job is complete. You will be redirected to complete payment.
+              {ESCROW_ENABLED
+                ? `Starting "${startModalJob?.title}" requires a payment of £${((startModalJob?.dayRate ?? 0) * (startModalJob?.duration ?? 1)).toLocaleString()} to be held securely until the job is complete. You will be redirected to complete payment.`
+                : `Starting "${startModalJob?.title}" will notify the tradesperson to begin work. Payment is arranged directly between you.`}
             </Text>
             <TouchableOpacity style={styles.confirmBtn} onPress={confirmStart}>
-              <Text style={styles.confirmBtnText}>Yes, Proceed to Payment</Text>
+              <Text style={styles.confirmBtnText}>{ESCROW_ENABLED ? 'Yes, Proceed to Payment' : 'Yes, Start Job'}</Text>
             </TouchableOpacity>
             <TouchableOpacity onPress={() => setStartModalJob(null)} style={styles.cancelBtn}>
               <Text style={styles.cancelBtnText}>Cancel</Text>
@@ -344,7 +373,9 @@ export default function MyJobsScreen() {
             <MaterialCommunityIcons name="close-circle" size={48} color={colors.error} />
             <Text style={styles.modalTitle}>Cancel Job?</Text>
             <Text style={styles.modalDesc}>
-              This cannot be undone. If payment was made, it will be refunded to the job poster.
+              {ESCROW_ENABLED
+                ? 'This cannot be undone. If payment was made, it will be refunded to the job poster.'
+                : 'This cannot be undone. The tradesperson will be notified that the job has been cancelled.'}
             </Text>
             <TextInput
               style={styles.cancelReasonInput}
@@ -372,7 +403,9 @@ export default function MyJobsScreen() {
             <MaterialCommunityIcons name="check-circle" size={48} color={colors.success} />
             <Text style={styles.modalTitle}>Mark as Complete?</Text>
             <Text style={styles.modalDesc}>
-              Marking "{completeModalJob?.title}" as complete will release the escrowed payment and trigger a review.
+              {ESCROW_ENABLED
+                ? `Marking "${completeModalJob?.title}" as complete will release the escrowed payment and trigger a review.`
+                : `Marking "${completeModalJob?.title}" as complete will notify both parties to submit their reviews.`}
             </Text>
             <TouchableOpacity style={styles.confirmBtn} onPress={confirmComplete}>
               <Text style={styles.confirmBtnText}>Yes, Mark Complete</Text>
@@ -536,6 +569,22 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     width: '100%',
     marginBottom: 10,
+  },
+  reviewBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: '#FFF8E7',
+    borderBottomWidth: 1,
+    borderBottomColor: '#F5DFA0',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  reviewBannerText: {
+    fontFamily: fonts.bodySemiBold,
+    fontSize: 13,
+    color: colors.accent,
+    flex: 1,
   },
   cancelReasonInput: {
     width: '100%',

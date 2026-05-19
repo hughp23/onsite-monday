@@ -9,6 +9,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useApp } from '@/context/AppContext';
 import Toast from '@/components/Toast';
 import { colors } from '@/constants/colors';
+import { ESCROW_ENABLED } from '@/constants/featureFlags';
 
 export default function JobDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -152,13 +153,15 @@ export default function JobDetailScreen() {
         </View>
 
         {/* Payment terms */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Payment Terms</Text>
-          <View style={styles.paymentRow}>
-            <MaterialCommunityIcons name="cash-check" size={20} color={colors.success} />
-            <Text style={styles.paymentText}>{job.paymentTerms}</Text>
+        {ESCROW_ENABLED && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Payment Terms</Text>
+            <View style={styles.paymentRow}>
+              <MaterialCommunityIcons name="cash-check" size={20} color={colors.success} />
+              <Text style={styles.paymentText}>{job.paymentTerms}</Text>
+            </View>
           </View>
-        </View>
+        )}
 
         {/* Message poster — hidden for own jobs */}
         {!isOwnJob && (

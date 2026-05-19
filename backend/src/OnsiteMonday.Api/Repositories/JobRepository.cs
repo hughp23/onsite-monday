@@ -132,4 +132,25 @@ public class JobRepository : IJobRepository
             .ToListAsync();
         return applications.Select(a => (a.Applicant, a)).ToList();
     }
+
+    public Task<bool> HasOutstandingPosterReviewAsync(Guid posterId) =>
+        _db.Jobs
+            .Where(j => j.PostedById == posterId && j.Status == "completed" && j.Review == null)
+            .AnyAsync();
+
+    public Task<bool> HasOutstandingTradesPersonReviewAsync(Guid tradespersonId) =>
+        _db.JobApplications
+            .Where(a => a.ApplicantId == tradespersonId && a.Status == "accepted"
+                        && a.Job.Status == "completed" && a.Job.TradesPersonReview == null)
+            .AnyAsync();
+
+    public Task<List<Job>> GetJobsForAutocompleteAsync()
+    {
+        var cutoff = DateTimeOffset.UtcNow;
+        return _db.Jobs
+            .Include(j => j.Applications)
+            .Where(j => (j.Status == "accepted" || j.Status == "in_progress")
+                        && new DateTimeOffset(j.EndDate.ToDateTime(TimeOnly.MinValue), TimeSpan.Zero) < cutoff)
+            .ToListAsync();
+    }
 }

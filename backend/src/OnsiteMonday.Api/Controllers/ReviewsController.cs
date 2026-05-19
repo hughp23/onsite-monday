@@ -8,7 +8,6 @@ using System.Security.Claims;
 namespace OnsiteMonday.Api.Controllers;
 
 [ApiController]
-[Route("api/users")]
 [Authorize]
 public class ReviewsController : ControllerBase
 {
@@ -34,8 +33,8 @@ public class ReviewsController : ControllerBase
         return user.Id;
     }
 
-    // POST /api/users/{id}/reviews
-    [HttpPost("{id:guid}/reviews")]
+    // POST /api/users/{id}/reviews  — job poster reviews tradesperson
+    [HttpPost("api/users/{id:guid}/reviews")]
     public async Task<ActionResult<ReviewDto>> SubmitReview(Guid id, [FromBody] SubmitReviewRequest request)
     {
         var reviewerId = await GetCurrentUserIdAsync();
@@ -44,10 +43,19 @@ public class ReviewsController : ControllerBase
     }
 
     // GET /api/users/{id}/reviews
-    [HttpGet("{id:guid}/reviews")]
+    [HttpGet("api/users/{id:guid}/reviews")]
     public async Task<ActionResult<List<ReviewDto>>> GetReviews(Guid id)
     {
         var reviews = await _reviewService.GetReviewsAsync(id);
         return Ok(reviews);
+    }
+
+    // POST /api/jobs/{jobId}/tradesperson-review  — tradesperson reviews job poster
+    [HttpPost("api/jobs/{jobId:guid}/tradesperson-review")]
+    public async Task<IActionResult> SubmitTradesPersonReview(Guid jobId, [FromBody] SubmitTradesPersonReviewRequest request)
+    {
+        var tradespersonId = await GetCurrentUserIdAsync();
+        await _reviewService.SubmitTradesPersonReviewAsync(tradespersonId, jobId, request);
+        return NoContent();
     }
 }

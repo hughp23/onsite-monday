@@ -18,6 +18,11 @@ export interface SubmitReviewPayload {
   jobId: string;
 }
 
+export interface SubmitTradesPersonReviewPayload {
+  rating: number;
+  text?: string;
+}
+
 export const reviewService = {
   getReviews: async (userId: string): Promise<ReviewDto[]> => {
     return apiRequest<ReviewDto[]>('GET', `/users/${userId}/reviews`);
@@ -25,5 +30,9 @@ export const reviewService = {
 
   submitReview: async (userId: string, payload: SubmitReviewPayload): Promise<ReviewDto> => {
     return apiRequest<ReviewDto>('POST', `/users/${userId}/reviews`, payload);
+  },
+
+  submitTradesPersonReview: async (jobId: string, payload: SubmitTradesPersonReviewPayload): Promise<void> => {
+    await apiRequest<void>('POST', `/jobs/${jobId}/tradesperson-review`, payload);
   },
 };

@@ -9,4 +9,7 @@ public interface IReviewRepository
     Task<Review> CreateAsync(Review review);
     Task<decimal> GetAverageRatingAsync(Guid revieweeId);
     Task<int> GetReviewCountAsync(Guid revieweeId);
+
+    Task<bool> TradesPersonReviewExistsForJobAsync(Guid jobId);
+    Task<TradesPersonReview> CreateTradesPersonReviewAsync(TradesPersonReview review);
 }

@@ -13,6 +13,7 @@ import Toast from '@/components/Toast';
 import { colors } from '@/constants/colors';
 import { TRADES } from '@/constants/trades';
 import { DayLetter, Job } from '@/constants/types';
+import { ESCROW_ENABLED } from '@/constants/featureFlags';
 
 const ALL_DAYS: DayLetter[] = ['M', 'T', 'W', 'Th', 'F', 'S', 'Su'];
 
@@ -277,6 +278,8 @@ export default function CreateJobScreen() {
           </View>
         </View>
 
+        {/* Payment Terms */}
+        {ESCROW_ENABLED && (
         <View style={styles.inputGroup}>
           <Text style={styles.label}>Payment Terms</Text>
           <View style={styles.paymentOptions}>
@@ -293,6 +296,7 @@ export default function CreateJobScreen() {
             ))}
           </View>
         </View>
+        )}
 
         <TouchableOpacity
           style={[styles.postBtn, (!title || !trade || !location || !dayRate) && styles.postBtnDisabled]}

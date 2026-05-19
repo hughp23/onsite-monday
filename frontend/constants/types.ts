@@ -10,7 +10,7 @@ export interface WalletDto {
 }
 export type JobStatus = 'open' | 'applied' | 'accepted' | 'in_progress' | 'completed' | 'cancelled';
 export type DayLetter = 'M' | 'T' | 'W' | 'Th' | 'F' | 'S' | 'Su';
-export type NotificationType = 'application' | 'accepted' | 'payment' | 'review' | 'profile_view';
+export type NotificationType = 'application' | 'accepted' | 'payment' | 'review' | 'profile_view' | 'job_completion_pending' | 'job_autocompleted';
 
 export interface User {
   id: string;

@@ -29,6 +29,7 @@ interface AppContextType {
   deleteJob: (jobId: string) => Promise<void>;
   cancelJob: (jobId: string, reason?: string) => Promise<void>;
   submitReview: (tradespersonId: string, review: { rating: number; text: string; jobId: string }) => Promise<void>;
+  submitTradesPersonReview: (jobId: string, review: { rating: number; text?: string }) => Promise<void>;
   startConversation: (participantId: string, relatedJobId?: string) => Promise<string>;
   sendMessage: (conversationId: string, text: string) => Promise<void>;
   markConversationRead: (conversationId: string) => Promise<void>;
@@ -278,6 +279,10 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
     await reviewService.submitReview(tradespersonId, review);
   }, []);
 
+  const submitTradesPersonReview = useCallback(async (jobId: string, review: { rating: number; text?: string }) => {
+    await reviewService.submitTradesPersonReview(jobId, review);
+  }, []);
+
   const startConversation = useCallback(async (participantId: string, relatedJobId?: string): Promise<string> => {
     const existing = conversations.find(c => c.participantId === participantId);
     if (existing) return existing.id;
@@ -407,6 +412,7 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
       deleteJob,
       cancelJob,
       submitReview,
+      submitTradesPersonReview,
       startConversation,
       sendMessage,
       markConversationRead,

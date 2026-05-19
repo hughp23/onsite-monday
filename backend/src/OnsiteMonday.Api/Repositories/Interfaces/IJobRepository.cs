@@ -24,4 +24,11 @@ public interface IJobRepository
     Task RemoveApplicationAsync(JobApplication application);
     Task<int> GetApplicationCountAsync(Guid jobId);
     Task<List<(User Applicant, JobApplication Application)>> GetApplicantsAsync(Guid jobId);
+
+    // Review block checks
+    Task<bool> HasOutstandingPosterReviewAsync(Guid posterId);
+    Task<bool> HasOutstandingTradesPersonReviewAsync(Guid tradespersonId);
+
+    // Autocomplete scan: jobs past end date that are still active
+    Task<List<Job>> GetJobsForAutocompleteAsync();
 }
