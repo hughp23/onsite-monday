@@ -12,8 +12,8 @@ Amplify.configure({
         oauth: {
           domain: process.env.EXPO_PUBLIC_COGNITO_DOMAIN!,
           scopes: ['email', 'openid', 'profile'],
-          redirectSignIn: ['onsite-monday://'],
-          redirectSignOut: ['onsite-monday://'],
+          redirectSignIn: ['onsitemonday://'],
+          redirectSignOut: ['onsitemonday://'],
           responseType: 'code',
         },
       },

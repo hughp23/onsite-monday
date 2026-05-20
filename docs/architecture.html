@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ônsite Monday — System Architecture &amp; Bug Map</title>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #FFF8F6; color: #1a1a1a; }
+
+    header { background: #8B2020; color: white; padding: 16px 24px; }
+    header h1 { font-size: 1.15em; font-weight: 700; letter-spacing: 0.02em; }
+    header p  { font-size: 0.8em; opacity: 0.8; margin-top: 3px; }
+
+    .tab-bar { display: flex; flex-wrap: wrap; gap: 6px; padding: 12px 24px; background: white; border-bottom: 1px solid #e0d0d0; position: sticky; top: 0; z-index: 10; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+    .tab-bar button { padding: 7px 15px; border: 1.5px solid #d0c0c0; border-radius: 20px; background: white; color: #555; font-size: 0.82em; cursor: pointer; transition: all 0.15s; white-space: nowrap; }
+    .tab-bar button:hover { border-color: #8B2020; color: #8B2020; }
+    .tab-bar button.active { background: #8B2020; border-color: #8B2020; color: white; font-weight: 600; }
+
+    .legend { display: flex; flex-wrap: wrap; gap: 14px; padding: 10px 24px; background: #fff8f6; border-bottom: 1px solid #e8ddd8; font-size: 0.78em; color: #555; align-items: center; }
+    .legend strong { color: #333; margin-right: 4px; }
+    .legend-item { display: flex; align-items: center; gap: 6px; }
+    .dot { width: 13px; height: 13px; border-radius: 3px; flex-shrink: 0; }
+    .dot-critical { background: #fde8e8; border: 1.5px solid #c62828; }
+    .dot-high     { background: #fef3e2; border: 1.5px solid #e65100; }
+    .dot-medium   { background: #fffde7; border: 1.5px solid #f9a825; }
+    .dot-clean    { background: #fafafa; border: 1.5px solid #bdbdbd; }
+    .dot-external { background: #e8f0fe; border: 1.5px solid #4285f4; }
+    .dot-db       { background: #f3e5f5; border: 1.5px solid #7b1fa2; }
+    .dot-ok       { background: #e8f5e9; border: 1.5px solid #2e7d32; }
+
+    .diagram { display: none; padding: 24px; }
+    .diagram.active { display: block; }
+    .diagram h2 { font-size: 1em; color: #8B2020; margin-bottom: 4px; font-weight: 600; }
+    .diagram .subtitle { font-size: 0.8em; color: #888; margin-bottom: 16px; }
+
+    .mermaid { background: white; border: 1px solid #e0d0d0; border-radius: 10px; padding: 20px; overflow-x: auto; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Ônsite Monday — System Architecture &amp; Bug Map</h1>
+  <p>Audited 2026-05-18 · 14 bugs across 3 severity levels · see docs/bugs.md for full descriptions</p>
+</header>
+
+<nav class="tab-bar">
+  <button class="active" onclick="show('overview', this)">System Architecture</button>
+  <button onclick="show('reviewpath', this)">Review &amp; Payment Flow</button>
+  <button onclick="show('kycpath', this)">KYC &amp; Wallet Flow</button>
+</nav>
+
+<div class="legend">
+  <strong>Key:</strong>
+  <span class="legend-item"><span class="dot dot-critical"></span> Critical bug (BUG-01–06)</span>
+  <span class="legend-item"><span class="dot dot-high"></span> High priority (BUG-07–09)</span>
+  <span class="legend-item"><span class="dot dot-medium"></span> Medium priority (BUG-10–14)</span>
+  <span class="legend-item"><span class="dot dot-ok"></span> Working correctly</span>
+  <span class="legend-item"><span class="dot dot-external"></span> External service</span>
+  <span class="legend-item"><span class="dot dot-db"></span> Database / infra</span>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<!-- TAB 1: SYSTEM ARCHITECTURE OVERVIEW                                    -->
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<section id="overview" class="diagram active">
+  <h2>System Architecture — Bug Hotspots</h2>
+  <p class="subtitle">Colour indicates severity of bugs in that component. Arrows show principal data flows.</p>
+  <div class="mermaid">
+graph LR
+
+  subgraph MOB["📱 React Native App (Expo)"]
+    direction TB
+    A1["Sign-Up / Onboarding\n❌ BUG-06 — no KYC step"]
+    A2["Jobs Board\nJob Detail"]
+    A3["My Jobs Screen\n❌ BUG-02  BUG-10"]
+    A4["Review Screen\n❌ BUG-01  BUG-03  BUG-11"]
+    A5["Wallet Screen\n❌ BUG-05 — CTAs broken"]
+    A6["Subscription Screen\n⚠ BUG-07 — hooks violation"]
+    A7["Chat / Messages"]
+  end
+
+  subgraph API["⚙️ .NET 8 REST API"]
+    direction TB
+    B1["Jobs API"]
+    B2["Review API"]
+    B3["Users / KYC API"]
+    B4["Wallet API"]
+    B5["Subscription API"]
+    B6["Conversations API\n+ SignalR Hub"]
+    B7["Mangopay Webhook"]
+    B8["Stripe Webhook\n⚠ BUG-12 — fragile tier detection"]
+  end
+
+  subgraph SVC["Business Logic"]
+    direction TB
+    C1["JobService\n⚠ BUG-09 — no refund on cancel"]
+    C2["ReviewService\n❌ BUG-04  BUG-13"]
+    C3["MangopayService\n⚠ BUG-08 — DOB stub 1970-01-01"]
+    C4["StripeBillingService"]
+    C5["UserService\nUserRepository\n· BUG-14 exception swallow"]
+    C6["ConversationService\nFcmNotificationPushService"]
+    C7["PayoutReleaseJob\n(Hangfire)"]
+  end
+
+  subgraph STORE["Data &amp; Infrastructure"]
+    direction TB
+    D1[("PostgreSQL\nAWS RDS")]
+    D2["AWS Cognito\n(Auth / JWT)"]
+    D3["Mangopay\n(Escrow · Payouts)"]
+    D4["Stripe\n(Subscriptions)"]
+    D5["Expo Push\n(Notifications)"]
+  end
+
+  A1 -->|"JWT"| D2
+  A2 & A3 --> B1
+  A4 --> B2
+  A5 --> B4
+  A6 --> B5
+  A7 <-->|"WebSocket"| B6
+
+  B1 --> C1
+  B2 --> C2
+  B3 --> C5
+  B3 & B4 --> C3
+  B5 --> C4
+  B6 --> C6
+  B7 --> D1
+  B8 --> D1
+
+  C1 & C2 & C5 & C6 --> D1
+  C1 & C7 --> C3
+  C2 -->|"schedule payout"| C7
+  C3 --> D3
+  C4 --> D4
+  C6 --> D5
+
+  D3 -->|"PayIn / KYC webhooks"| B7
+  D4 -->|"checkout / subscription webhooks"| B8
+
+  classDef critical fill:#fde8e8,stroke:#c62828,color:#b71c1c,font-weight:bold
+  classDef high     fill:#fef3e2,stroke:#e65100,color:#bf360c,font-weight:bold
+  classDef medium   fill:#fffde7,stroke:#f9a825,color:#5d4037
+  classDef external fill:#e8f0fe,stroke:#4285f4,color:#0d47a1
+  classDef db       fill:#f3e5f5,stroke:#7b1fa2,color:#4a148c
+  classDef bgJob    fill:#e8f5e9,stroke:#2e7d32,color:#1b5e20
+  classDef clean    fill:#fafafa,stroke:#bdbdbd,color:#424242
+
+  class A1,A3,A4,A5,C2 critical
+  class A6,B8,C1,C3 high
+  class C5 medium
+  class D1 db
+  class D2,D3,D4,D5 external
+  class C7 bgJob
+  class A2,A7,B1,B2,B3,B4,B5,B6,B7,C4,C6 clean
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<!-- TAB 2: REVIEW & PAYMENT CRITICAL PATH                                  -->
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<section id="reviewpath" class="diagram">
+  <h2>Review &amp; Payment Flow — Where Things Break</h2>
+  <p class="subtitle">BUG-01 through BUG-04 and BUG-09 — the core money path. Red nodes are where a bug is injected; orange nodes show the downstream consequence.</p>
+  <div class="mermaid">
+flowchart TD
+
+  START(["Job reaches in_progress\nPoster clicks Mark Complete"])
+  START --> MODAL["Confirm Complete modal\nMy Jobs Screen"]
+
+  MODAL --> CONFIRM_FN["confirmComplete called"]
+
+  CONFIRM_FN --> FIRE["markJobComplete — NOT awaited\n❌ BUG-02"]
+  CONFIRM_FN --> NAV["router.push to Review screen\nfires immediately, before API returns"]
+
+  FIRE -.->|"async — may still be in-flight"| COMPLETE_API
+
+  COMPLETE_API["PUT /api/jobs/id/complete\nCompleteJobAsync"]
+  COMPLETE_API --> COMPLETE_CHK{"job.Status ==\naccepted or in_progress?"}
+  COMPLETE_CHK -->|"No"| COMPLETE_ERR(["400 returned\nbut UI already on Review screen\nNo error shown — BUG-02"])
+  COMPLETE_CHK -->|"Yes"| SET_DONE["Status → completed\nPaymentStatus stays escrowed\n✓ correct behaviour"]
+
+  NAV --> REVIEW_SCR["Review Screen renders\nbefore API has confirmed completion"]
+
+  REVIEW_SCR --> FIND_TP["Find tradesperson to review\n❌ BUG-01\ntradespeople.find(tp =&gt; tp.trade == job.trade)\n|| tradespeople&#91;0&#93;\nNo link to actual accepted applicant"]
+
+  FIND_TP --> RATE["User rates job &amp; submits"]
+
+  RATE --> SUBMIT_FN["handleSubmit called"]
+  SUBMIT_FN --> SUBMIT_FIRE["submitReview — NOT awaited\n❌ BUG-03"]
+  SUBMIT_FN --> SUCCESS(["Success modal fires immediately\nUser told payment is incoming\n❌ BUG-03 — may be wrong"])
+
+  SUBMIT_FIRE -.->|"async — may fail silently"| REVIEW_API
+
+  REVIEW_API["POST /api/users/id/reviews\nSubmitReviewAsync"]
+  REVIEW_API --> NO_STATUS["No validation that job is completed\n❌ BUG-04\nReview stored regardless of job state"]
+
+  NO_STATUS --> STORED["Review saved\nRating recalculated"]
+  STORED --> MAYBE["MaybeSchedulePayoutAsync"]
+
+  MAYBE --> PAYOUT_CHK{"job.Status == completed\nAND PaymentStatus == escrowed?"}
+  PAYOUT_CHK -->|"Both true — happy path\n(if BUG-02 race didn't occur)"| SCHEDULE["Hangfire job scheduled\nPaymentStatus → payout_pending\n✓ correct"]
+  PAYOUT_CHK -->|"Either false\n(race from BUG-02, or\npremature review via BUG-04)"| STUCK(["Silent return\nNo payout ever scheduled\nJob permanently stuck\nCannot re-review — already exists\n❌ BUG-04 consequence"])
+
+  SCHEDULE --> PAYOUT_WAIT["Wait for tier delay\nBronze 30d · Silver 14d · Gold 7d"]
+  PAYOUT_WAIT --> PAYOUT_JOB["PayoutReleaseJob fires"]
+  PAYOUT_JOB --> TRANSFER["Transfer to tradesperson wallet\n✓ correct if reached"]
+
+  subgraph CANCEL["Separate path — Job Cancellation"]
+    direction LR
+    CANC_START(["Poster or tradesperson\ncancels accepted job"]) --> CANC_SVC
+    CANC_SVC["CancelJobAsync\nPaymentStatus → refund_pending\n⚠ BUG-09 — no Mangopay refund API call"]
+    CANC_SVC --> CANC_STUCK(["Funds stuck in platform wallet\nManual ops intervention required"])
+  end
+
+  classDef bugNode  fill:#fde8e8,stroke:#c62828,color:#b71c1c,font-weight:bold
+  classDef warnNode fill:#fef3e2,stroke:#e65100,color:#bf360c
+  classDef okNode   fill:#e8f5e9,stroke:#2e7d32,color:#1b5e20
+  classDef neutral  fill:#f5f5f5,stroke:#bdbdbd,color:#424242
+  classDef terminal fill:#ede7f6,stroke:#7b1fa2,color:#4a148c
+  classDef decision fill:#e3f2fd,stroke:#1565c0,color:#0d47a1
+
+  class START,RATE terminal
+  class MODAL,CONFIRM_FN,NAV,REVIEW_SCR,SUBMIT_FN,COMPLETE_API,REVIEW_API,STORED,MAYBE,PAYOUT_WAIT neutral
+  class FIRE,FIND_TP,SUBMIT_FIRE,NO_STATUS bugNode
+  class SUCCESS,COMPLETE_ERR,STUCK,CANC_STUCK warnNode
+  class SET_DONE,SCHEDULE,PAYOUT_JOB,TRANSFER okNode
+  class COMPLETE_CHK,PAYOUT_CHK decision
+  class CANC_START terminal
+  class CANC_SVC bugNode
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<!-- TAB 3: KYC & WALLET FLOW                                               -->
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<section id="kycpath" class="diagram">
+  <h2>KYC &amp; Wallet Flow — Identity Verification Gap</h2>
+  <p class="subtitle">BUG-05, BUG-06, BUG-08 — new users cannot complete identity verification from within the app, leaving them permanently blocked from posting or applying for jobs.</p>
+  <div class="mermaid">
+flowchart TD
+
+  subgraph ONBOARD["Onboarding (9 slides)"]
+    direction LR
+    S1["Slide 1–7\nName · Trade · Skills\nDay rate · Location · Photo"]
+    S8["Slide 8\nSubscription tier"]
+    S9["Slide 9\nComplete onboarding"]
+    S1 --> S8 --> S9
+  end
+
+  S9 --> NO_KYC["❌ BUG-06\nNo KYC step in sign-up flow\nUser completes onboarding\nwith kycStatus = none"]
+
+  NO_KYC --> JOBS_BOARD["Jobs Board"]
+  JOBS_BOARD --> APPLY["Tap Apply for a job\nor Post a job"]
+
+  APPLY --> GUARD{"KYC guard on API\nPOST /api/jobs/id/interest\nPOST /api/jobs"}
+  GUARD -->|"kycStatus == verified"| ALLOWED["✓ Allowed"]
+  GUARD -->|"kycStatus != verified\n(always the case for new users)"| BLOCKED["403 Forbidden\nIdentity verification required"]
+
+  BLOCKED --> NO_ROUTE["❌ BUG-06\nNo in-app path shown\nUser sees error with nowhere to go"]
+
+  NO_ROUTE --> FINDS_WALLET["User discovers Wallet\nvia Profile tab"]
+
+  FINDS_WALLET --> WALLET_SCR["Wallet Screen\nSetup banner displayed"]
+
+  WALLET_SCR --> CTA["Tap Verify identity →\nor Add bank account →"]
+  CTA --> DEAD_END["❌ BUG-05\nAlert.alert fires:\n'Complete verification through\naccount settings'\nNo such settings screen exists"]
+
+  WALLET_SCR --> MISSING_SCR["❌ BUG-05\nNo KYC document upload screen\nNo bank account registration screen\nkycService.ts exists but no UI"]
+
+  subgraph BACKEND_KYC["Backend KYC path (exists, unreachable from app)"]
+    direction TB
+    KYC_EP["POST /api/kyc/document\nKycController"]
+    KYC_EP --> MANGO_CHK{"Mangopay user\naccount exists?"}
+    MANGO_CHK -->|"No"| CREATE_USER["EnsureUserAsync\n⚠ BUG-08\nCreates Mangopay natural user\nDOB hardcoded 1970-01-01\nReal DOB never collected"]
+    MANGO_CHK -->|"Yes"| SUBMIT_DOC["SubmitKycDocumentAsync"]
+    CREATE_USER --> SUBMIT_DOC
+    SUBMIT_DOC --> KYC_PENDING["kycStatus → pending\nAwaiting Mangopay review"]
+    KYC_PENDING --> WEBHOOK{"Mangopay webhook\nKYC_SUCCEEDED / KYC_FAILED"}
+    WEBHOOK -->|"KYC_SUCCEEDED"| VERIFIED["kycStatus → verified\n✓ User can now post and apply"]
+    WEBHOOK -->|"KYC_FAILED"| KYC_FAIL["kycStatus → failed\n⚠ BUG-08 risk\nMangopay may reject due to\nDOB mismatch on identity doc"]
+    VERIFIED --> BANK_EP["PUT /api/users/me/bank-account\nRegister UK sort code + account"]
+    BANK_EP --> BANK_OK["MangopayBankAccountId stored\nUser can withdraw payouts\n✓ correct once reached"]
+  end
+
+  MISSING_SCR -.->|"would call if screen existed"| KYC_EP
+
+  subgraph DOWNSTREAM["Downstream impact of unverified KYC"]
+    direction TB
+    D1["Job posting blocked\nJob applying blocked"]
+    D2["Wallet balance accrues\nbut cannot be withdrawn\n(no bank account)"]
+    D3["Auto-withdraw unavailable\nManual withdrawal unavailable"]
+    D1 --> D2 --> D3
+  end
+
+  DEAD_END --> DOWNSTREAM
+
+  classDef bugNode  fill:#fde8e8,stroke:#c62828,color:#b71c1c,font-weight:bold
+  classDef warnNode fill:#fef3e2,stroke:#e65100,color:#bf360c
+  classDef okNode   fill:#e8f5e9,stroke:#2e7d32,color:#1b5e20
+  classDef neutral  fill:#f5f5f5,stroke:#bdbdbd,color:#424242
+  classDef terminal fill:#ede7f6,stroke:#7b1fa2,color:#4a148c
+  classDef decision fill:#e3f2fd,stroke:#1565c0,color:#0d47a1
+
+  class S1,S8,S9 neutral
+  class NO_KYC,MISSING_SCR,DEAD_END bugNode
+  class BLOCKED,NO_ROUTE warnNode
+  class CREATE_USER warnNode
+  class KYC_FAIL warnNode
+  class ALLOWED,VERIFIED,BANK_EP,BANK_OK,SUBMIT_DOC okNode
+  class KYC_PENDING,KYC_EP neutral
+  class GUARD,MANGO_CHK,WEBHOOK decision
+  class JOBS_BOARD,APPLY,FINDS_WALLET,WALLET_SCR,CTA neutral
+  class D1,D2,D3 warnNode
+  </div>
+</section>
+
+<script>
+  mermaid.initialize({ startOnLoad: false, theme: 'default', flowchart: { curve: 'basis', useMaxWidth: true } });
+
+  const rendered = new Set();
+
+  async function renderTab(id) {
+    if (rendered.has(id)) return;
+    rendered.add(id);
+    await mermaid.run({ nodes: document.querySelectorAll('#' + id + ' .mermaid') });
+  }
+
+  async function show(id, btn) {
+    document.querySelectorAll('.diagram').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.tab-bar button').forEach(b => b.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+    btn.classList.add('active');
+    await renderTab(id);
+  }
+
+  document.addEventListener('DOMContentLoaded', () => renderTab('overview'));
+</script>
+</body>
+</html>

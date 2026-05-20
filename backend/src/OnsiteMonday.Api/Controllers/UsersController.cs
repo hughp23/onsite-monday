@@ -23,11 +23,24 @@ public class UsersController : ControllerBase
     private string Email =>
         User.FindFirstValue(ClaimTypes.Email) ?? string.Empty;
 
+    // Cognito passes Google's given_name / family_name / picture claims in the JWT.
+    // Try both the long ClaimTypes form and the short JWT form.
+    private string? GivenName =>
+        NullIfEmpty(User.FindFirstValue(ClaimTypes.GivenName) ?? User.FindFirstValue("given_name"));
+
+    private string? FamilyName =>
+        NullIfEmpty(User.FindFirstValue(ClaimTypes.Surname) ?? User.FindFirstValue("family_name"));
+
+    private string? Picture =>
+        NullIfEmpty(User.FindFirstValue("picture"));
+
+    private static string? NullIfEmpty(string? s) => string.IsNullOrWhiteSpace(s) ? null : s;
+
     // GET /api/users/me
     [HttpGet("me")]
     public async Task<ActionResult<UserDto>> GetMe()
     {
-        var user = await _userService.GetOrCreateCurrentUserAsync(CognitoSub, Email);
+        var user = await _userService.GetOrCreateCurrentUserAsync(CognitoSub, Email, GivenName, FamilyName, Picture);
         return Ok(user);
     }
 

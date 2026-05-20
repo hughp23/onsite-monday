@@ -21,7 +21,7 @@ public class UserRepository : IUserRepository
     public Task<User?> GetByCognitoSubAsync(string cognitoSub) =>
         _db.Users.Include(u => u.Subscriptions).FirstOrDefaultAsync(u => u.CognitoSub == cognitoSub);
 
-    public async Task<User> GetOrCreateByCognitoSubAsync(string cognitoSub, string email)
+    public async Task<User> GetOrCreateByCognitoSubAsync(string cognitoSub, string email, string? firstName = null, string? lastName = null, string? profileImageUrl = null)
     {
         var user = await GetByCognitoSubAsync(cognitoSub);
         if (user != null) return user;
@@ -31,8 +31,9 @@ public class UserRepository : IUserRepository
             Id = Guid.NewGuid(),
             CognitoSub = cognitoSub,
             Email = email,
-            FirstName = string.Empty,
-            LastName = string.Empty,
+            FirstName = firstName ?? string.Empty,
+            LastName = lastName ?? string.Empty,
+            ProfileImageUrl = profileImageUrl,
             CreatedAt = DateTimeOffset.UtcNow,
             UpdatedAt = DateTimeOffset.UtcNow,
         };

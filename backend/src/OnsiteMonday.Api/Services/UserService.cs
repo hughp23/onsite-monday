@@ -15,9 +15,9 @@ public class UserService : IUserService
         _mapper = mapper;
     }
 
-    public async Task<UserDto> GetOrCreateCurrentUserAsync(string cognitoSub, string email)
+    public async Task<UserDto> GetOrCreateCurrentUserAsync(string cognitoSub, string email, string? firstName = null, string? lastName = null, string? profileImageUrl = null)
     {
-        var user = await _repo.GetOrCreateByCognitoSubAsync(cognitoSub, email);
+        var user = await _repo.GetOrCreateByCognitoSubAsync(cognitoSub, email, firstName, lastName, profileImageUrl);
         return _mapper.Map<UserDto>(user);
     }
 

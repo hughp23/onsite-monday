@@ -28,7 +28,7 @@ public class UserServiceTests
     {
         var user = TestBuilders.MakeUser(firstName: "Jane");
         _repoMock
-            .Setup(r => r.GetOrCreateByCognitoSubAsync(FakeAuthHandler.TestFirebaseUid, FakeAuthHandler.TestEmail))
+            .Setup(r => r.GetOrCreateByCognitoSubAsync(FakeAuthHandler.TestFirebaseUid, FakeAuthHandler.TestEmail, null, null, null))
             .ReturnsAsync(user);
 
         var result = await _sut.GetOrCreateCurrentUserAsync(FakeAuthHandler.TestFirebaseUid, FakeAuthHandler.TestEmail);
@@ -36,7 +36,29 @@ public class UserServiceTests
         result.Should().NotBeNull();
         result.Id.Should().Be(user.Id);
         result.FirstName.Should().Be("Jane");
-        _repoMock.Verify(r => r.GetOrCreateByCognitoSubAsync(FakeAuthHandler.TestFirebaseUid, FakeAuthHandler.TestEmail), Times.Once);
+        _repoMock.Verify(r => r.GetOrCreateByCognitoSubAsync(FakeAuthHandler.TestFirebaseUid, FakeAuthHandler.TestEmail, null, null, null), Times.Once);
+    }
+
+    [Fact]
+    public async Task GetOrCreateCurrentUser_WhenGoogleClaimsPresent_PassesThemToRepository()
+    {
+        var user = TestBuilders.MakeUser(firstName: "Jane", lastName: "Smith");
+        user.ProfileImageUrl = "https://example.com/photo.jpg";
+        _repoMock
+            .Setup(r => r.GetOrCreateByCognitoSubAsync(
+                FakeAuthHandler.TestFirebaseUid, FakeAuthHandler.TestEmail,
+                "Jane", "Smith", "https://example.com/photo.jpg"))
+            .ReturnsAsync(user);
+
+        var result = await _sut.GetOrCreateCurrentUserAsync(
+            FakeAuthHandler.TestFirebaseUid, FakeAuthHandler.TestEmail,
+            "Jane", "Smith", "https://example.com/photo.jpg");
+
+        result.FirstName.Should().Be("Jane");
+        result.LastName.Should().Be("Smith");
+        _repoMock.Verify(r => r.GetOrCreateByCognitoSubAsync(
+            FakeAuthHandler.TestFirebaseUid, FakeAuthHandler.TestEmail,
+            "Jane", "Smith", "https://example.com/photo.jpg"), Times.Once);
     }
 
     [Fact]
@@ -44,13 +66,13 @@ public class UserServiceTests
     {
         var existingUser = TestBuilders.MakeUser();
         _repoMock
-            .Setup(r => r.GetOrCreateByCognitoSubAsync(It.IsAny<string>(), It.IsAny<string>()))
+            .Setup(r => r.GetOrCreateByCognitoSubAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<string?>()))
             .ReturnsAsync(existingUser);
 
         var result = await _sut.GetOrCreateCurrentUserAsync(existingUser.CognitoSub, existingUser.Email);
 
         result.Id.Should().Be(existingUser.Id);
-        _repoMock.Verify(r => r.GetOrCreateByCognitoSubAsync(It.IsAny<string>(), It.IsAny<string>()), Times.Once);
+        _repoMock.Verify(r => r.GetOrCreateByCognitoSubAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<string?>()), Times.Once);
     }
 
     [Fact]
@@ -80,7 +102,7 @@ public class UserServiceTests
     public async Task UpdateCurrentUser_PatchesOnlyProvidedFields()
     {
         var user = TestBuilders.MakeUser(firstName: "Old", lastName: "Name");
-        _repoMock.Setup(r => r.GetOrCreateByCognitoSubAsync(user.CognitoSub, user.Email)).ReturnsAsync(user);
+        _repoMock.Setup(r => r.GetOrCreateByCognitoSubAsync(user.CognitoSub, user.Email, It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<string?>())).ReturnsAsync(user);
         _repoMock.Setup(r => r.UpdateAsync(It.IsAny<User>())).Returns(Task.CompletedTask);
 
         var request = new UpdateUserRequest { FirstName = "New" }; // LastName intentionally null
@@ -95,7 +117,7 @@ public class UserServiceTests
     [Fact]
     public async Task UpdateCurrentUser_WhenUserNotFound_ThrowsKeyNotFoundException()
     {
-        _repoMock.Setup(r => r.GetOrCreateByCognitoSubAsync(It.IsAny<string>(), It.IsAny<string>()))
+        _repoMock.Setup(r => r.GetOrCreateByCognitoSubAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<string?>()))
             .ThrowsAsync(new KeyNotFoundException());
 
         var act = () => _sut.UpdateCurrentUserAsync("unknown-uid", "x@x.com", new UpdateUserRequest());
@@ -108,7 +130,7 @@ public class UserServiceTests
     {
         var user = TestBuilders.MakeUser();
         user.IsOnboarded = false;
-        _repoMock.Setup(r => r.GetOrCreateByCognitoSubAsync(user.CognitoSub, user.Email)).ReturnsAsync(user);
+        _repoMock.Setup(r => r.GetOrCreateByCognitoSubAsync(user.CognitoSub, user.Email, It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<string?>())).ReturnsAsync(user);
         _repoMock.Setup(r => r.UpdateAsync(It.IsAny<User>())).Returns(Task.CompletedTask);
 
         var result = await _sut.CompleteOnboardingAsync(user.CognitoSub, user.Email);

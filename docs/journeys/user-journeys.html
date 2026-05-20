@@ -25,6 +25,9 @@
     .dot-partial  { background: #fff9c4; border: 1.5px solid #f9a825; }
     .dot-todo     { background: #ffcdd2; border: 1.5px solid #e53935; }
     .dot-decision { background: #e3f2fd; border: 1.5px solid #1976d2; }
+    .dot-flagged  { background: #fff3e0; border: 1.5px dashed #e65100; }
+
+    .flag-badge { display: inline-block; background: #fff3e0; border: 1px solid #e65100; border-radius: 12px; padding: 2px 8px; font-size: 0.7em; color: #bf360c; font-family: monospace; font-weight: normal; vertical-align: middle; margin-left: 8px; }
 
     .diagram { display: none; padding: 24px; }
     .diagram.active { display: block; }
@@ -55,6 +58,7 @@
   <span class="legend-item"><span class="dot dot-partial"></span> Partial / known gap</span>
   <span class="legend-item"><span class="dot dot-todo"></span> Not yet built</span>
   <span class="legend-item"><span class="dot dot-decision"></span> Decision / branch</span>
+  <span class="legend-item"><span class="dot dot-flagged"></span> Behind feature flag (<code>ESCROW_ENABLED</code>)</span>
 </div>
 
 <section id="auth" class="diagram active">
@@ -113,13 +117,17 @@ flowchart TD
     F --> G[Interest confirmation modal]
     G --> H[Wait for acceptance\nnotification]
     H --> I[My Jobs — My Work tab]
+    I --> I1[Outstanding review banner\nif unreviewed completed job]
+    I1 --> I2[Rate job poster\n/review-poster/jobId]
     I --> J[View accepted job details]
-    J --> K[Start job → Stripe redirect\npayment by poster]
-    K --> L[Job status: in_progress]
-    L --> M[Poster marks job complete]
-    M --> N[Review screen opens\nautomatically]
-    N --> O[Submit star rating + comment\nrequired before payout]
-    O --> P{Payout gated\nby review submission}
+    J --> K[Start Job button]
+    K --> KE[Stripe redirect\nfunds held in escrow]
+    KE --> L[Job status: in_progress]
+    K -.-> L
+    L --> M[Poster marks job complete\nor autocompleted after 3 days\nvia JobCompletionScanJob]
+    M --> N[Poster reviews tradesperson\n/review/jobId]
+    M --> N2[Tradesperson reviews poster\n/review-poster/jobId]
+    N & N2 --> P{Payout gated\nby review submission}
     P --> Q[Payout triggered\nafter subscription-tier delay]
     Q --> R[Funds appear in wallet]
     R --> S[Withdraw to bank account]
@@ -130,12 +138,12 @@ flowchart TD
     classDef todo     fill:#ffcdd2,stroke:#e53935,color:#b71c1c
     classDef decision fill:#e3f2fd,stroke:#1976d2,color:#0d47a1
     classDef endpoint fill:#ede7f6,stroke:#7b1fa2,color:#4a148c
+    classDef flagged  fill:#fff3e0,stroke:#e65100,color:#bf360c
 
     class A endpoint
     class P decision
-    class B,C,D,E,F,G,H,I,J,T done
-    class K,L,M,N,O partial
-    class Q,R,S partial
+    class B,C,D,E,F,G,H,I,I1,I2,J,K,L,M,N,N2,T done
+    class KE,Q,R,S flagged
   </div>
 </section>
 
@@ -145,19 +153,24 @@ flowchart TD
 flowchart TD
     A([Main app]) --> B[My Jobs — Posted tab]
     B --> C[FAB + button]
-    C --> D[Create job form\ntitle · trade · location · dates · rate]
+    C --> CG{Unreviewed\ncompleted jobs?}
+    CG -->|No| D[Create job form\ntitle · trade · location · dates · rate]
+    CG -->|Yes - blocked| CG1[Review tradesperson first\n/review/jobId]
+    CG1 --> D
     D --> E[Job posted\nstatus: open]
     E --> F[Tradespeople express interest]
     F --> G[View applicants list\njob-applicants screen]
     G --> H{Accept a\ntradesperson?}
     H -->|Yes| I[Accept applicant\nconfirmation modal]
     I --> J[Job status: accepted]
-    J --> K[Start Job & Pay button]
+    J --> K[Start Job button]
     K --> L[Stripe Checkout\nfunds held in escrow]
     L --> M[Job status: in_progress]
-    M --> N[Mark Complete button]
-    N --> O[Tradesperson reviews\nthe job]
-    O --> P[Funds released\nafter tier delay]
+    K -.-> M
+    M --> N[Mark Complete button\nor autocompleted after 3 days\nvia JobCompletionScanJob]
+    N --> O[Poster reviews tradesperson\n/review/jobId]
+    N --> O2[Tradesperson reviews poster\n/review-poster/jobId]
+    O & O2 --> P[Funds released\nafter tier delay]
     H -->|No| Q[Delete job\nif no applicants]
     J --> R[Cancel job\nwith optional reason]
     R --> S[Refund issued\nto poster]
@@ -167,28 +180,32 @@ flowchart TD
     classDef todo     fill:#ffcdd2,stroke:#e53935,color:#b71c1c
     classDef decision fill:#e3f2fd,stroke:#1976d2,color:#0d47a1
     classDef endpoint fill:#ede7f6,stroke:#7b1fa2,color:#4a148c
+    classDef flagged  fill:#fff3e0,stroke:#e65100,color:#bf360c
 
     class A endpoint
-    class H decision
-    class B,C,D,E,F,G,I,J,K,L,M,N,Q done
-    class O,P partial
-    class R,S partial
+    class H,CG decision
+    class B,C,D,E,F,G,I,J,K,M,N,O,O2,Q,R done
+    class CG1 partial
+    class L,P,S flagged
   </div>
 </section>
 
 <section id="payment" class="diagram">
-  <h2>Payment &amp; Escrow</h2>
+  <h2>Payment &amp; Escrow <span class="flag-badge">ESCROW_ENABLED=true</span></h2>
   <div class="mermaid">
 flowchart TD
-    A([Job accepted]) --> B[Poster taps\nStart Job & Pay]
+    FLAG["Entire flow requires ESCROW_ENABLED=true\nBy default: Start Job skips payment — status transitions only"]:::flagged
+    FLAG -.-> A
+    A([Job accepted]) --> B[Poster taps\nStart Job]
     B --> C[Stripe Checkout\nopens in browser]
     C --> D{Payment\nsuccessful?}
     D -->|Yes| E[Funds held in\nStripe escrow]
     D -->|No| F[Stay on accepted\nretry payment]
     E --> G[Job status: in_progress]
-    G --> H[Poster marks\njob complete]
-    H --> I[Tradesperson submits\nmandatory review]
-    I --> J{Review gates\npayout release}
+    G --> H[Poster marks job complete\nor autocompleted after 3 days]
+    H --> I[Poster reviews tradesperson\n/review/jobId]
+    H --> I2[Tradesperson reviews poster\n/review-poster/jobId]
+    I & I2 --> J{Both reviews gate\npayout release}
     J --> K[Payout countdown begins\nbased on subscription tier]
     K --> L{Tier}
     L -->|Bronze| M[Released after\n30 days]
@@ -203,20 +220,22 @@ flowchart TD
     classDef todo     fill:#ffcdd2,stroke:#e53935,color:#b71c1c
     classDef decision fill:#e3f2fd,stroke:#1976d2,color:#0d47a1
     classDef endpoint fill:#ede7f6,stroke:#7b1fa2,color:#4a148c
+    classDef flagged  fill:#fff3e0,stroke:#e65100,color:#bf360c
 
     class A endpoint
     class D,J,L decision
-    class B,C,E,F,G,H done
-    class I,K,M,N,O,P partial
-    class Q,R partial
+    class B,C,E,F,G,H,I,I2 done
+    class K,M,N,O,P partial
+    class FLAG,Q,R flagged
   </div>
 </section>
 
 <section id="wallet" class="diagram">
-  <h2>Wallet &amp; KYC</h2>
+  <h2>Wallet &amp; KYC <span class="flag-badge">entry point: ESCROW_ENABLED=true</span></h2>
   <div class="mermaid">
 flowchart TD
-    A([Profile tab]) --> B[Wallet screen]
+    A([Profile tab]) --> AE[Wallet row\nhidden by default]
+    AE --> B[Wallet screen]
     B --> C{KYC status?}
     C -->|None| D[Start identity\nverification]
     D --> E[KYC flow\nID document upload]
@@ -244,10 +263,12 @@ flowchart TD
     classDef todo     fill:#ffcdd2,stroke:#e53935,color:#b71c1c
     classDef decision fill:#e3f2fd,stroke:#1976d2,color:#0d47a1
     classDef endpoint fill:#ede7f6,stroke:#7b1fa2,color:#4a148c
+    classDef flagged  fill:#fff3e0,stroke:#e65100,color:#bf360c
 
     class A endpoint
     class C,G,L,P decision
     class B,D,F,H,K,M,N,O,Q,R,S done
+    class AE flagged
     class E,I,J partial
     class T todo
   </div>
@@ -283,10 +304,12 @@ flowchart TD
     classDef todo     fill:#ffcdd2,stroke:#e53935,color:#b71c1c
     classDef decision fill:#e3f2fd,stroke:#1976d2,color:#0d47a1
     classDef endpoint fill:#ede7f6,stroke:#7b1fa2,color:#4a148c
+    classDef flagged  fill:#fff3e0,stroke:#e65100,color:#bf360c
 
     class A endpoint
     class D,G,L,O decision
-    class B,C,E,F,H,I,J,K,M,N,P,Q,R done
+    class B,C,E,F,H,I,J,K,M,N done
+    class P,Q,R flagged
     class S todo
     class T todo
   </div>

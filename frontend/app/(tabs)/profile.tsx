@@ -70,7 +70,17 @@ export default function ProfileScreen() {
     );
   }
 
-  const isProfileIncomplete = !currentUser.firstName && !currentUser.trade;
+  const profileFields = [
+    !!currentUser.firstName,
+    !!currentUser.trade,
+    !!currentUser.phone,
+    !!currentUser.profileImage,
+    !!currentUser.dayRate,
+    !!currentUser.location,
+  ];
+  const completedCount = profileFields.filter(Boolean).length;
+  const completenessPercent = Math.round((completedCount / profileFields.length) * 100);
+  const isProfileIncomplete = completenessPercent < 100;
   const name = `${currentUser.firstName} ${currentUser.lastName}`.trim() || 'Your Name';
 
   return (
@@ -126,7 +136,14 @@ export default function ProfileScreen() {
               activeOpacity={0.85}
             >
               <Ionicons name="alert-circle-outline" size={20} color={colors.accent} />
-              <Text style={styles.incompleteBannerText}>Your profile is incomplete — tap to finish setting it up</Text>
+              <View style={{ flex: 1, gap: 6 }}>
+                <Text style={styles.incompleteBannerText}>
+                  Profile {completenessPercent}% complete — tap to finish setting it up
+                </Text>
+                <View style={styles.progressTrack}>
+                  <View style={[styles.progressFill, { width: `${completenessPercent}%` }]} />
+                </View>
+              </View>
             </TouchableOpacity>
           )}
 
@@ -403,7 +420,18 @@ const styles = StyleSheet.create({
     padding: 14,
     marginBottom: 12,
   },
-  incompleteBannerText: { fontFamily: fonts.body, flex: 1, fontSize: 13, color: colors.text, lineHeight: 18 },
+  incompleteBannerText: { fontFamily: fonts.body, fontSize: 13, color: colors.text, lineHeight: 18 },
+  progressTrack: {
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: colors.accent + '30',
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: colors.accent,
+  },
   overlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.4)',
