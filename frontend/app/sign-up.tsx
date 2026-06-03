@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView,
-  FlatList, Dimensions, KeyboardAvoidingView, Platform, Alert, ActivityIndicator,
+  FlatList, Dimensions, KeyboardAvoidingView, Platform, Alert, ActivityIndicator, Image,
 } from 'react-native';
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -14,6 +14,7 @@ import SubscriptionCard from '@/components/SubscriptionCard';
 import { colors } from '@/constants/colors';
 import { TRADES, SKILLS_BY_TRADE, ACCREDITATIONS } from '@/constants/trades';
 import { SubscriptionTier } from '@/constants/types';
+import { uploadProfileImage, CANCELLED } from '@/src/services/imageService';
 
 const TIER_NAMES: Record<SubscriptionTier, string> = {
   bronze: 'Bronze',
@@ -58,6 +59,8 @@ export default function SignUpScreen() {
   const [isCompleting, setIsCompleting] = useState(false);
   const [isGoogleSigningIn, setIsGoogleSigningIn] = useState(false);
   const [selectedTier, setSelectedTier] = useState<SubscriptionTier | null>(null);
+  const [profileImageUri, setProfileImageUri] = useState<string | null>(null);
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const [pendingEmail, setPendingEmail] = useState('');
   const [pendingPassword, setPendingPassword] = useState('');
   const [showConfirmation, setShowConfirmation] = useState(false);
@@ -168,6 +171,18 @@ export default function SignUpScreen() {
     }
   };
 
+  const handlePickPhoto = async (source: 'library' | 'camera') => {
+    setIsUploadingPhoto(true);
+    try {
+      const result = await uploadProfileImage(source);
+      if (result !== CANCELLED) setProfileImageUri(result);
+    } catch (e) {
+      Alert.alert('Photo upload failed', e instanceof Error ? e.message : 'Please try again.');
+    } finally {
+      setIsUploadingPhoto(false);
+    }
+  };
+
   const handleComplete = async () => {
     setIsCompleting(true);
     try {
@@ -181,6 +196,7 @@ export default function SignUpScreen() {
         dayRateVisible,
         location,
         travelRadius,
+        profileImage: profileImageUri ?? undefined,
       });
       await completeOnboarding();
       if (selectedTier && selectedTier !== 'bronze') {
@@ -426,14 +442,33 @@ export default function SignUpScreen() {
         <Text style={styles.slideTitle}>Add a profile photo</Text>
         <Text style={styles.slideHint}>A photo helps job posters recognise you</Text>
         <View style={styles.photoPlaceholder}>
-          <MaterialCommunityIcons name="camera-plus-outline" size={48} color={colors.border} />
-          <Text style={styles.photoPlaceholderText}>No photo added</Text>
+          {profileImageUri ? (
+            <Image source={{ uri: profileImageUri }} style={styles.photoPreview} />
+          ) : (
+            <>
+              <MaterialCommunityIcons name="camera-plus-outline" size={48} color={colors.border} />
+              <Text style={styles.photoPlaceholderText}>No photo added</Text>
+            </>
+          )}
+          {isUploadingPhoto && (
+            <View style={styles.photoUploadOverlay}>
+              <ActivityIndicator color={colors.white} size="large" />
+            </View>
+          )}
         </View>
-        <TouchableOpacity style={styles.secondaryBtn}>
+        <TouchableOpacity
+          style={styles.secondaryBtn}
+          onPress={() => handlePickPhoto('camera')}
+          disabled={isUploadingPhoto}
+        >
           <Ionicons name="camera-outline" size={18} color={colors.primary} />
           <Text style={styles.secondaryBtnText}>Take Photo</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={[styles.secondaryBtn, { marginTop: 10 }]}>
+        <TouchableOpacity
+          style={[styles.secondaryBtn, { marginTop: 10 }]}
+          onPress={() => handlePickPhoto('library')}
+          disabled={isUploadingPhoto}
+        >
           <Ionicons name="image-outline" size={18} color={colors.primary} />
           <Text style={styles.secondaryBtnText}>Choose from Library</Text>
         </TouchableOpacity>
@@ -712,8 +747,23 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     marginBottom: 24,
     gap: 8,
+    overflow: 'hidden',
   },
   photoPlaceholderText: { fontSize: 12, color: colors.textLight },
+  photoPreview: {
+    width: 140,
+    height: 140,
+  },
+  photoUploadOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   secondaryBtn: {
     flexDirection: 'row',
     alignItems: 'center',
