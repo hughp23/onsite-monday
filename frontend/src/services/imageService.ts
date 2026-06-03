@@ -1,33 +1,41 @@
 import * as ImagePicker from 'expo-image-picker';
-import { uploadData, getUrl } from 'aws-amplify/storage';
+import { uploadData } from 'aws-amplify/storage';
 import { getCurrentUser } from 'aws-amplify/auth';
 
-/** Sentinel returned when the user dismisses the picker without selecting. */
 export const CANCELLED = 'cancelled' as const;
 
-/**
- * Prompts the user to pick a photo from their library, uploads it to
- * AWS S3 via Amplify Storage, and returns the public download URL.
- *
- * Returns `CANCELLED` if the user dismissed the picker.
- * Throws on permission denial or upload failure.
- */
-export async function pickAndUploadProfileImage(): Promise<string | typeof CANCELLED> {
-  // 1. Request media library permission
-  const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-  if (status !== 'granted') {
-    throw new Error(
-      'Photo library access was denied. Please enable it in your device Settings to upload a profile photo.'
-    );
+export async function uploadProfileImage(
+  source: 'library' | 'camera'
+): Promise<string | typeof CANCELLED> {
+  // 1. Request the correct permission for the chosen source
+  if (source === 'camera') {
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    if (status !== 'granted') {
+      throw new Error(
+        'Camera access was denied. Please enable it in your device Settings to take a profile photo.'
+      );
+    }
+  } else {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      throw new Error(
+        'Photo library access was denied. Please enable it in your device Settings to upload a profile photo.'
+      );
+    }
   }
 
-  // 2. Open the image picker with square crop enforced
-  const result = await ImagePicker.launchImageLibraryAsync({
+  // 2. Open picker or camera with square crop enforced
+  const pickerOptions: ImagePicker.ImagePickerOptions = {
     mediaTypes: ['images'],
     allowsEditing: true,
     aspect: [1, 1],
     quality: 0.8,
-  });
+  };
+
+  const result =
+    source === 'camera'
+      ? await ImagePicker.launchCameraAsync(pickerOptions)
+      : await ImagePicker.launchImageLibraryAsync(pickerOptions);
 
   if (result.canceled) return CANCELLED;
 
@@ -45,14 +53,14 @@ export async function pickAndUploadProfileImage(): Promise<string | typeof CANCE
     xhr.send(null);
   });
 
-  // 4. Upload to AWS S3 via Amplify Storage (overwrites previous photo)
+  // 4. Upload to S3 via Amplify Storage (overwrites previous photo for this user)
   const user = await getCurrentUser();
   if (!user) throw new Error('Not signed in.');
 
   const key = `profile-images/${user.userId}.jpg`;
   await uploadData({ key, data: blob, options: { contentType: 'image/jpeg' } }).result;
 
-  // 5. Return the signed URL
-  const url = await getUrl({ key });
-  return url.url.toString();
+  // 5. Return permanent public URL — bucket policy grants public read on profile-images/*
+  const bucket = process.env.EXPO_PUBLIC_S3_BUCKET!;
+  return `https://${bucket}.s3.eu-west-2.amazonaws.com/${key}`;
 }

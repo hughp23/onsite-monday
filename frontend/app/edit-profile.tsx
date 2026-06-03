@@ -11,7 +11,7 @@ import ChipSelector from '@/components/ChipSelector';
 import Toast from '@/components/Toast';
 import { colors } from '@/constants/colors';
 import { TRADES, SKILLS_BY_TRADE, ACCREDITATIONS } from '@/constants/trades';
-import { pickAndUploadProfileImage, CANCELLED } from '@/src/services/imageService';
+import { uploadProfileImage, CANCELLED } from '@/src/services/imageService';
 
 export default function EditProfileScreen() {
   const { currentUser, updateCurrentUser } = useApp();
@@ -37,7 +37,7 @@ export default function EditProfileScreen() {
   const handleChangePhoto = async () => {
     setIsUploading(true);
     try {
-      const result = await pickAndUploadProfileImage();
+      const result = await uploadProfileImage('library');
       if (result !== CANCELLED) {
         setProfileImageUri(result);
       }
