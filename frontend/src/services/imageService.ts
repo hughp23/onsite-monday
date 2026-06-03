@@ -4,10 +4,18 @@ import { getCurrentUser } from 'aws-amplify/auth';
 
 export const CANCELLED = 'cancelled' as const;
 
+const PICKER_OPTIONS: ImagePicker.ImagePickerOptions = {
+  mediaTypes: ['images'],
+  allowsEditing: true,
+  aspect: [1, 1],
+  quality: 0.8,
+};
+
 export async function uploadProfileImage(
   source: 'library' | 'camera'
 ): Promise<string | typeof CANCELLED> {
-  // 1. Request the correct permission for the chosen source
+  let result: ImagePicker.ImagePickerResult;
+
   if (source === 'camera') {
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
     if (status !== 'granted') {
@@ -15,6 +23,7 @@ export async function uploadProfileImage(
         'Camera access was denied. Please enable it in your device Settings to take a profile photo.'
       );
     }
+    result = await ImagePicker.launchCameraAsync(PICKER_OPTIONS);
   } else {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
@@ -22,26 +31,13 @@ export async function uploadProfileImage(
         'Photo library access was denied. Please enable it in your device Settings to upload a profile photo.'
       );
     }
+    result = await ImagePicker.launchImageLibraryAsync(PICKER_OPTIONS);
   }
-
-  // 2. Open picker or camera with square crop enforced
-  const pickerOptions: ImagePicker.ImagePickerOptions = {
-    mediaTypes: ['images'],
-    allowsEditing: true,
-    aspect: [1, 1],
-    quality: 0.8,
-  };
-
-  const result =
-    source === 'camera'
-      ? await ImagePicker.launchCameraAsync(pickerOptions)
-      : await ImagePicker.launchImageLibraryAsync(pickerOptions);
 
   if (result.canceled) return CANCELLED;
 
   const uri = result.assets[0].uri;
 
-  // 3. Convert local file URI → Blob
   // fetch().blob() is unreliable in React Native with the AWS SDK.
   // XMLHttpRequest is the correct approach here.
   const blob = await new Promise<Blob>((resolve, reject) => {
@@ -53,14 +49,14 @@ export async function uploadProfileImage(
     xhr.send(null);
   });
 
-  // 4. Upload to S3 via Amplify Storage (overwrites previous photo for this user)
   const user = await getCurrentUser();
   if (!user) throw new Error('Not signed in.');
 
   const key = `profile-images/${user.userId}.jpg`;
   await uploadData({ key, data: blob, options: { contentType: 'image/jpeg' } }).result;
 
-  // 5. Return permanent public URL — bucket policy grants public read on profile-images/*
-  const bucket = process.env.EXPO_PUBLIC_S3_BUCKET!;
+  // Bucket policy grants public read on profile-images/* — store as permanent URL.
+  const bucket = process.env.EXPO_PUBLIC_S3_BUCKET;
+  if (!bucket) throw new Error('EXPO_PUBLIC_S3_BUCKET is not set.');
   return `https://${bucket}.s3.eu-west-2.amazonaws.com/${key}`;
 }
