@@ -3,6 +3,12 @@ import { cognitoUserPoolsTokenProvider } from 'aws-amplify/auth/cognito';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 Amplify.configure({
+  Storage: {
+    S3: {
+      bucket: process.env.EXPO_PUBLIC_S3_BUCKET!,
+      region: 'eu-west-2',
+    },
+  },
   Auth: {
     Cognito: {
       userPoolId: process.env.EXPO_PUBLIC_COGNITO_USER_POOL_ID!,
