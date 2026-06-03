@@ -42,7 +42,13 @@
     },
     "plugins": [
       "expo-router",
-      "expo-image-picker",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Ônsite Monday needs access to your photo library to set a profile photo.",
+          "cameraPermission": "Ônsite Monday needs camera access to take a profile photo."
+        }
+      ],
       [
         "expo-notifications",
         {
