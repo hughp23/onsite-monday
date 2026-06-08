@@ -36,7 +36,8 @@ export async function uploadProfileImage(
 
   if (result.canceled) return CANCELLED;
 
-  const uri = result.assets[0].uri;
+  const asset = result.assets[0];
+  const uri = asset.uri;
 
   // fetch().blob() is unreliable in React Native with the AWS SDK.
   // XMLHttpRequest is the correct approach here.
@@ -49,14 +50,15 @@ export async function uploadProfileImage(
     xhr.send(null);
   });
 
-  const user = await getCurrentUser();
-  if (!user) throw new Error('Not signed in.');
+  const { userId } = await getCurrentUser();
+  const contentType = asset.mimeType ?? 'image/jpeg';
+  const ext = contentType === 'image/png' ? 'png' : 'jpg';
+  const path = `profile-images/${userId}.${ext}`;
 
-  const key = `profile-images/${user.userId}.jpg`;
-  await uploadData({ key, data: blob, options: { contentType: 'image/jpeg' } }).result;
+  await uploadData({ path, data: blob, options: { contentType } }).result;
 
   // Bucket policy grants public read on profile-images/* — store as permanent URL.
   const bucket = process.env.EXPO_PUBLIC_S3_BUCKET;
   if (!bucket) throw new Error('EXPO_PUBLIC_S3_BUCKET is not set.');
-  return `https://${bucket}.s3.eu-west-2.amazonaws.com/${key}`;
+  return `https://${bucket}.s3.eu-west-2.amazonaws.com/${path}`;
 }

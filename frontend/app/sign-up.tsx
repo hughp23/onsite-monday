@@ -575,10 +575,10 @@ export default function SignUpScreen() {
       {currentSlide < TOTAL_SLIDES - 1 && (
         <View style={[styles.nextBtnWrap, { paddingBottom: insets.bottom + 16 }]}>
           <TouchableOpacity
-            style={[styles.primaryBtn, (isCreatingAccount || !isSlideValid(currentSlide)) && styles.primaryBtnDisabled]}
+            style={[styles.primaryBtn, (isCreatingAccount || !isSlideValid(currentSlide) || (currentSlide === 6 && isUploadingPhoto)) && styles.primaryBtnDisabled]}
             onPress={currentSlide === 0 ? handleCreateAccount : goNext}
             activeOpacity={0.85}
-            disabled={isCreatingAccount || !isSlideValid(currentSlide)}
+            disabled={isCreatingAccount || !isSlideValid(currentSlide) || (currentSlide === 6 && isUploadingPhoto)}
           >
             <Text style={styles.primaryBtnText}>
               {currentSlide === 0
