@@ -34,13 +34,19 @@ export default function EditProfileScreen() {
   const [toastVisible, setToastVisible] = useState(false);
   if (!currentUser) return null;
 
-  const handleChangePhoto = async () => {
+  const handleChangePhoto = () => {
+    Alert.alert('Profile Photo', 'Choose a source', [
+      { text: 'Camera', onPress: () => doUpload('camera') },
+      { text: 'Photo Library', onPress: () => doUpload('library') },
+      { text: 'Cancel', style: 'cancel' },
+    ]);
+  };
+
+  const doUpload = async (source: 'library' | 'camera') => {
     setIsUploading(true);
     try {
-      const result = await uploadProfileImage('library');
-      if (result !== CANCELLED) {
-        setProfileImageUri(result);
-      }
+      const result = await uploadProfileImage(source);
+      if (result !== CANCELLED) setProfileImageUri(result);
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : 'Could not upload photo.';
       Alert.alert('Photo upload failed', msg);
