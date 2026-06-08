@@ -59,7 +59,9 @@ export default function SignUpScreen() {
   const [isCompleting, setIsCompleting] = useState(false);
   const [isGoogleSigningIn, setIsGoogleSigningIn] = useState(false);
   const [selectedTier, setSelectedTier] = useState<SubscriptionTier | null>(null);
-  const [profileImageUri, setProfileImageUri] = useState<string | null>(null);
+  const [profileImageUri, setProfileImageUri] = useState<string | null>(
+    currentUser?.profileImage ?? null
+  );
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const [pendingEmail, setPendingEmail] = useState('');
   const [pendingPassword, setPendingPassword] = useState('');
