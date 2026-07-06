@@ -9,7 +9,10 @@ public interface IJobService
     Task<JobDto> CreateJobAsync(Guid posterId, CreateJobRequest request);
     Task<List<JobDto>> GetMyPostedJobsAsync(Guid userId);
     Task<List<JobDto>> GetMyAcceptedJobsAsync(Guid userId);
+    Task<List<JobDto>> GetMyLikedJobsAsync(Guid userId);
+    Task<List<JobDto>> GetMyAppliedJobsAsync(Guid userId);
     Task<JobDto> ToggleInterestAsync(Guid jobId, Guid userId);
+    Task<JobDto> ApplyToJobAsync(Guid jobId, Guid userId);
     Task<List<ApplicantDto>> GetApplicantsAsync(Guid jobId, Guid requesterId);
     Task<JobDto> AcceptApplicantAsync(Guid jobId, Guid posterId, Guid applicantId);
     Task<JobStartResponse> StartJobAsync(Guid jobId, Guid userId);

@@ -81,6 +81,32 @@ public class JobRepository : IJobRepository
             .ToListAsync();
     }
 
+    public async Task<List<Job>> GetLikedByUserAsync(Guid userId)
+    {
+        var jobIds = await _db.JobApplications
+            .Where(a => a.ApplicantId == userId && a.Status == "interested")
+            .Select(a => a.JobId)
+            .ToListAsync();
+
+        return await _db.Jobs.Include(j => j.PostedBy).Include(j => j.Applications)
+            .Where(j => jobIds.Contains(j.Id))
+            .OrderByDescending(j => j.CreatedAt)
+            .ToListAsync();
+    }
+
+    public async Task<List<Job>> GetAppliedByUserAsync(Guid userId)
+    {
+        var jobIds = await _db.JobApplications
+            .Where(a => a.ApplicantId == userId && a.Status == "applied")
+            .Select(a => a.JobId)
+            .ToListAsync();
+
+        return await _db.Jobs.Include(j => j.PostedBy).Include(j => j.Applications)
+            .Where(j => jobIds.Contains(j.Id))
+            .OrderByDescending(j => j.CreatedAt)
+            .ToListAsync();
+    }
+
     public async Task<Job> CreateAsync(Job job)
     {
         _db.Jobs.Add(job);
@@ -110,6 +136,12 @@ public class JobRepository : IJobRepository
     public async Task AddApplicationAsync(JobApplication application)
     {
         _db.JobApplications.Add(application);
+        await _db.SaveChangesAsync();
+    }
+
+    public async Task UpdateApplicationAsync(JobApplication application)
+    {
+        _db.JobApplications.Update(application);
         await _db.SaveChangesAsync();
     }
 

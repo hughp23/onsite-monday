@@ -11,6 +11,7 @@ interface JobCardProps {
   onPress: () => void;
   onInterest?: () => void;
   showStatus?: boolean;
+  footer?: React.ReactNode;
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -33,16 +34,16 @@ const STATUS_LABELS: Record<string, string> = {
 
 const SPRING = { damping: 20, stiffness: 320 };
 
-export default function JobCard({ job, onPress, onInterest, showStatus = false }: JobCardProps) {
+export default function JobCard({ job, onPress, onInterest, showStatus = false, footer }: JobCardProps) {
   const scale = useSharedValue(1);
   const animStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
   }));
 
   return (
-    <Animated.View style={animStyle}>
+    <Animated.View style={[animStyle, styles.card]}>
       <TouchableOpacity
-        style={styles.card}
+        style={styles.contentArea}
         onPress={onPress}
         onPressIn={() => { scale.value = withSpring(0.97, SPRING); }}
         onPressOut={() => { scale.value = withSpring(1, SPRING); }}
@@ -97,6 +98,11 @@ export default function JobCard({ job, onPress, onInterest, showStatus = false }
           )}
         </View>
       </TouchableOpacity>
+      {footer && (
+        <View style={styles.footer}>
+          {footer}
+        </View>
+      )}
     </Animated.View>
   );
 }
@@ -105,7 +111,6 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: colors.surfaceRaised,
     borderRadius: 14,
-    padding: 14,
     marginBottom: 10,
     borderWidth: 1,
     borderColor: colors.border,
@@ -114,6 +119,12 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.10,
     shadowRadius: 8,
     elevation: 3,
+    overflow: 'hidden',
+  },
+  contentArea: { padding: 14 },
+  footer: {
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
   },
   row: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
   iconBox: {

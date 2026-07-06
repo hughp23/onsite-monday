@@ -98,24 +98,34 @@ public class JobService : IJobService
         return jobs.Select(j => ToDto(j, true, j.Applications.Count)).ToList();
     }
 
+    public async Task<List<JobDto>> GetMyLikedJobsAsync(Guid userId)
+    {
+        var jobs = await _jobRepo.GetLikedByUserAsync(userId);
+        return jobs.Select(j => ToDto(j, true, j.Applications.Count)).ToList();
+    }
+
+    public async Task<List<JobDto>> GetMyAppliedJobsAsync(Guid userId)
+    {
+        var jobs = await _jobRepo.GetAppliedByUserAsync(userId);
+        return jobs.Select(j => ToDto(j, true, j.Applications.Count)).ToList();
+    }
+
     public async Task<JobDto> ToggleInterestAsync(Guid jobId, Guid userId)
     {
-        if (await _jobRepo.HasOutstandingTradesPersonReviewAsync(userId))
-            throw new InvalidOperationException("You have outstanding reviews to complete before applying for new jobs.");
-
         var result = await _jobRepo.GetByIdAsync(jobId, userId)
             ?? throw new KeyNotFoundException($"Job {jobId} not found.");
 
         if (result.Job.PostedById == userId)
-            throw new InvalidOperationException("You cannot apply to your own job.");
+            throw new InvalidOperationException("You cannot like your own job.");
 
         var existing = await _jobRepo.GetApplicationAsync(jobId, userId);
 
-        if (existing != null)
+        if (existing != null && existing.Status == "interested")
         {
+            // Un-like: only remove if still in the interested state
             await _jobRepo.RemoveApplicationAsync(existing);
         }
-        else
+        else if (existing == null)
         {
             await _jobRepo.AddApplicationAsync(new JobApplication
             {
@@ -141,9 +151,67 @@ public class JobService : IJobService
                 });
             }
         }
+        // If existing.Status is "applied" or "accepted", toggling interest is a no-op
 
         var newCount = await _jobRepo.GetApplicationCountAsync(jobId);
-        return ToDto(result.Job, existing == null, newCount);
+        var nowInterested = existing == null || existing.Status != "interested";
+        return ToDto(result.Job, nowInterested, newCount);
+    }
+
+    public async Task<JobDto> ApplyToJobAsync(Guid jobId, Guid userId)
+    {
+        if (await _jobRepo.HasOutstandingTradesPersonReviewAsync(userId))
+            throw new InvalidOperationException("You have outstanding reviews to complete before applying for new jobs.");
+
+        var result = await _jobRepo.GetByIdAsync(jobId, userId)
+            ?? throw new KeyNotFoundException($"Job {jobId} not found.");
+
+        if (result.Job.PostedById == userId)
+            throw new InvalidOperationException("You cannot apply to your own job.");
+
+        if (result.Job.Status != "open")
+            throw new InvalidOperationException("This job is no longer accepting applications.");
+
+        var existing = await _jobRepo.GetApplicationAsync(jobId, userId);
+
+        if (existing == null)
+        {
+            await _jobRepo.AddApplicationAsync(new JobApplication
+            {
+                Id = Guid.NewGuid(),
+                JobId = jobId,
+                ApplicantId = userId,
+                Status = "applied",
+                AppliedAt = DateTimeOffset.UtcNow,
+            });
+        }
+        else if (existing.Status == "interested")
+        {
+            existing.Status = "applied";
+            await _jobRepo.UpdateApplicationAsync(existing);
+        }
+        // Already applied or accepted — idempotent, do nothing
+
+        if (existing == null || existing.Status == "interested")
+        {
+            var applicant = await _userRepo.GetByIdAsync(userId);
+            if (applicant != null)
+            {
+                await _notificationRepo.CreateAsync(new Notification
+                {
+                    Id = Guid.NewGuid(),
+                    UserId = result.Job.PostedById,
+                    Type = "application",
+                    Title = "New application received",
+                    Description = $"{applicant.FirstName} {applicant.LastName} has applied for \"{result.Job.Title}\".",
+                    LinkedId = jobId,
+                    CreatedAt = DateTimeOffset.UtcNow,
+                });
+            }
+        }
+
+        var newCount = await _jobRepo.GetApplicationCountAsync(jobId);
+        return ToDto(result.Job, true, newCount);
     }
 
     public async Task<List<ApplicantDto>> GetApplicantsAsync(Guid jobId, Guid requesterId)

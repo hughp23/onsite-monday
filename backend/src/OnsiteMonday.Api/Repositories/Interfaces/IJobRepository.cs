@@ -12,6 +12,8 @@ public interface IJobRepository
 
     Task<List<Job>> GetPostedByUserAsync(Guid userId);
     Task<List<Job>> GetAcceptedByUserAsync(Guid userId);
+    Task<List<Job>> GetLikedByUserAsync(Guid userId);
+    Task<List<Job>> GetAppliedByUserAsync(Guid userId);
 
     Task<Job> CreateAsync(Job job);
     Task UpdateAsync(Job job);
@@ -21,6 +23,7 @@ public interface IJobRepository
 
     Task<JobApplication?> GetApplicationAsync(Guid jobId, Guid applicantId);
     Task AddApplicationAsync(JobApplication application);
+    Task UpdateApplicationAsync(JobApplication application);
     Task RemoveApplicationAsync(JobApplication application);
     Task<int> GetApplicationCountAsync(Guid jobId);
     Task<List<(User Applicant, JobApplication Application)>> GetApplicantsAsync(Guid jobId);

@@ -93,6 +93,24 @@ public class JobsController : ControllerBase
         return Ok(jobs);
     }
 
+    // GET /api/jobs/my/liked
+    [HttpGet("my/liked")]
+    public async Task<ActionResult<List<JobDto>>> GetMyLikedJobs()
+    {
+        var userId = await GetCurrentUserIdAsync();
+        var jobs = await _jobService.GetMyLikedJobsAsync(userId);
+        return Ok(jobs);
+    }
+
+    // GET /api/jobs/my/applied
+    [HttpGet("my/applied")]
+    public async Task<ActionResult<List<JobDto>>> GetMyAppliedJobs()
+    {
+        var userId = await GetCurrentUserIdAsync();
+        var jobs = await _jobService.GetMyAppliedJobsAsync(userId);
+        return Ok(jobs);
+    }
+
     // GET /api/jobs/{id}
     [HttpGet("{id:guid}")]
     public async Task<ActionResult<JobDto>> GetById(Guid id)
@@ -106,11 +124,17 @@ public class JobsController : ControllerBase
     [HttpPost("{id:guid}/interest")]
     public async Task<ActionResult<JobDto>> ToggleInterest(Guid id)
     {
-        var kycCheck = await RequireKycVerifiedAsync();
-        if (kycCheck != null) return kycCheck;
-
         var userId = await GetCurrentUserIdAsync();
         var job = await _jobService.ToggleInterestAsync(id, userId);
+        return Ok(job);
+    }
+
+    // POST /api/jobs/{id}/apply
+    [HttpPost("{id:guid}/apply")]
+    public async Task<ActionResult<JobDto>> ApplyToJob(Guid id)
+    {
+        var userId = await GetCurrentUserIdAsync();
+        var job = await _jobService.ApplyToJobAsync(id, userId);
         return Ok(job);
     }
 

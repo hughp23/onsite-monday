@@ -22,14 +22,22 @@ import { fonts } from '@/constants/typography';
 import { Job } from '@/constants/types';
 import { ESCROW_ENABLED } from '@/constants/featureFlags';
 
-type TabType = 'accepted' | 'posted';
+type TabType = 'liked' | 'applied' | 'accepted' | 'posted';
+
+const TABS: TabType[] = ['liked', 'applied', 'accepted', 'posted'];
+const TAB_LABELS: Record<TabType, string> = {
+  liked: 'Liked',
+  applied: 'Applied',
+  accepted: 'My Work',
+  posted: 'Posted',
+};
 
 const SPRING = { damping: 22, stiffness: 200 };
 
 export default function MyJobsScreen() {
-  const { myJobs, markJobComplete, startJob, deleteJob, cancelJob, isLoading, refreshMyJobs, currentUser } = useApp();
+  const { myJobs, toggleJobInterest, applyToJob, markJobComplete, startJob, deleteJob, cancelJob, isLoading, refreshMyJobs, currentUser } = useApp();
   const insets = useSafeAreaInsets();
-  const [activeTab, setActiveTab] = useState<TabType>('accepted');
+  const [activeTab, setActiveTab] = useState<TabType>('liked');
   const [completeModalJob, setCompleteModalJob] = useState<Job | null>(null);
   const [startModalJob, setStartModalJob] = useState<Job | null>(null);
   const [deleteModalJob, setDeleteModalJob] = useState<Job | null>(null);
@@ -66,8 +74,9 @@ export default function MyJobsScreen() {
 
   useEffect(() => {
     if (segWidth === 0) return;
-    const half = (segWidth - 8) / 2;
-    indicatorX.value = withSpring(activeTab === 'accepted' ? 0 : half, SPRING);
+    const tabWidth = (segWidth - 8) / 4;
+    const tabIndex = TABS.indexOf(activeTab);
+    indicatorX.value = withSpring(tabIndex * tabWidth, SPRING);
   }, [activeTab, segWidth]);
 
   const handleLayout = useCallback((e: LayoutChangeEvent) => {
@@ -76,7 +85,7 @@ export default function MyJobsScreen() {
 
   const indicatorStyle = useAnimatedStyle(() => ({
     transform: [{ translateX: indicatorX.value }],
-    width: segWidth > 0 ? (segWidth - 8) / 2 : '50%' as any,
+    width: segWidth > 0 ? (segWidth - 8) / 4 : '25%' as any,
   }));
 
   const contentStyle = useAnimatedStyle(() => ({
@@ -113,6 +122,98 @@ export default function MyJobsScreen() {
       setCancelReason('');
     }
   };
+
+  // Liked tab: jobs the user has bookmarked (isInterested: true, status open)
+  const renderLiked = () => (
+    <FlatList
+      data={myJobs.liked}
+      keyExtractor={item => item.id}
+      renderItem={({ item, index }) => (
+        <AnimatedListItem index={index}>
+          <JobCard
+            job={item}
+            onPress={() => router.push(`/job/${item.id}`)}
+            showStatus
+            footer={
+              <View style={styles.cardFooterRow}>
+                <TouchableOpacity
+                  style={styles.cardRemoveBtn}
+                  onPress={() => toggleJobInterest(item.id)}
+                  activeOpacity={0.8}
+                >
+                  <MaterialCommunityIcons name="heart-off-outline" size={16} color={colors.error} />
+                  <Text style={styles.cardRemoveBtnText}>Remove</Text>
+                </TouchableOpacity>
+                <View style={styles.cardFooterDivider} />
+                <TouchableOpacity
+                  style={styles.cardApplyBtn}
+                  onPress={() => applyToJob(item.id)}
+                  activeOpacity={0.8}
+                >
+                  <MaterialCommunityIcons name="send-outline" size={16} color={colors.primary} />
+                  <Text style={styles.cardApplyBtnText}>Apply</Text>
+                </TouchableOpacity>
+              </View>
+            }
+          />
+        </AnimatedListItem>
+      )}
+      contentContainerStyle={styles.list}
+      showsVerticalScrollIndicator={false}
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
+      }
+      ListEmptyComponent={
+        <EmptyState
+          icon="heart-outline"
+          title="No liked jobs yet"
+          subtitle="Browse the jobs board and like jobs you're interested in."
+        />
+      }
+      ListFooterComponent={
+        myJobs.liked.length > 0 ? (
+          <TouchableOpacity onPress={() => router.push('/(tabs)/jobs')} style={styles.findMoreLink}>
+            <Text style={styles.findMoreText}>Find more jobs →</Text>
+          </TouchableOpacity>
+        ) : null
+      }
+    />
+  );
+
+  // Applied tab: jobs the user has formally applied to (status: applied)
+  const renderApplied = () => (
+    <FlatList
+      data={myJobs.applied}
+      keyExtractor={item => item.id}
+      renderItem={({ item, index }) => (
+        <AnimatedListItem index={index}>
+          <View>
+            <JobCard
+              job={item}
+              onPress={() => router.push(`/job/${item.id}`)}
+              showStatus
+            />
+            <View style={styles.applicationStatusBar}>
+              <MaterialCommunityIcons name="clock-outline" size={15} color={colors.textMuted} />
+              <Text style={styles.applicationStatusText}>Application pending — awaiting response</Text>
+            </View>
+          </View>
+        </AnimatedListItem>
+      )}
+      contentContainerStyle={styles.list}
+      showsVerticalScrollIndicator={false}
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
+      }
+      ListEmptyComponent={
+        <EmptyState
+          icon="send-outline"
+          title="No applications yet"
+          subtitle="Like jobs first, then tap Apply to submit your application."
+        />
+      }
+    />
+  );
 
   // Accepted tab: jobs the current user has been accepted for as a tradesperson
   const renderAccepted = () => (
@@ -252,7 +353,7 @@ export default function MyJobsScreen() {
     />
   );
 
-  if (isLoading && myJobs.accepted.length === 0 && myJobs.posted.length === 0) {
+  if (isLoading && myJobs.liked.length === 0 && myJobs.applied.length === 0 && myJobs.accepted.length === 0 && myJobs.posted.length === 0) {
     return (
       <View style={[styles.container, { alignItems: 'center', justifyContent: 'center' }]}>
         <ActivityIndicator size="large" color={colors.primary} />
@@ -266,7 +367,7 @@ export default function MyJobsScreen() {
       <View style={styles.segmentWrap}>
         <View style={styles.segment} onLayout={handleLayout}>
           <Animated.View style={[styles.segmentIndicator, indicatorStyle]} />
-          {(['accepted', 'posted'] as TabType[]).map(tab => (
+          {TABS.map(tab => (
             <TouchableOpacity
               key={tab}
               style={styles.segmentBtn}
@@ -274,7 +375,7 @@ export default function MyJobsScreen() {
               activeOpacity={0.7}
             >
               <Text style={[styles.segmentText, activeTab === tab && styles.segmentTextActive]}>
-                {tab === 'accepted' ? 'My Work' : 'Posted'}
+                {TAB_LABELS[tab]}
               </Text>
             </TouchableOpacity>
           ))}
@@ -312,7 +413,10 @@ export default function MyJobsScreen() {
       )}
 
       <Animated.View style={contentStyle}>
-        {activeTab === 'accepted' ? renderAccepted() : renderPosted()}
+        {activeTab === 'liked' && renderLiked()}
+        {activeTab === 'applied' && renderApplied()}
+        {activeTab === 'accepted' && renderAccepted()}
+        {activeTab === 'posted' && renderPosted()}
       </Animated.View>
 
       {/* FAB */}
@@ -451,7 +555,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     zIndex: 1,
   },
-  segmentText: { fontFamily: fonts.bodyMedium, fontSize: 14, color: colors.textMuted },
+  segmentText: { fontFamily: fonts.bodyMedium, fontSize: 12, color: colors.textMuted },
   segmentTextActive: { fontFamily: fonts.bodyBold, color: colors.white },
   list: { padding: 16 },
   applicantBar: {
@@ -464,6 +568,44 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   applicantText: { fontFamily: fonts.bodySemiBold, fontSize: 12, color: colors.primary, flex: 1 },
+  cardFooterRow: {
+    flexDirection: 'row',
+    alignItems: 'stretch',
+  },
+  cardRemoveBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 11,
+  },
+  cardRemoveBtnText: { fontFamily: fonts.bodySemiBold, color: colors.error, fontSize: 13 },
+  cardFooterDivider: { width: 1, backgroundColor: colors.border },
+  cardApplyBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 11,
+  },
+  cardApplyBtnText: { fontFamily: fonts.bodySemiBold, color: colors.primary, fontSize: 13 },
+  applicationStatusBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: -8,
+    marginBottom: 12,
+    paddingHorizontal: 4,
+    paddingVertical: 8,
+  },
+  applicationStatusText: {
+    fontFamily: fonts.bodySemiBold,
+    fontSize: 12,
+    color: colors.textMuted,
+    flex: 1,
+  },
   startBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -526,7 +668,6 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   modalDesc: { fontFamily: fonts.body, fontSize: 14, color: colors.textSecondary, textAlign: 'center', lineHeight: 20, marginBottom: 24 },
-  modalAmount: { fontFamily: fonts.bodyBold, color: colors.primary },
   confirmBtn: {
     backgroundColor: colors.primary,
     borderRadius: 10,

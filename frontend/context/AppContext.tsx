@@ -16,7 +16,7 @@ interface AppContextType {
   isLoading: boolean;
   tradespeople: Tradesperson[];
   jobs: Job[];
-  myJobs: { accepted: Job[]; posted: Job[] };
+  myJobs: { liked: Job[]; applied: Job[]; accepted: Job[]; posted: Job[] };
   conversations: Conversation[];
   notifications: AppNotification[];
   updateCurrentUser: (updates: Partial<User>) => Promise<void>;
@@ -26,6 +26,7 @@ interface AppContextType {
   acceptJob: (jobId: string, applicantId: string) => Promise<void>;
   startJob: (jobId: string) => Promise<void>;
   markJobComplete: (jobId: string) => Promise<void>;
+  applyToJob: (jobId: string) => Promise<void>;
   deleteJob: (jobId: string) => Promise<void>;
   cancelJob: (jobId: string, reason?: string) => Promise<void>;
   submitReview: (tradespersonId: string, review: { rating: number; text: string; jobId: string }) => Promise<void>;
@@ -60,7 +61,7 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
   const refreshAppData = useCallback(() => setRefreshKey(k => k + 1), []);
   const [tradespeople, setTradespeople] = useState<Tradesperson[]>([]);
   const [jobs, setJobs] = useState<Job[]>([]);
-  const [myJobs, setMyJobs] = useState<{ accepted: Job[]; posted: Job[] }>({ accepted: [], posted: [] });
+  const [myJobs, setMyJobs] = useState<{ liked: Job[]; applied: Job[]; accepted: Job[]; posted: Job[] }>({ liked: [], applied: [], accepted: [], posted: [] });
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
 
@@ -69,7 +70,7 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
     if (!cognitoUser) {
       setCurrentUser(null);
       setJobs([]);
-      setMyJobs({ accepted: [], posted: [] });
+      setMyJobs({ liked: [], applied: [], accepted: [], posted: [] });
       setConversations([]);
       setNotifications([]);
       return;
@@ -90,8 +91,10 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
         // Fetch user first — ensures the DB row exists before parallel calls fire
         const user = await call('getMe', () => userService.getMe());
 
-        const [jobList, acceptedJobs, postedJobs, convs, notifs] = await Promise.all([
+        const [jobList, likedJobs, appliedJobs, acceptedJobs, postedJobs, convs, notifs] = await Promise.all([
           call('getJobs', () => jobService.getJobs()),
+          jobService.getMyLikedJobs().catch(() => [] as Job[]),
+          jobService.getMyAppliedJobs().catch(() => [] as Job[]),
           call('getMyAcceptedJobs', () => jobService.getMyAcceptedJobs()),
           call('getMyPostedJobs', () => jobService.getMyPostedJobs()),
           call('getConversations', () => conversationService.getConversations()),
@@ -99,7 +102,7 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
         ]);
         setCurrentUser(user);
         setJobs(jobList);
-        setMyJobs({ accepted: acceptedJobs, posted: postedJobs });
+        setMyJobs({ liked: likedJobs, applied: appliedJobs, accepted: acceptedJobs, posted: postedJobs });
         setConversations(convs);
         setNotifications(notifs);
       } catch (e) {
@@ -189,22 +192,57 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
   }, []);
 
   const toggleJobInterest = useCallback(async (jobId: string) => {
-    // Optimistic update
-    setJobs(prev => prev.map(j =>
+    // Optimistic update across every array so getJob() always sees the change
+    const flipInterest = (j: Job): Job =>
       j.id === jobId
         ? { ...j, isInterested: !j.isInterested, interestedCount: j.isInterested ? j.interestedCount - 1 : j.interestedCount + 1 }
-        : j
-    ));
+        : j;
+
+    setJobs(prev => prev.map(flipInterest));
+    setMyJobs(prev => ({
+      ...prev,
+      liked: (prev.liked ?? []).map(flipInterest),
+      applied: (prev.applied ?? []).map(flipInterest),
+      accepted: (prev.accepted ?? []).map(flipInterest),
+      posted: (prev.posted ?? []).map(flipInterest),
+    }));
+
     try {
       const updated = await jobService.toggleInterest(jobId);
+      // Settle with server values
       setJobs(prev => prev.map(j => j.id === jobId ? updated : j));
+      setMyJobs(prev => {
+        const liked = prev.liked ?? [];
+        const applied = prev.applied ?? [];
+        const settled = (arr: Job[]) => arr.map(j => j.id === jobId ? updated : j);
+        if (updated.isInterested) {
+          return {
+            ...prev,
+            liked: liked.some(j => j.id === jobId) ? settled(liked) : [updated, ...liked],
+            applied: settled(applied),
+            accepted: settled(prev.accepted ?? []),
+            posted: settled(prev.posted ?? []),
+          };
+        } else {
+          return {
+            ...prev,
+            liked: liked.filter(j => j.id !== jobId),
+            applied: applied.filter(j => j.id !== jobId),
+            accepted: settled(prev.accepted ?? []),
+            posted: settled(prev.posted ?? []),
+          };
+        }
+      });
     } catch {
-      // Roll back on error
-      setJobs(prev => prev.map(j =>
-        j.id === jobId
-          ? { ...j, isInterested: !j.isInterested, interestedCount: j.isInterested ? j.interestedCount - 1 : j.interestedCount + 1 }
-          : j
-      ));
+      // Roll back all arrays
+      setJobs(prev => prev.map(flipInterest));
+      setMyJobs(prev => ({
+        ...prev,
+        liked: (prev.liked ?? []).map(flipInterest),
+        applied: (prev.applied ?? []).map(flipInterest),
+        accepted: (prev.accepted ?? []).map(flipInterest),
+        posted: (prev.posted ?? []).map(flipInterest),
+      }));
     }
   }, []);
 
@@ -227,6 +265,22 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
     });
     setJobs(prev => [newJob, ...prev]);
     setMyJobs(prev => ({ ...prev, posted: [newJob, ...prev.posted] }));
+  }, []);
+
+  const applyToJob = useCallback(async (jobId: string) => {
+    const updated = await jobService.applyToJob(jobId);
+    setJobs(prev => prev.map(j => j.id === jobId ? updated : j));
+    setMyJobs(prev => {
+      const liked = prev.liked ?? [];
+      const applied = prev.applied ?? [];
+      return {
+        ...prev,
+        liked: liked.filter(j => j.id !== jobId),
+        applied: applied.some(j => j.id === jobId)
+          ? applied.map(j => j.id === jobId ? updated : j)
+          : [updated, ...applied],
+      };
+    });
   }, []);
 
   const acceptJob = useCallback(async (jobId: string, applicantId: string) => {
@@ -270,6 +324,7 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
   const cancelJob = useCallback(async (jobId: string, reason?: string) => {
     const updated = await jobService.cancelJob(jobId, reason);
     setMyJobs(prev => ({
+      ...prev,
       accepted: prev.accepted.map(j => j.id === jobId ? updated : j),
       posted: prev.posted.map(j => j.id === jobId ? updated : j),
     }));
@@ -354,11 +409,13 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
   }, []);
 
   const refreshMyJobs = useCallback(async () => {
-    const [accepted, posted] = await Promise.all([
+    const [liked, applied, accepted, posted] = await Promise.all([
+      jobService.getMyLikedJobs().catch(() => [] as Job[]),
+      jobService.getMyAppliedJobs().catch(() => [] as Job[]),
       jobService.getMyAcceptedJobs(),
       jobService.getMyPostedJobs(),
     ]);
-    setMyJobs({ accepted, posted });
+    setMyJobs({ liked, applied, accepted, posted });
   }, []);
 
   const refreshConversations = useCallback(async () => {
@@ -378,7 +435,7 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
     conversations.reduce((sum, c) => sum + c.unreadCount, 0), [conversations]);
 
   const getJob = useCallback(
-    (id: string) => [...jobs, ...myJobs.accepted, ...myJobs.posted].find(j => j.id === id),
+    (id: string) => [...jobs, ...myJobs.liked, ...myJobs.applied, ...myJobs.accepted, ...myJobs.posted].find(j => j.id === id),
     [jobs, myJobs]
   );
 
@@ -406,6 +463,7 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
       completeOnboarding,
       toggleJobInterest,
       addJob,
+      applyToJob,
       acceptJob,
       startJob,
       markJobComplete,

@@ -91,6 +91,21 @@ export const jobService = {
     return data.map(toJob);
   },
 
+  getMyLikedJobs: async (): Promise<Job[]> => {
+    const data = await apiRequest<ApiJob[]>('GET', '/jobs/my/liked');
+    return data.map(toJob);
+  },
+
+  getMyAppliedJobs: async (): Promise<Job[]> => {
+    const data = await apiRequest<ApiJob[]>('GET', '/jobs/my/applied');
+    return data.map(toJob);
+  },
+
+  applyToJob: async (jobId: string): Promise<Job> => {
+    const data = await apiRequest<ApiJob>('POST', `/jobs/${jobId}/apply`);
+    return toJob(data);
+  },
+
   getById: async (id: string): Promise<Job> => {
     const data = await apiRequest<ApiJob>('GET', `/jobs/${id}`);
     return toJob(data);

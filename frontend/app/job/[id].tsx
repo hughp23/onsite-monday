@@ -2,8 +2,7 @@ import React, { useState } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet, Modal, Pressable,
 } from 'react-native';
-import { useLocalSearchParams, router, useNavigation } from 'expo-router';
-import { useLayoutEffect } from 'react';
+import { useLocalSearchParams, router } from 'expo-router';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useApp } from '@/context/AppContext';
@@ -13,11 +12,13 @@ import { ESCROW_ENABLED } from '@/constants/featureFlags';
 
 export default function JobDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { getJob, toggleJobInterest, currentUser, startConversation } = useApp();
+  const { getJob, toggleJobInterest, applyToJob, myJobs, currentUser, startConversation } = useApp();
   const job = getJob(id);
   const isOwnJob = job?.postedById === currentUser?.id;
+  const hasApplied = (myJobs.applied ?? []).some(j => j.id === id);
   const insets = useSafeAreaInsets();
-  const [showInterestModal, setShowInterestModal] = useState(false);
+  const [showApplyModal, setShowApplyModal] = useState(false);
+  const [applying, setApplying] = useState(false);
   const [toastVisible, setToastVisible] = useState(false);
   const [toastMsg, setToastMsg] = useState('');
   const [startingConv, setStartingConv] = useState(false);
@@ -33,15 +34,24 @@ export default function JobDetailScreen() {
   const startDate = new Date(job.startDate).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'long', year: 'numeric' });
   const endDate = new Date(job.endDate).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'long', year: 'numeric' });
 
-  const handleInterest = () => {
-    setShowInterestModal(true);
+  const handleToggleInterest = () => {
+    toggleJobInterest(job.id);
+    if (!job.isInterested) {
+      setToastMsg('Job saved to your Liked list.');
+      setToastVisible(true);
+    }
   };
 
-  const confirmInterest = () => {
-    toggleJobInterest(job.id);
-    setShowInterestModal(false);
-    setToastMsg("You've expressed interest! We'll notify the job poster.");
-    setToastVisible(true);
+  const confirmApply = async () => {
+    setApplying(true);
+    try {
+      await applyToJob(job.id);
+      setShowApplyModal(false);
+      setToastMsg('Application submitted! The poster will be in touch.');
+      setToastVisible(true);
+    } finally {
+      setApplying(false);
+    }
   };
 
   const handleMessage = async () => {
@@ -70,21 +80,10 @@ export default function JobDetailScreen() {
                 <MaterialCommunityIcons name="hammer-wrench" size={13} color={colors.primary} />
                 <Text style={styles.tradeBadgeText}>{job.trade}</Text>
               </View>
-              {!isOwnJob && (
-                <TouchableOpacity
-                  onPress={() => toggleJobInterest(job.id)}
-                  style={styles.interestBtn}
-                >
-                  <MaterialCommunityIcons
-                    name={job.isInterested ? 'thumb-up' : 'thumb-up-outline'}
-                    size={22}
-                    color={job.isInterested ? colors.accent : colors.textLight}
-                  />
-                  <Text style={[styles.interestCount, job.isInterested && { color: colors.accent }]}>
-                    {job.interestedCount}
-                  </Text>
-                </TouchableOpacity>
-              )}
+              <View style={styles.interestIndicator}>
+                <MaterialCommunityIcons name="account-group-outline" size={14} color={colors.textLight} />
+                <Text style={styles.interestCount}>{job.interestedCount} interested</Text>
+              </View>
             </View>
           </View>
         </View>
@@ -178,39 +177,57 @@ export default function JobDetailScreen() {
         <View style={styles.bottomPadding} />
       </ScrollView>
 
-      {/* Sticky bottom button */}
-      <View style={styles.stickyFooter}>
+      {/* Sticky footer actions */}
+      <View style={[styles.stickyFooter, { paddingBottom: insets.bottom + 8 }]}>
         {isOwnJob ? (
-          <View style={styles.alreadyInterested}>
+          <View style={styles.statusRow}>
             <MaterialCommunityIcons name="briefcase-check" size={20} color={colors.textLight} />
-            <Text style={[styles.alreadyInterestedText, { color: colors.textLight }]}>Your job posting</Text>
+            <Text style={styles.statusText}>Your job posting</Text>
           </View>
-        ) : job.isInterested ? (
-          <View style={styles.alreadyInterested}>
+        ) : hasApplied ? (
+          <View style={styles.statusRow}>
             <MaterialCommunityIcons name="check-circle" size={20} color={colors.success} />
-            <Text style={styles.alreadyInterestedText}>Interest expressed</Text>
+            <Text style={[styles.statusText, { color: colors.success }]}>Application submitted</Text>
           </View>
         ) : (
-          <TouchableOpacity style={styles.interestedBtn} onPress={handleInterest} activeOpacity={0.85}>
-            <Text style={styles.interestedBtnText}>I'm Interested</Text>
-          </TouchableOpacity>
+          <View style={styles.footerBtns}>
+            <TouchableOpacity
+              style={[styles.heartBtn, job.isInterested && styles.heartBtnActive]}
+              onPress={handleToggleInterest}
+              activeOpacity={0.8}
+            >
+              <MaterialCommunityIcons
+                name={job.isInterested ? 'heart' : 'heart-outline'}
+                size={24}
+                color={job.isInterested ? colors.primary : colors.textLight}
+              />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.applyFooterBtn}
+              onPress={() => setShowApplyModal(true)}
+              activeOpacity={0.85}
+            >
+              <MaterialCommunityIcons name="send" size={18} color={colors.white} />
+              <Text style={styles.applyFooterBtnText}>Apply</Text>
+            </TouchableOpacity>
+          </View>
         )}
       </View>
 
-      {/* Interest confirmation modal */}
-      <Modal visible={showInterestModal} transparent animationType="fade">
-        <Pressable style={styles.overlay} onPress={() => setShowInterestModal(false)}>
+      {/* Apply confirmation modal */}
+      <Modal visible={showApplyModal} transparent animationType="fade">
+        <Pressable style={styles.overlay} onPress={() => !applying && setShowApplyModal(false)}>
           <View style={styles.modal}>
-            <MaterialCommunityIcons name="briefcase-check" size={48} color={colors.primary} />
-            <Text style={styles.modalTitle}>Express Interest?</Text>
+            <MaterialCommunityIcons name="send-circle" size={48} color={colors.primary} />
+            <Text style={styles.modalTitle}>Apply for this job?</Text>
             <Text style={styles.modalDesc}>
-              You'll be added to the interest list for "{job.title}" posted by {job.postedByName}.
+              Submit a formal application for "{job.title}" posted by {job.postedByName}. They'll be notified and can review your profile.
             </Text>
-            <Text style={styles.modalRate}>Day Rate: £{job.dayRate}/day</Text>
-            <TouchableOpacity style={styles.confirmBtn} onPress={confirmInterest}>
-              <Text style={styles.confirmBtnText}>Yes, I'm Interested</Text>
+            <Text style={styles.modalRate}>£{job.dayRate}/day · {job.duration} day{job.duration > 1 ? 's' : ''}</Text>
+            <TouchableOpacity style={[styles.confirmBtn, applying && { opacity: 0.6 }]} onPress={confirmApply} disabled={applying}>
+              <Text style={styles.confirmBtnText}>{applying ? 'Submitting…' : 'Yes, Apply Now'}</Text>
             </TouchableOpacity>
-            <TouchableOpacity onPress={() => setShowInterestModal(false)} style={styles.cancelBtn}>
+            <TouchableOpacity onPress={() => setShowApplyModal(false)} style={styles.cancelBtn} disabled={applying}>
               <Text style={styles.cancelBtnText}>Cancel</Text>
             </TouchableOpacity>
           </View>
@@ -257,8 +274,8 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
   tradeBadgeText: { fontSize: 13, color: colors.primary, fontWeight: '600' },
-  interestBtn: { alignItems: 'center' },
-  interestCount: { fontSize: 11, color: colors.textLight, marginTop: 2 },
+  interestIndicator: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  interestCount: { fontSize: 12, color: colors.textLight },
   infoCard: {
     backgroundColor: colors.white,
     margin: 16,
@@ -322,23 +339,44 @@ const styles = StyleSheet.create({
     backgroundColor: colors.white,
     borderTopWidth: 1,
     borderTopColor: colors.border,
-    padding: 16,
-    paddingBottom: 24,
+    paddingHorizontal: 16,
+    paddingTop: 12,
   },
-  interestedBtn: {
+  footerBtns: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  heartBtn: {
+    width: 52,
+    height: 52,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  heartBtnActive: {
+    borderColor: colors.primary,
+    backgroundColor: colors.chipBg,
+  },
+  applyFooterBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
     backgroundColor: colors.primary,
     borderRadius: 12,
-    paddingVertical: 16,
-    alignItems: 'center',
+    paddingVertical: 14,
     shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 8,
     elevation: 4,
   },
-  interestedBtnText: { color: colors.white, fontSize: 17, fontWeight: '700' },
-  alreadyInterested: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
-  alreadyInterestedText: { fontSize: 16, color: colors.success, fontWeight: '600' },
+  applyFooterBtnText: { color: colors.white, fontSize: 14, fontWeight: '700' },
+  statusRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 14 },
+  statusText: { fontSize: 16, color: colors.textLight, fontWeight: '600' },
   overlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.4)',

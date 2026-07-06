@@ -146,6 +146,7 @@ vite.config.ts.timestamp-*
 
 # .NET backend
 backend/src/OnsiteMonday.Api/secrets/
+backend/src/OnsiteMonday.Api/appsettings.Development.json
 backend/**/.env
 backend/**/bin/
 backend/**/obj/
