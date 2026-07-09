@@ -134,4 +134,40 @@ public class UsersControllerTests : IClassFixture<TestWebApplicationFactory>, IA
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
     }
+
+    [Fact]
+    public async Task PostProfileImageUploadUrl_WithJpegContentType_Returns200WithUrls()
+    {
+        var response = await _client.PostAsJsonAsync(
+            "/api/users/me/profile-image-upload-url",
+            new { contentType = "image/jpeg" });
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await response.Content.ReadFromJsonAsync<ProfileImageUploadUrlResponse>();
+        body.Should().NotBeNull();
+        body!.UploadUrl.Should().NotBeNullOrEmpty();
+        body.PublicUrl.Should().Contain("profile-images/");
+        body.PublicUrl.Should().EndWith(".jpg");
+    }
+
+    [Fact]
+    public async Task PostProfileImageUploadUrl_WithInvalidContentType_Returns400()
+    {
+        var response = await _client.PostAsJsonAsync(
+            "/api/users/me/profile-image-upload-url",
+            new { contentType = "application/pdf" });
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task PostProfileImageUploadUrl_WithoutAuth_Returns401()
+    {
+        var unauthClient = _factory.CreateUnauthenticatedClient();
+        var response = await unauthClient.PostAsJsonAsync(
+            "/api/users/me/profile-image-upload-url",
+            new { contentType = "image/jpeg" });
+
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
 }

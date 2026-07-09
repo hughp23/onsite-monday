@@ -13,8 +13,13 @@ namespace OnsiteMonday.Api.Controllers;
 public class UsersController : ControllerBase
 {
     private readonly IUserService _userService;
+    private readonly IStorageService _storageService;
 
-    public UsersController(IUserService userService) => _userService = userService;
+    public UsersController(IUserService userService, IStorageService storageService)
+    {
+        _userService = userService;
+        _storageService = storageService;
+    }
 
     private string CognitoSub =>
         User.FindFirstValue(ClaimTypes.NameIdentifier)
@@ -78,5 +83,19 @@ public class UsersController : ControllerBase
     {
         var user = await _userService.GetByIdAsync(id);
         return Ok(user);
+    }
+
+    // POST /api/users/me/profile-image-upload-url
+    [HttpPost("me/profile-image-upload-url")]
+    public async Task<ActionResult<ProfileImageUploadUrlResponse>> GetProfileImageUploadUrl(
+        [FromBody] ProfileImageUploadUrlRequest request)
+    {
+        if (request.ContentType is not ("image/jpeg" or "image/png"))
+            return BadRequest(new { error = "contentType must be image/jpeg or image/png" });
+
+        var (uploadUrl, publicUrl) = await _storageService.GenerateProfileImageUploadUrlAsync(
+            CognitoSub, request.ContentType);
+
+        return Ok(new ProfileImageUploadUrlResponse(uploadUrl, publicUrl));
     }
 }

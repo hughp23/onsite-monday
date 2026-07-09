@@ -8,6 +8,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Moq;
 using OnsiteMonday.Api.Data;
+using OnsiteMonday.Api.Services;
 using OnsiteMonday.Api.Stubs;
 
 namespace OnsiteMonday.Api.Tests.Infrastructure;
@@ -80,6 +81,20 @@ public class TestWebApplicationFactory : WebApplicationFactory<Program>
             mangopayMock.Setup(m => m.ValidateWebhookSignature(It.IsAny<string>(), It.IsAny<string>()))
                 .Returns(true);
             services.AddScoped<IMangopayService>(_ => mangopayMock.Object);
+
+            // Override IStorageService — integration tests must not need real AWS credentials
+            var storageMock = new Mock<IStorageService>();
+            storageMock
+                .Setup(m => m.GenerateProfileImageUploadUrlAsync(It.IsAny<string>(), "image/jpeg"))
+                .ReturnsAsync((
+                    "https://fake-presigned-url?sig=abc",
+                    "https://onsite-monday-media.s3.eu-west-2.amazonaws.com/profile-images/test.jpg"));
+            storageMock
+                .Setup(m => m.GenerateProfileImageUploadUrlAsync(It.IsAny<string>(), "image/png"))
+                .ReturnsAsync((
+                    "https://fake-presigned-url?sig=abc",
+                    "https://onsite-monday-media.s3.eu-west-2.amazonaws.com/profile-images/test.png"));
+            services.AddScoped<IStorageService>(_ => storageMock.Object);
         });
     }
 
