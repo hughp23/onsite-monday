@@ -2,17 +2,7 @@ import { Amplify } from 'aws-amplify';
 import { cognitoUserPoolsTokenProvider } from 'aws-amplify/auth/cognito';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-if (!process.env.EXPO_PUBLIC_S3_BUCKET) {
-  throw new Error('EXPO_PUBLIC_S3_BUCKET is not set. Run the bundler with --clear to pick up .env changes.');
-}
-
 Amplify.configure({
-  Storage: {
-    S3: {
-      bucket: process.env.EXPO_PUBLIC_S3_BUCKET,
-      region: 'eu-west-2',
-    },
-  },
   Auth: {
     Cognito: {
       userPoolId: process.env.EXPO_PUBLIC_COGNITO_USER_POOL_ID!,
@@ -31,7 +21,4 @@ Amplify.configure({
   },
 });
 
-// Use AsyncStorage for token persistence across app restarts.
-// Without this, Amplify v6 on React Native cannot reliably store tokens
-// and the USER_SRP_AUTH flow fails with a generic "unknown error".
 cognitoUserPoolsTokenProvider.setKeyValueStorage(AsyncStorage);
