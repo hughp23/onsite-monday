@@ -1,3 +1,4 @@
+using Amazon.S3;
 using FluentValidation;
 using FluentValidation.AspNetCore;
 using Hangfire;
@@ -91,6 +92,10 @@ builder.Services.AddScoped<IReviewService, ReviewService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<IConversationService, ConversationService>();
 builder.Services.AddScoped<ISubscriptionService, SubscriptionService>();
+
+// Storage
+builder.Services.AddSingleton<IAmazonS3>(_ => new AmazonS3Client(Amazon.RegionEndpoint.EUWest2));
+builder.Services.AddScoped<IStorageService, S3StorageService>();
 
 // Mangopay — use stub in Development/Testing, real service in Production or Sandbox
 builder.Services.Configure<MangopayOptions>(builder.Configuration.GetSection("Mangopay"));

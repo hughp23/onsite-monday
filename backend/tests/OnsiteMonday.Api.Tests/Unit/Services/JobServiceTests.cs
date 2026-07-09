@@ -38,7 +38,12 @@ public class JobServiceTests
         _backgroundJobsMock
             .Setup(b => b.Create(It.IsAny<HangfireJob>(), It.IsAny<Hangfire.States.IState>()))
             .Returns("stub_hangfire_job_id");
-        _sut = new JobService(_jobRepoMock.Object, _userRepoMock.Object, _notificationRepoMock.Object, _mangopayMock.Object, _backgroundJobsMock.Object, _mapper);
+        var configMock = new Mock<Microsoft.Extensions.Configuration.IConfiguration>();
+        var configSectionMock = new Mock<Microsoft.Extensions.Configuration.IConfigurationSection>();
+        configSectionMock.Setup(s => s.Value).Returns("false");
+        configMock.Setup(c => c.GetSection("Features:EscrowEnabled")).Returns(configSectionMock.Object);
+        configMock.Setup(c => c["Features:EscrowEnabled"]).Returns("false");
+        _sut = new JobService(_jobRepoMock.Object, _userRepoMock.Object, _notificationRepoMock.Object, _mangopayMock.Object, _backgroundJobsMock.Object, _mapper, configMock.Object);
     }
 
     [Fact]

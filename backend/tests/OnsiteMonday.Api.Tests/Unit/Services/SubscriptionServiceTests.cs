@@ -43,7 +43,7 @@ public class SubscriptionServiceTests
         stripe.Setup(s => s.CancelSubscriptionAsync(It.IsAny<string>()))
             .Returns(Task.CompletedTask);
 
-        var sut = new SubscriptionService(db, mangopay.Object, stripe.Object);
+        var sut = new SubscriptionService(db, stripe.Object);
         return (db, mangopay, stripe, sut);
     }
 
