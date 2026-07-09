@@ -2,10 +2,14 @@ import { Amplify } from 'aws-amplify';
 import { cognitoUserPoolsTokenProvider } from 'aws-amplify/auth/cognito';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+if (!process.env.EXPO_PUBLIC_S3_BUCKET) {
+  throw new Error('EXPO_PUBLIC_S3_BUCKET is not set. Run the bundler with --clear to pick up .env changes.');
+}
+
 Amplify.configure({
   Storage: {
     S3: {
-      bucket: process.env.EXPO_PUBLIC_S3_BUCKET!,
+      bucket: process.env.EXPO_PUBLIC_S3_BUCKET,
       region: 'eu-west-2',
     },
   },

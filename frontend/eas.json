@@ -13,7 +13,10 @@
         "EXPO_PUBLIC_COGNITO_CLIENT_ID": "5impapcbro4j53o0bnlnc6c3m3",
         "EXPO_PUBLIC_COGNITO_DOMAIN": "eu-west-28fc6mhiie.auth.eu-west-2.amazoncognito.com",
         "EXPO_PUBLIC_GOOGLE_MAPS_API_KEY": "AIzaSyAMr0dm51OubuFpMavsQONF4NwjyUDgz7I",
-        "EXPO_PUBLIC_API_URL": "https://onsite-monday-production.up.railway.app/api"
+        "EXPO_PUBLIC_API_URL": "https://onsite-monday-production.up.railway.app/api",
+        "EXPO_PUBLIC_S3_BUCKET": "onsite-monday-media",
+        "EXPO_PUBLIC_AWS_REGION": "eu-west-2",
+        "EXPO_PUBLIC_ESCROW_ENABLED": "false"
       }
     }
   }
