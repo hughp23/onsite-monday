@@ -109,6 +109,29 @@ public class SubscriptionService : ISubscriptionService
         };
     }
 
+    public async Task<SubscriptionDto> CancelCurrentAsync(Guid userId)
+    {
+        var sub = await _db.Subscriptions
+            .FirstOrDefaultAsync(s => s.UserId == userId && s.IsActive);
+
+        if (sub == null)
+            throw new InvalidOperationException("No active subscription to cancel.");
+
+        if (sub.StripeSubscriptionId == null)
+        {
+            sub.IsActive = false;
+            sub.CancelledAt = DateTimeOffset.UtcNow;
+            await _db.SaveChangesAsync();
+            return ToDto(sub);
+        }
+
+        var periodEnd = await _stripe.CancelSubscriptionAtPeriodEndAsync(sub.StripeSubscriptionId);
+        sub.CancelAtPeriodEnd = true;
+        sub.CurrentPeriodEnd = periodEnd;
+        await _db.SaveChangesAsync();
+        return ToDto(sub);
+    }
+
     private static SubscriptionDto ToDto(Subscription s) => new()
     {
         Id = s.Id,

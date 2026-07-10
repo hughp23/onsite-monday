@@ -6,4 +6,5 @@ public interface ISubscriptionService
 {
     Task<SubscriptionDto?> GetCurrentAsync(Guid userId);
     Task<SubscriptionCheckoutResponse> UpdateSubscriptionAsync(Guid userId, string tier, bool updateCardAndUpgrade = false);
+    Task<SubscriptionDto> CancelCurrentAsync(Guid userId);
 }

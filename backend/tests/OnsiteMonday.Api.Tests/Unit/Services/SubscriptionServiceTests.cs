@@ -42,6 +42,8 @@ public class SubscriptionServiceTests
             .ReturnsAsync(("sub_stub", "https://checkout.stripe.com/stub"));
         stripe.Setup(s => s.CancelSubscriptionAsync(It.IsAny<string>()))
             .Returns(Task.CompletedTask);
+        stripe.Setup(s => s.CancelSubscriptionAtPeriodEndAsync(It.IsAny<string>()))
+            .ReturnsAsync(DateTimeOffset.UtcNow.AddDays(30));
 
         var sut = new SubscriptionService(db, stripe.Object);
         return (db, mangopay, stripe, sut);
@@ -253,5 +255,104 @@ public class SubscriptionServiceTests
         result.Should().NotBeNull();
         result!.Tier.Should().Be("silver");
         result.PayoutDays.Should().Be(14);
+    }
+
+    [Fact]
+    public async Task CancelCurrent_WithStripeSubscription_SetsCancelAtPeriodEndTrue()
+    {
+        var (db, _, stripe, sut) = CreateSut();
+        var userId = Guid.NewGuid();
+        var periodEnd = DateTimeOffset.UtcNow.AddDays(30);
+
+        stripe.Setup(s => s.CancelSubscriptionAtPeriodEndAsync("sub_active_123"))
+            .ReturnsAsync(periodEnd);
+
+        db.Subscriptions.Add(new Subscription
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            Tier = "silver",
+            PayoutDays = 14,
+            IsActive = true,
+            StartedAt = DateTimeOffset.UtcNow.AddDays(-5),
+            StripeSubscriptionId = "sub_active_123",
+        });
+        await db.SaveChangesAsync();
+
+        var result = await sut.CancelCurrentAsync(userId);
+
+        result.CancelAtPeriodEnd.Should().BeTrue();
+        result.CurrentPeriodEnd.Should().BeCloseTo(periodEnd, TimeSpan.FromSeconds(1));
+        result.IsActive.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task CancelCurrent_WithStripeSubscription_PersistsToDB()
+    {
+        var (db, _, stripe, sut) = CreateSut();
+        var userId = Guid.NewGuid();
+        var periodEnd = DateTimeOffset.UtcNow.AddDays(14);
+
+        stripe.Setup(s => s.CancelSubscriptionAtPeriodEndAsync("sub_stripe_456"))
+            .ReturnsAsync(periodEnd);
+
+        var sub = new Subscription
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            Tier = "gold",
+            PayoutDays = 7,
+            IsActive = true,
+            StartedAt = DateTimeOffset.UtcNow,
+            StripeSubscriptionId = "sub_stripe_456",
+        };
+        db.Subscriptions.Add(sub);
+        await db.SaveChangesAsync();
+
+        await sut.CancelCurrentAsync(userId);
+
+        await db.Entry(sub).ReloadAsync();
+        sub.CancelAtPeriodEnd.Should().BeTrue();
+        sub.CurrentPeriodEnd.Should().NotBeNull();
+        sub.IsActive.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task CancelCurrent_WithNoStripeId_DeactivatesImmediately()
+    {
+        var (db, _, _, sut) = CreateSut();
+        var userId = Guid.NewGuid();
+
+        var sub = new Subscription
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            Tier = "bronze",
+            PayoutDays = 30,
+            IsActive = true,
+            StartedAt = DateTimeOffset.UtcNow.AddDays(-1),
+            StripeSubscriptionId = null,
+        };
+        db.Subscriptions.Add(sub);
+        await db.SaveChangesAsync();
+
+        var result = await sut.CancelCurrentAsync(userId);
+
+        result.IsActive.Should().BeFalse();
+
+        await db.Entry(sub).ReloadAsync();
+        sub.IsActive.Should().BeFalse();
+        sub.CancelledAt.Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task CancelCurrent_WithNoActiveSubscription_ThrowsInvalidOperationException()
+    {
+        var (_, _, _, sut) = CreateSut();
+
+        var act = () => sut.CancelCurrentAsync(Guid.NewGuid());
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*No active subscription*");
     }
 }
