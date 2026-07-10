@@ -7,4 +7,5 @@ public interface IStripeBillingService
         string stripeCustomerId, string tier, string successUrl, string cancelUrl);
     Task UpdateSubscriptionInPlaceAsync(string stripeSubscriptionId, string tier);
     Task CancelSubscriptionAsync(string stripeSubscriptionId);
+    Task<DateTimeOffset> CancelSubscriptionAtPeriodEndAsync(string stripeSubscriptionId);
 }

@@ -33,4 +33,11 @@ internal sealed class StubStripeBillingService : IStripeBillingService
         _logger.LogInformation("[STUB] Stripe CancelSubscription {SubscriptionId}", stripeSubscriptionId);
         return Task.CompletedTask;
     }
+
+    public Task<DateTimeOffset> CancelSubscriptionAtPeriodEndAsync(string stripeSubscriptionId)
+    {
+        var periodEnd = DateTimeOffset.UtcNow.AddMonths(1);
+        _logger.LogInformation("[STUB] Stripe CancelSubscriptionAtPeriodEnd {SubscriptionId} → {PeriodEnd}", stripeSubscriptionId, periodEnd);
+        return Task.FromResult(periodEnd);
+    }
 }
