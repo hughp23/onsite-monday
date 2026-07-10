@@ -7,4 +7,6 @@ public class SubscriptionDto
     public int PayoutDays { get; set; }
     public bool IsActive { get; set; }
     public DateTimeOffset StartedAt { get; set; }
+    public bool CancelAtPeriodEnd { get; set; }
+    public DateTimeOffset? CurrentPeriodEnd { get; set; }
 }

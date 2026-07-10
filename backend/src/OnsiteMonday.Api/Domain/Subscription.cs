@@ -7,8 +7,10 @@ public class Subscription
     public User User { get; set; } = null!;
     public string Tier { get; set; } = "bronze"; // bronze | silver | gold
     public bool IsActive { get; set; } = true;
-    public int PayoutDays { get; set; } = 30;    // 30 | 14 | 7 — set from tier at creation time
+    public int PayoutDays { get; set; } = 30;
     public DateTimeOffset StartedAt { get; set; }
     public DateTimeOffset? CancelledAt { get; set; }
-    public string? StripeSubscriptionId { get; set; } // Phase 2 — Stripe integration
+    public string? StripeSubscriptionId { get; set; }
+    public bool CancelAtPeriodEnd { get; set; } = false;
+    public DateTimeOffset? CurrentPeriodEnd { get; set; }
 }

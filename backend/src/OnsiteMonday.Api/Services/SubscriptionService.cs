@@ -116,5 +116,7 @@ public class SubscriptionService : ISubscriptionService
         PayoutDays = s.PayoutDays,
         IsActive = s.IsActive,
         StartedAt = s.StartedAt,
+        CancelAtPeriodEnd = s.CancelAtPeriodEnd,
+        CurrentPeriodEnd = s.CurrentPeriodEnd,
     };
 }
