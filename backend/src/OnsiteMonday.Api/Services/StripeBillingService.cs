@@ -93,27 +93,12 @@ public class StripeBillingService : IStripeBillingService
 
     public async Task<DateTimeOffset> CancelSubscriptionAtPeriodEndAsync(string stripeSubscriptionId)
     {
-        StripeConfiguration.ApiKey = _options.SecretKey;
         var subscriptionService = new Stripe.SubscriptionService();
         var updated = await subscriptionService.UpdateAsync(stripeSubscriptionId, new SubscriptionUpdateOptions
         {
             CancelAtPeriodEnd = true,
         });
         _logger.LogInformation("Stripe: Set cancel_at_period_end on subscription {SubscriptionId}", stripeSubscriptionId);
-
-        // Extract current_period_end from the Stripe API response
-        long periodEndUnix = 0;
-        if (updated.RawJsonElement.HasValue &&
-            updated.RawJsonElement.Value.TryGetProperty("current_period_end", out var periodEndElement))
-        {
-            periodEndUnix = periodEndElement.GetInt64();
-        }
-
-        if (periodEndUnix == 0)
-        {
-            throw new InvalidOperationException($"Could not retrieve current_period_end for subscription {stripeSubscriptionId}");
-        }
-
-        return new DateTimeOffset(periodEndUnix, TimeSpan.Zero);
+        return new DateTimeOffset(updated.Items.Data[0].CurrentPeriodEnd, TimeSpan.Zero);
     }
 }
