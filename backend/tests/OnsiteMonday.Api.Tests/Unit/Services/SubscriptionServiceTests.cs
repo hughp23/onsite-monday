@@ -313,7 +313,7 @@ public class SubscriptionServiceTests
 
         await db.Entry(sub).ReloadAsync();
         sub.CancelAtPeriodEnd.Should().BeTrue();
-        sub.CurrentPeriodEnd.Should().NotBeNull();
+        sub.CurrentPeriodEnd.Should().BeCloseTo(periodEnd, TimeSpan.FromSeconds(1));
         sub.IsActive.Should().BeTrue();
     }
 
