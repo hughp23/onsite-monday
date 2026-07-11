@@ -55,4 +55,20 @@ public class SubscriptionsController : ControllerBase
         var response = await _subscriptionService.UpdateSubscriptionAsync(userId, request.Tier, request.UpdateCardAndUpgrade);
         return Ok(response);
     }
+
+    // DELETE /api/subscriptions/current
+    [HttpDelete("current")]
+    public async Task<ActionResult<SubscriptionDto>> CancelSubscription()
+    {
+        var userId = await GetCurrentUserIdAsync();
+        try
+        {
+            var dto = await _subscriptionService.CancelCurrentAsync(userId);
+            return Ok(dto);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+    }
 }
