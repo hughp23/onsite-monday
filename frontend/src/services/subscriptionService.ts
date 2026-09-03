@@ -7,6 +7,8 @@ export interface SubscriptionDto {
   payoutDays: number;
   isActive: boolean;
   startedAt: string;
+  cancelAtPeriodEnd: boolean;
+  currentPeriodEnd: string | null;
 }
 
 export interface SubscriptionCheckoutResponse {
@@ -21,5 +23,9 @@ export const subscriptionService = {
 
   update: async (tier: SubscriptionTier, updateCardAndUpgrade = false): Promise<SubscriptionCheckoutResponse> => {
     return apiRequest<SubscriptionCheckoutResponse>('POST', '/subscriptions', { tier, updateCardAndUpgrade });
+  },
+
+  cancel: async (): Promise<SubscriptionDto> => {
+    return apiRequest<SubscriptionDto>('DELETE', '/subscriptions/current');
   },
 };

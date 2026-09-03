@@ -6,7 +6,7 @@ import { userService } from '@/src/services/userService';
 import { jobService } from '@/src/services/jobService';
 import { conversationService } from '@/src/services/conversationService';
 import { notificationService } from '@/src/services/notificationService';
-import { subscriptionService } from '@/src/services/subscriptionService';
+import { subscriptionService, SubscriptionDto } from '@/src/services/subscriptionService';
 import { reviewService } from '@/src/services/reviewService';
 import { signalRService } from '@/src/services/signalRService';
 
@@ -36,6 +36,7 @@ interface AppContextType {
   markConversationRead: (conversationId: string) => Promise<void>;
   markNotificationRead: (notificationId: string) => Promise<void>;
   updateSubscription: (tier: SubscriptionTier, updateCardAndUpgrade?: boolean) => Promise<{ checkoutUrl: string | null }>;
+  cancelSubscription: () => Promise<SubscriptionDto>;
   loadTradespeople: (params?: { trade?: string; location?: string }) => Promise<void>;
   refreshJobs: () => Promise<void>;
   refreshMyJobs: () => Promise<void>;
@@ -379,6 +380,10 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
     return { checkoutUrl };
   }, []);
 
+  const cancelSubscription = useCallback(async () => {
+    return subscriptionService.cancel();
+  }, []);
+
   const loadTradespeople = useCallback(async (params?: { trade?: string; location?: string }) => {
     const data = await userService.getTradespeople(params);
     setTradespeople(data.map(u => ({
@@ -476,6 +481,7 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
       markConversationRead,
       markNotificationRead,
       updateSubscription,
+      cancelSubscription,
       loadTradespeople,
       refreshJobs,
       refreshMyJobs,
