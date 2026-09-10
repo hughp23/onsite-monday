@@ -1,5 +1,4 @@
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using OnsiteMonday.Api.DTOs.Jobs;
 using OnsiteMonday.Api.Repositories;
@@ -35,20 +34,6 @@ public class JobsController : ControllerBase
         return user.Id;
     }
 
-    private async Task<ObjectResult?> RequireKycVerifiedAsync()
-    {
-        var user = await _userRepo.GetOrCreateByCognitoSubAsync(CognitoSub, Email);
-
-        if (user.MangopayKycStatus != "verified")
-            return StatusCode(StatusCodes.Status403Forbidden, new
-            {
-                error = "Identity verification required before posting or applying for jobs.",
-                kycStatus = user.MangopayKycStatus,
-            });
-
-        return null;
-    }
-
     // GET /api/jobs?trade=Builder&location=York&status=open&page=1&pageSize=20
     [HttpGet]
     public async Task<ActionResult<List<JobDto>>> GetJobs(
@@ -67,9 +52,6 @@ public class JobsController : ControllerBase
     [HttpPost]
     public async Task<ActionResult<JobDto>> CreateJob([FromBody] CreateJobRequest request)
     {
-        var kycCheck = await RequireKycVerifiedAsync();
-        if (kycCheck != null) return kycCheck;
-
         var userId = await GetCurrentUserIdAsync();
         var job = await _jobService.CreateJobAsync(userId, request);
         return CreatedAtAction(nameof(GetById), new { id = job.Id }, job);

@@ -1,19 +1,19 @@
 using Microsoft.EntityFrameworkCore;
 using OnsiteMonday.Api.Data;
-using OnsiteMonday.Api.Stubs;
+using OnsiteMonday.Api.Services.Interfaces;
 
 namespace OnsiteMonday.Api.Jobs;
 
 public class PayoutReleaseJob : IPayoutReleaseJob
 {
     private readonly AppDbContext _db;
-    private readonly IMangopayService _mangopay;
+    private readonly IStripeConnectService _stripeConnect;
     private readonly ILogger<PayoutReleaseJob> _logger;
 
-    public PayoutReleaseJob(AppDbContext db, IMangopayService mangopay, ILogger<PayoutReleaseJob> logger)
+    public PayoutReleaseJob(AppDbContext db, IStripeConnectService stripeConnect, ILogger<PayoutReleaseJob> logger)
     {
         _db = db;
-        _mangopay = mangopay;
+        _stripeConnect = stripeConnect;
         _logger = logger;
     }
 
@@ -48,45 +48,22 @@ public class PayoutReleaseJob : IPayoutReleaseJob
         var tradesperson = application.Applicant;
         var amount = job.DayRate * job.Duration;
 
-        if (string.IsNullOrEmpty(tradesperson.MangopayWalletId))
+        if (string.IsNullOrEmpty(tradesperson.StripeConnectAccountId))
         {
-            _logger.LogError("PayoutReleaseJob: tradesperson {UserId} has no Mangopay wallet, cannot transfer for job {JobId}", tradesperson.Id, jobId);
+            _logger.LogError("PayoutReleaseJob: tradesperson {UserId} has no Stripe Connect account, cannot transfer for job {JobId}", tradesperson.Id, jobId);
             return;
         }
 
-        if (string.IsNullOrEmpty(job.EscrowTransferId))
+        var netAmountPence = (long)Math.Round(amount * 100, MidpointRounding.AwayFromZero);
+
+        if (string.IsNullOrEmpty(job.StripeTransferId))
         {
-            var transferId = await _mangopay.TransferToTradesPersonWalletAsync(jobId, tradesperson.MangopayUserId!, tradesperson.MangopayWalletId, amount);
-            job.EscrowTransferId = transferId;
+            var transferId = await _stripeConnect.CreateTransferAsync(jobId, tradesperson.StripeConnectAccountId, netAmountPence);
+            job.StripeTransferId = transferId;
             await _db.SaveChangesAsync();
         }
 
-        // Bank PayOut: auto-wire if the tradesperson has opted in, is KYC-verified, and has a bank account.
-        if (tradesperson.AutoWithdraw
-            && tradesperson.MangopayKycStatus == "verified"
-            && !string.IsNullOrEmpty(tradesperson.MangopayBankAccountId))
-        {
-            var reference = $"OM-AUTO-{jobId:N}"[..20];
-            var payoutId = await _mangopay.ReleaseFundsAsync(
-                tradesperson.MangopayUserId!,
-                tradesperson.MangopayWalletId!,
-                tradesperson.MangopayBankAccountId,
-                amount,
-                reference);
-            _logger.LogInformation(
-                "Auto-withdraw {PayoutId} for job {JobId}, user {UserId}, £{Amount}",
-                payoutId, jobId, tradesperson.Id, amount);
-        }
-        else
-        {
-            // Funds are in the tradesperson's Mangopay wallet; bank payout requires manual request or KYC/bank setup.
-            _logger.LogInformation(
-                "PayoutReleaseJob: Transfer complete for job {JobId}. Bank payout deferred (KYC Phase 2). " +
-                "Funds in wallet {WalletId}.",
-                jobId, tradesperson.MangopayWalletId);
-        }
-
-        job.PaymentStatus = "paid";
+        job.PaymentStatus = "payout_complete";
         await _db.SaveChangesAsync();
 
         _logger.LogInformation("PayoutReleaseJob: completed for job {JobId}, £{Amount}", jobId, amount);

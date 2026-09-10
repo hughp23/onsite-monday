@@ -9,7 +9,7 @@ using OnsiteMonday.Api.Jobs;
 using OnsiteMonday.Api.Mapping;
 using OnsiteMonday.Api.Repositories;
 using OnsiteMonday.Api.Services;
-using OnsiteMonday.Api.Stubs;
+using OnsiteMonday.Api.Services.Interfaces;
 using OnsiteMonday.Api.Tests.Infrastructure;
 
 namespace OnsiteMonday.Api.Tests.Unit.Services;
@@ -19,7 +19,7 @@ public class JobServiceTests
     private readonly Mock<IJobRepository> _jobRepoMock = new();
     private readonly Mock<IUserRepository> _userRepoMock = new();
     private readonly Mock<INotificationRepository> _notificationRepoMock = new();
-    private readonly Mock<IMangopayService> _mangopayMock = new();
+    private readonly Mock<IStripeConnectService> _stripeConnectMock = new();
     private readonly Mock<IBackgroundJobClient> _backgroundJobsMock = new();
     private readonly IMapper _mapper;
     private readonly JobService _sut;
@@ -29,16 +29,13 @@ public class JobServiceTests
         var config = new MapperConfiguration(cfg => cfg.AddProfile<MappingProfile>());
         _mapper = config.CreateMapper();
         _notificationRepoMock.Setup(r => r.CreateAsync(It.IsAny<Notification>())).ReturnsAsync(new Notification());
-        _mangopayMock.Setup(s => s.EnsureUserAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()))
-            .ReturnsAsync("stub_mango_user");
-        _mangopayMock.Setup(s => s.EnsureWalletAsync(It.IsAny<string>(), It.IsAny<string>()))
-            .ReturnsAsync("stub_wallet");
-        _mangopayMock.Setup(s => s.CreateWebPayInAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<decimal>(), It.IsAny<string>()))
-            .ReturnsAsync(("stub_payin", "https://stub-checkout.mangopay.com/pay"));
+        _stripeConnectMock
+            .Setup(s => s.CreateJobCheckoutSessionAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<long>(), It.IsAny<string>(), It.IsAny<string>()))
+            .ReturnsAsync(("cs_test_stub", "https://checkout.stripe.com/pay/cs_test_stub"));
         _backgroundJobsMock
             .Setup(b => b.Create(It.IsAny<HangfireJob>(), It.IsAny<Hangfire.States.IState>()))
             .Returns("stub_hangfire_job_id");
-        _sut = new JobService(_jobRepoMock.Object, _userRepoMock.Object, _notificationRepoMock.Object, _mangopayMock.Object, _backgroundJobsMock.Object, _mapper);
+        _sut = new JobService(_jobRepoMock.Object, _userRepoMock.Object, _notificationRepoMock.Object, _stripeConnectMock.Object, _backgroundJobsMock.Object, _mapper);
     }
 
     [Fact]
@@ -200,25 +197,31 @@ public class JobServiceTests
     }
 
     [Fact]
-    public async Task StartJob_CreatesWebPayInAndReturnsRedirectUrl()
+    public async Task StartJob_Creates_StripeCheckoutSession_And_Sets_PayinPending()
     {
+        // Arrange
+        var jobId = Guid.NewGuid();
         var posterId = Guid.NewGuid();
-        var poster = TestBuilders.MakeUser();
-        poster.Id = posterId;
-        var job = TestBuilders.MakeJob(posterId, "accepted");
 
-        _jobRepoMock.Setup(r => r.GetByIdAsync(job.Id, posterId)).ReturnsAsync((job, false, 1));
+        var job = TestBuilders.MakeJob(posterId, status: "accepted", id: jobId);
+        _jobRepoMock.Setup(r => r.GetByIdAsync(jobId, posterId))
+            .ReturnsAsync((job, false, 0));
+        _jobRepoMock.Setup(r => r.GetApplicationCountAsync(jobId)).ReturnsAsync(1);
+        _jobRepoMock.Setup(r => r.GetApplicantsAsync(jobId)).ReturnsAsync(new List<(Domain.User, JobApplication)>());
         _jobRepoMock.Setup(r => r.UpdateAsync(It.IsAny<Job>())).Returns(Task.CompletedTask);
-        _jobRepoMock.Setup(r => r.GetApplicationCountAsync(job.Id)).ReturnsAsync(1);
-        _jobRepoMock.Setup(r => r.GetApplicantsAsync(job.Id)).ReturnsAsync(new List<(Domain.User, JobApplication)>());
-        _userRepoMock.Setup(r => r.GetByIdAsync(posterId)).ReturnsAsync(poster);
-        _userRepoMock.Setup(r => r.UpdateAsync(It.IsAny<User>())).Returns(Task.CompletedTask);
 
-        var result = await _sut.StartJobAsync(job.Id, posterId);
+        _stripeConnectMock
+            .Setup(s => s.CreateJobCheckoutSessionAsync(jobId, job.Title, It.IsAny<long>(), It.IsAny<string>(), It.IsAny<string>()))
+            .ReturnsAsync(("cs_test_123", "https://checkout.stripe.com/pay/cs_test_123"));
 
-        result.PayInRedirectUrl.Should().NotBeNullOrEmpty();
+        // Act
+        var result = await _sut.StartJobAsync(jobId, posterId);
+
+        // Assert
+        result.CheckoutUrl.Should().Be("https://checkout.stripe.com/pay/cs_test_123");
         result.Job.Status.Should().Be("in_progress");
-        _mangopayMock.Verify(s => s.CreateWebPayInAsync(job.Id, It.IsAny<string>(), It.IsAny<decimal>(), It.IsAny<string>()), Times.Once);
+        job.StripeCheckoutSessionId.Should().Be("cs_test_123");
+        job.PaymentStatus.Should().Be("payin_pending");
     }
 
     [Fact]

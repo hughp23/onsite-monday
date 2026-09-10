@@ -1,4 +1,4 @@
-namespace OnsiteMonday.Api.Stubs;
+namespace OnsiteMonday.Api.Services.Interfaces;
 
 public interface IStripeBillingService
 {

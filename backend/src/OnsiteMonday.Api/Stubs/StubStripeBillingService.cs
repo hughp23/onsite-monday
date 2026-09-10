@@ -1,3 +1,5 @@
+using OnsiteMonday.Api.Services.Interfaces;
+
 namespace OnsiteMonday.Api.Stubs;
 
 internal sealed class StubStripeBillingService : IStripeBillingService

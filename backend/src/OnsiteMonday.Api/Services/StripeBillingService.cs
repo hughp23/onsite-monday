@@ -1,5 +1,5 @@
 using Microsoft.Extensions.Options;
-using OnsiteMonday.Api.Stubs;
+using OnsiteMonday.Api.Services.Interfaces;
 using Stripe;
 using Stripe.Checkout;
 
