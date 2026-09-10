@@ -65,6 +65,10 @@ public class StripeWebhookController : ControllerBase
                 _logger.LogWarning("Stripe invoice payment failed for customer {CustomerId}", ((Invoice)stripeEvent.Data.Object).CustomerId);
                 break;
 
+            case "account.updated":
+                await HandleAccountUpdatedAsync((Stripe.Account)stripeEvent.Data.Object);
+                break;
+
             default:
                 _logger.LogDebug("Unhandled Stripe event type: {EventType}", stripeEvent.Type);
                 break;
@@ -74,6 +78,18 @@ public class StripeWebhookController : ControllerBase
     }
 
     private async Task HandleCheckoutSessionCompleted(StripeCheckoutSession session)
+    {
+        if (session.Mode == "subscription")
+        {
+            await HandleSubscriptionCheckoutCompletedAsync(session);
+        }
+        else if (session.Mode == "payment")
+        {
+            await HandleJobPaymentCheckoutCompletedAsync(session);
+        }
+    }
+
+    private async Task HandleSubscriptionCheckoutCompletedAsync(StripeCheckoutSession session)
     {
         if (string.IsNullOrEmpty(session.SubscriptionId)) return;
 
@@ -93,6 +109,40 @@ public class StripeWebhookController : ControllerBase
         sub.StripeSubscriptionId = session.SubscriptionId;
         await _db.SaveChangesAsync();
         _logger.LogInformation("Stripe: Set StripeSubscriptionId={SubId} on subscription {LocalSubId}", session.SubscriptionId, sub.Id);
+    }
+
+    private async Task HandleJobPaymentCheckoutCompletedAsync(StripeCheckoutSession session)
+    {
+        var job = await _db.Jobs.FirstOrDefaultAsync(j => j.StripeCheckoutSessionId == session.Id);
+        if (job == null)
+        {
+            _logger.LogWarning("Stripe job payment: no job found for session {SessionId}", session.Id);
+            return;
+        }
+
+        job.PaymentStatus = "escrowed";
+        await _db.SaveChangesAsync();
+        _logger.LogInformation("Job {JobId} payment status updated to escrowed via session {SessionId}", job.Id, session.Id);
+    }
+
+    private async Task HandleAccountUpdatedAsync(Stripe.Account account)
+    {
+        var user = await _db.Users.FirstOrDefaultAsync(u => u.StripeConnectAccountId == account.Id);
+        if (user == null)
+        {
+            _logger.LogDebug("Stripe account.updated: no user found for account {AccountId}", account.Id);
+            return;
+        }
+
+        var complete = account.ChargesEnabled && account.PayoutsEnabled;
+        if (user.StripeConnectOnboardingComplete != complete)
+        {
+            user.StripeConnectOnboardingComplete = complete;
+            await _db.SaveChangesAsync();
+            _logger.LogInformation(
+                "Stripe Connect: OnboardingComplete={Complete} for user {UserId} (account {AccountId})",
+                complete, user.Id, account.Id);
+        }
     }
 
     private static readonly Dictionary<string, string> TierByPayoutDays = new()
