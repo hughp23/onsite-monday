@@ -26,14 +26,11 @@ public class User
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset UpdatedAt { get; set; }
 
-    // Payment provider identifiers
-    public string? MangopayUserId { get; set; }
-    public string? MangopayWalletId { get; set; }
-    public string MangopayKycStatus { get; set; } = "none"; // none | pending | verified | failed
-    public string? MangopayKycDocumentId { get; set; }      // Mangopay KYC document ID
-    public string? MangopayBankAccountId { get; set; }      // Registered bank account ID
-    public bool AutoWithdraw { get; set; } = false;         // Auto bank-wire after each payout
-    public string? StripeCustomerId { get; set; } // Phase B — Stripe Billing
+    // Stripe Billing (subscriptions)
+    public string? StripeCustomerId { get; set; }
+    // Stripe Connect (job payouts — tradesperson only)
+    public string? StripeConnectAccountId { get; set; }
+    public bool StripeConnectOnboardingComplete { get; set; } = false;
 
     // Navigation
     public ICollection<Subscription> Subscriptions { get; set; } = new List<Subscription>();
