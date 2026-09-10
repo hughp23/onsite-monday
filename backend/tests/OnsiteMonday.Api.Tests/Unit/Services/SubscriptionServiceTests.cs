@@ -36,6 +36,8 @@ public class SubscriptionServiceTests
             .ReturnsAsync(("sub_stub", "https://checkout.stripe.com/stub"));
         stripe.Setup(s => s.CancelSubscriptionAsync(It.IsAny<string>()))
             .Returns(Task.CompletedTask);
+        stripe.Setup(s => s.UpdateSubscriptionInPlaceAsync(It.IsAny<string>(), It.IsAny<string>()))
+            .Returns(Task.CompletedTask);
 
         var sut = new SubscriptionService(db, stripe.Object);
         return (db, stripe, sut);
@@ -153,7 +155,7 @@ public class SubscriptionServiceTests
     }
 
     [Fact]
-    public async Task UpdateSubscription_CancelsPreviousStripeSubscription_WhenOneExists()
+    public async Task UpdateSubscription_UpdatesInPlace_WhenExistingStripeSubscription()
     {
         var (db, stripe, sut) = CreateSut();
         var userId = Guid.NewGuid();
@@ -172,6 +174,31 @@ public class SubscriptionServiceTests
         await db.SaveChangesAsync();
 
         await sut.UpdateSubscriptionAsync(userId, "gold");
+
+        stripe.Verify(s => s.UpdateSubscriptionInPlaceAsync("sub_old_123", "gold"), Times.Once);
+        stripe.Verify(s => s.CancelSubscriptionAsync(It.IsAny<string>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task UpdateSubscription_CancelsAndRecharges_WhenUpdateCardAndUpgrade()
+    {
+        var (db, stripe, sut) = CreateSut();
+        var userId = Guid.NewGuid();
+
+        var oldSub = new Subscription
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            Tier = "bronze",
+            PayoutDays = 30,
+            IsActive = true,
+            StartedAt = DateTimeOffset.UtcNow.AddMonths(-1),
+            StripeSubscriptionId = "sub_old_123",
+        };
+        db.Subscriptions.Add(oldSub);
+        await db.SaveChangesAsync();
+
+        await sut.UpdateSubscriptionAsync(userId, "gold", updateCardAndUpgrade: true);
 
         stripe.Verify(s => s.CancelSubscriptionAsync("sub_old_123"), Times.Once);
     }
