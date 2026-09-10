@@ -103,7 +103,7 @@ public class SubscriptionServiceTests
     [Fact]
     public async Task UpdateSubscription_DeactivatesPreviousSubscription()
     {
-        var (db, _, _, sut) = CreateSut();
+        var (db, _, sut) = CreateSut();
         var userId = Guid.NewGuid();
 
         var oldSub = new Subscription
@@ -129,7 +129,7 @@ public class SubscriptionServiceTests
     [Fact]
     public async Task UpdateSubscription_CallsStripeCreateSubscriptionCheckout_WhenUserExists()
     {
-        var (db, _, stripe, sut) = CreateSut();
+        var (db, stripe, sut) = CreateSut();
         var userId = Guid.NewGuid();
 
         var user = new User
@@ -155,7 +155,7 @@ public class SubscriptionServiceTests
     [Fact]
     public async Task UpdateSubscription_CancelsPreviousStripeSubscription_WhenOneExists()
     {
-        var (db, _, stripe, sut) = CreateSut();
+        var (db, stripe, sut) = CreateSut();
         var userId = Guid.NewGuid();
 
         var oldSub = new Subscription
@@ -179,7 +179,7 @@ public class SubscriptionServiceTests
     [Fact]
     public async Task UpdateSubscription_DoesNotCancelStripe_WhenNoPreviousSubscription()
     {
-        var (_, _, stripe, sut) = CreateSut();
+        var (_, stripe, sut) = CreateSut();
 
         await sut.UpdateSubscriptionAsync(Guid.NewGuid(), "gold");
 
@@ -199,7 +199,7 @@ public class SubscriptionServiceTests
     [Fact]
     public async Task GetCurrent_WhenActiveSubscriptionExists_ReturnsDto()
     {
-        var (db, _, _, sut) = CreateSut();
+        var (db, _, sut) = CreateSut();
         var userId = Guid.NewGuid();
         var sub = new Subscription
         {
