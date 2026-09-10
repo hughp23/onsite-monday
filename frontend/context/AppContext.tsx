@@ -381,7 +381,9 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
   }, []);
 
   const cancelSubscription = useCallback(async () => {
-    return subscriptionService.cancel();
+    const sub = await subscriptionService.cancel();
+    setCurrentUser(prev => prev ? { ...prev, subscription: sub.tier as SubscriptionTier } : prev);
+    return sub;
   }, []);
 
   const loadTradespeople = useCallback(async (params?: { trade?: string; location?: string }) => {
