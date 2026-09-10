@@ -10,6 +10,7 @@ public class StripeOptions
     public string SecretKey { get; set; } = "";
     public string WebhookSecret { get; set; } = "";
     public Dictionary<string, string> Prices { get; set; } = new();
+    public int PlatformFeePercent { get; set; } = 10;
 }
 
 public class StripeBillingService : IStripeBillingService
