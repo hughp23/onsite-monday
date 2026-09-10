@@ -8,6 +8,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Moq;
 using OnsiteMonday.Api.Data;
+using OnsiteMonday.Api.Services;
+using OnsiteMonday.Api.Services.Interfaces;
 using OnsiteMonday.Api.Stubs;
 
 namespace OnsiteMonday.Api.Tests.Infrastructure;
@@ -59,27 +61,29 @@ public class TestWebApplicationFactory : WebApplicationFactory<Program>
                 .Returns("fake-hangfire-job-id");
             services.AddSingleton<IBackgroundJobClient>(bgJobMock.Object);
 
-            // Override IMangopayService with a Moq mock so tests don't need a real Mangopay connection.
-            var mangopayMock = new Mock<IMangopayService>();
-            mangopayMock.Setup(m => m.EnsureUserAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()))
-                .ReturnsAsync("stub_mango_user_test");
-            mangopayMock.Setup(m => m.EnsureWalletAsync(It.IsAny<string>(), It.IsAny<string>()))
-                .ReturnsAsync("stub_wallet_test");
-            mangopayMock.Setup(m => m.CreateWebPayInAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<decimal>(), It.IsAny<string>()))
-                .ReturnsAsync(("stub_payin_test", "https://stub-checkout.mangopay.com/pay/test"));
-            mangopayMock.Setup(m => m.TransferToTradesPersonWalletAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<decimal>()))
-                .ReturnsAsync("stub_transfer_test");
-            mangopayMock.Setup(m => m.ReleaseFundsAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<decimal>(), It.IsAny<string>()))
-                .ReturnsAsync("stub_payout_test");
-            mangopayMock.Setup(m => m.GetWalletBalanceAsync(It.IsAny<string>()))
-                .ReturnsAsync((25000L, 250.00m));
-            mangopayMock.Setup(m => m.SubmitKycDocumentAsync(It.IsAny<string>(), It.IsAny<byte[]>(), It.IsAny<string>()))
-                .ReturnsAsync("stub_kyc_doc_test");
-            mangopayMock.Setup(m => m.CreateBankAccountAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()))
-                .ReturnsAsync("stub_bank_test");
-            mangopayMock.Setup(m => m.ValidateWebhookSignature(It.IsAny<string>(), It.IsAny<string>()))
-                .Returns(true);
-            services.AddScoped<IMangopayService>(_ => mangopayMock.Object);
+            // Override IStripeConnectService — tests must not need real Stripe credentials
+            var connectMock = new Mock<IStripeConnectService>();
+            connectMock
+                .Setup(m => m.CreateConnectedAccountAsync(It.IsAny<Guid>(), It.IsAny<string>()))
+                .ReturnsAsync("stub_acct_test");
+            connectMock
+                .Setup(m => m.CreateAccountLinkAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()))
+                .ReturnsAsync("https://stub-connect.stripe.com/onboarding/stub_acct_test");
+            connectMock
+                .Setup(m => m.GetOnboardingCompleteAsync(It.IsAny<string>()))
+                .ReturnsAsync(true);
+            connectMock
+                .Setup(m => m.CreateJobCheckoutSessionAsync(
+                    It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<long>(), It.IsAny<string>(), It.IsAny<string>()))
+                .ReturnsAsync(("stub_cs_test", "https://stub-checkout.stripe.com/pay/stub_cs_test"));
+            connectMock
+                .Setup(m => m.CreateTransferAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<long>()))
+                .ReturnsAsync("stub_tr_test");
+            services.AddScoped<IStripeConnectService>(_ => connectMock.Object);
+
+            // Set test Stripe webhook secret so StripeWebhookHelper-signed payloads validate
+            services.Configure<StripeOptions>(opts =>
+                opts.WebhookSecret = StripeWebhookHelper.TestWebhookSecret);
         });
     }
 
