@@ -22,21 +22,22 @@ public static class TestBuilders
             FirstName = firstName,
             LastName = lastName,
             IsOnboarded = true,
-            MangopayKycStatus = "verified",
+            StripeConnectAccountId = "stub_acct_test",
+            StripeConnectOnboardingComplete = true,
             CreatedAt = DateTimeOffset.UtcNow,
             UpdatedAt = DateTimeOffset.UtcNow,
         };
     }
 
-    public static User MakeUserWithMangopay(
+    public static User MakeUserWithStripeConnect(
         string cognitoSub,
         string email,
-        string mangopayUserId,
-        string mangopayWalletId)
+        string stripeConnectAccountId = "stub_acct_test",
+        bool onboardingComplete = true)
     {
         var user = MakeUser(cognitoSub, email);
-        user.MangopayUserId = mangopayUserId;
-        user.MangopayWalletId = mangopayWalletId;
+        user.StripeConnectAccountId = stripeConnectAccountId;
+        user.StripeConnectOnboardingComplete = onboardingComplete;
         return user;
     }
 
@@ -46,7 +47,7 @@ public static class TestBuilders
         string trade = "Builder",
         Guid? id = null,
         string paymentStatus = "none",
-        string? escrowPayInId = null)
+        string? stripeCheckoutSessionId = null)
     {
         var today = DateOnly.FromDateTime(DateTime.UtcNow);
         return new Job
@@ -69,7 +70,7 @@ public static class TestBuilders
             Photos = new List<string>(),
             Status = status,
             PaymentStatus = paymentStatus,
-            EscrowPayInId = escrowPayInId,
+            StripeCheckoutSessionId = stripeCheckoutSessionId,
             CreatedAt = DateTimeOffset.UtcNow,
             UpdatedAt = DateTimeOffset.UtcNow,
         };

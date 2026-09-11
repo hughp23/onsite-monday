@@ -1,5 +1,5 @@
 using Microsoft.Extensions.Options;
-using OnsiteMonday.Api.Stubs;
+using OnsiteMonday.Api.Services.Interfaces;
 using Stripe;
 using Stripe.Checkout;
 
@@ -10,6 +10,7 @@ public class StripeOptions
     public string SecretKey { get; set; } = "";
     public string WebhookSecret { get; set; } = "";
     public Dictionary<string, string> Prices { get; set; } = new();
+    public int PlatformFeePercent { get; set; } = 10;
 }
 
 public class StripeBillingService : IStripeBillingService

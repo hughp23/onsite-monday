@@ -25,9 +25,9 @@ public class Job
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset UpdatedAt { get; set; }
 
-    // Mangopay escrow fields
-    public string? EscrowPayInId { get; set; }
-    public string? EscrowTransferId { get; set; }
+    // Stripe payment fields
+    public string? StripeCheckoutSessionId { get; set; }
+    public string? StripeTransferId { get; set; }
     public DateTimeOffset? PayoutScheduledAt { get; set; }
     public string PaymentStatus { get; set; } = "none"; // none|payin_pending|escrowed|refund_pending|payout_pending|paid
     public string? HangfireJobId { get; set; }

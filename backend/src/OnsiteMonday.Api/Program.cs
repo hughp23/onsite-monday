@@ -15,6 +15,7 @@ using OnsiteMonday.Api.Mapping;
 using OnsiteMonday.Api.Middleware;
 using OnsiteMonday.Api.Repositories;
 using OnsiteMonday.Api.Services;
+using OnsiteMonday.Api.Services.Interfaces;
 using OnsiteMonday.Api.Stubs;
 using Serilog;
 using System.Threading.RateLimiting;
@@ -97,12 +98,11 @@ builder.Services.AddScoped<ISubscriptionService, SubscriptionService>();
 builder.Services.AddSingleton<IAmazonS3>(_ => new AmazonS3Client(Amazon.RegionEndpoint.EUWest2));
 builder.Services.AddScoped<IStorageService, S3StorageService>();
 
-// Mangopay — use stub in Development/Testing, real service in Production or Sandbox
-builder.Services.Configure<MangopayOptions>(builder.Configuration.GetSection("Mangopay"));
+// Stripe Connect — use stub in Development/Testing, real service in Production or Sandbox
 if (useLivePayments)
-    builder.Services.AddScoped<IMangopayService, MangopayService>();
+    builder.Services.AddScoped<IStripeConnectService, StripeConnectService>();
 else
-    builder.Services.AddScoped<IMangopayService, StubMangopayService>();
+    builder.Services.AddScoped<IStripeConnectService, StubStripeConnectService>();
 
 // Stripe Billing — use stub in Development/Testing, real service in Production or Sandbox
 builder.Services.Configure<StripeOptions>(builder.Configuration.GetSection("Stripe"));

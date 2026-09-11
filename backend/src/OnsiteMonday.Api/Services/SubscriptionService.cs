@@ -2,7 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using OnsiteMonday.Api.Data;
 using OnsiteMonday.Api.Domain;
 using OnsiteMonday.Api.DTOs.Subscriptions;
-using OnsiteMonday.Api.Stubs;
+using OnsiteMonday.Api.Services.Interfaces;
 
 namespace OnsiteMonday.Api.Services;
 

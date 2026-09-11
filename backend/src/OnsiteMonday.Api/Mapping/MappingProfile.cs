@@ -13,11 +13,11 @@ public class MappingProfile : Profile
                 opt => opt.MapFrom(src =>
                     src.ActiveSubscription != null ? src.ActiveSubscription.Tier : "bronze"))
             .ForMember(dest => dest.KycStatus,
-                opt => opt.MapFrom(src => src.MangopayKycStatus))
+                opt => opt.MapFrom(src => src.StripeConnectOnboardingComplete ? "verified" : "none"))
             .ForMember(dest => dest.HasBankAccount,
-                opt => opt.MapFrom(src => !string.IsNullOrEmpty(src.MangopayBankAccountId)))
+                opt => opt.MapFrom(src => src.StripeConnectOnboardingComplete))
             .ForMember(dest => dest.AutoWithdraw,
-                opt => opt.MapFrom(src => src.AutoWithdraw));
+                opt => opt.Ignore());
 
         CreateMap<User, TradespersonDto>();
     }
