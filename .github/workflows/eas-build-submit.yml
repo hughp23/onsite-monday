@@ -1,0 +1,50 @@
+name: EAS Build & Submit
+
+# Triggered by version tags (e.g. v1.2.0).
+# Builds a production binary for both platforms and submits to the stores.
+#
+# Before first run:
+#   1. Set EXPO_TOKEN in GitHub → Settings → Secrets and variables → Actions
+#   2. Set EXPO_PUBLIC_* production env vars as EAS secrets:
+#      eas secret:create --scope project --name EXPO_PUBLIC_API_URL --value "..."
+#   3. Fill in submit.production.ios.ascAppId and appleTeamId in eas.json
+#   4. Add google-play-service-account.json as an EAS secret or commit it (gitignored)
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build-and-submit:
+    name: Build and submit to stores
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Setup EAS
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build for Android
+        run: eas build --platform android --profile production --non-interactive
+
+      - name: Submit to Google Play
+        run: eas submit --platform android --profile production --non-interactive

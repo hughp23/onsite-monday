@@ -4,6 +4,14 @@
     "slug": "onsite-monday",
     "scheme": "onsitemonday",
     "version": "1.0.0",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/cdc22bd5-769a-4483-9e91-8ee878059ed4",
+      "enabled": true,
+      "checkAutomatically": "ON_LOAD"
+    },
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
