@@ -39,8 +39,6 @@ export default function SubscriptionScreen() {
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  if (!currentUser) return null;
-
   useEffect(() => {
     subscriptionService.getCurrent()
       .then(sub => setCurrentSub(sub.isActive ? sub : null))
@@ -61,6 +59,8 @@ export default function SubscriptionScreen() {
     const sub = Linking.addEventListener('url', handleUrl);
     return () => sub.remove();
   }, []);
+
+  if (!currentUser) return null;
 
   const handleSelect = (tier: SubscriptionTier) => {
     if (tier !== currentUser.subscription) {

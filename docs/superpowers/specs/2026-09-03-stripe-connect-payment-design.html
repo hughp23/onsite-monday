@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Onsite Monday — Protected Payments Design</title>
+  <style>
+    /* ── Reset & base ─────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --red:        #8B2020;
+      --red-light:  #A83232;
+      --red-dark:   #6B1818;
+      --gold:       #D4A843;
+      --gold-light: #F5E4AC;
+      --bg:         #FFF8F6;
+      --text:       #1a1a1a;
+      --muted:      #6b7280;
+      --border:     #e5e7eb;
+      --blue:       #2563eb;
+      --blue-bg:    #dbeafe;
+      --purple:     #6772e5;
+      --purple-bg:  #ede9fe;
+      --green:      #16a34a;
+      --green-bg:   #dcfce7;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+      font-size: 14px;
+      line-height: 1.65;
+      color: var(--text);
+      background: #fff;
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 48px 72px;
+    }
+
+    /* ── Cover header ─────────────────────────────────────── */
+    .cover {
+      background: var(--red);
+      color: white;
+      padding: 40px 44px;
+      border-radius: 12px;
+      margin-bottom: 40px;
+    }
+
+    .cover-logo {
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      opacity: 0.75;
+      margin-bottom: 16px;
+    }
+
+    .cover h1 {
+      font-size: 28px;
+      font-weight: 800;
+      line-height: 1.2;
+      margin-bottom: 12px;
+    }
+
+    .cover-meta {
+      display: flex;
+      gap: 24px;
+      flex-wrap: wrap;
+      font-size: 13px;
+      opacity: 0.85;
+      margin-top: 20px;
+    }
+
+    .cover-meta span { display: flex; align-items: center; gap: 6px; }
+    .cover-meta strong { opacity: 1; }
+
+    .badge {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 99px;
+      font-size: 12px;
+      font-weight: 600;
+      background: var(--gold);
+      color: #5a3000;
+    }
+
+    /* ── Typography ───────────────────────────────────────── */
+    h2 {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--red-dark);
+      margin: 40px 0 12px;
+      padding-bottom: 8px;
+      border-bottom: 2px solid var(--gold);
+    }
+
+    h3 {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text);
+      margin: 24px 0 8px;
+    }
+
+    p { margin: 10px 0; }
+
+    ul, ol {
+      margin: 10px 0 10px 20px;
+    }
+
+    li { margin: 4px 0; }
+
+    strong { font-weight: 600; }
+
+    /* ── Callout boxes ────────────────────────────────────── */
+    .callout {
+      padding: 16px 20px;
+      border-radius: 8px;
+      margin: 16px 0;
+      font-size: 13.5px;
+      line-height: 1.6;
+    }
+
+    .callout.info {
+      background: var(--gold-light);
+      border-left: 4px solid var(--gold);
+      color: #5a3000;
+    }
+
+    .callout.compliance {
+      background: #f0fdf4;
+      border-left: 4px solid var(--green);
+      color: #14532d;
+    }
+
+    .callout.warning {
+      background: #fef2f2;
+      border-left: 4px solid var(--red);
+      color: var(--red-dark);
+    }
+
+    /* ── Tables ───────────────────────────────────────────── */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 16px 0;
+      font-size: 13.5px;
+    }
+
+    thead th {
+      background: var(--red);
+      color: white;
+      padding: 10px 14px;
+      text-align: left;
+      font-weight: 600;
+    }
+
+    thead th:first-child { border-radius: 6px 0 0 0; }
+    thead th:last-child  { border-radius: 0 6px 0 0; }
+
+    tbody td {
+      padding: 9px 14px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: top;
+    }
+
+    tbody tr:nth-child(even) td { background: #fafafa; }
+    tbody tr:last-child td { border-bottom: none; }
+
+    td.highlight { color: var(--red-dark); font-weight: 600; }
+
+    /* ── Architecture diagram ─────────────────────────────── */
+    .arch {
+      margin: 24px 0;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+
+    .arch-actors {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr 1fr;
+    }
+
+    .actor {
+      padding: 12px 8px;
+      text-align: center;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: white;
+    }
+    .actor.poster       { background: var(--blue); }
+    .actor.platform     { background: var(--red); }
+    .actor.stripe       { background: var(--purple); }
+    .actor.tradesperson { background: var(--green); }
+
+    .arch-body { background: #fff; }
+
+    .flow-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr 1fr;
+      min-height: 70px;
+      border-top: 1px solid var(--border);
+    }
+
+    .flow-row:nth-child(odd) { background: #fafafa; }
+
+    .flow-cell {
+      padding: 10px 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .flow-cell + .flow-cell {
+      border-left: 1px dashed #d1d5db;
+    }
+
+    .step {
+      padding: 9px 12px;
+      border-radius: 7px;
+      font-size: 12.5px;
+      line-height: 1.4;
+      text-align: center;
+      font-weight: 500;
+      width: 100%;
+    }
+
+    .step.poster       { background: var(--blue-bg);   border: 1.5px solid var(--blue);   color: #1e40af; }
+    .step.platform     { background: #fde8e8;           border: 1.5px solid var(--red);    color: var(--red-dark); }
+    .step.stripe       { background: var(--purple-bg); border: 1.5px solid var(--purple); color: #4c1d95; }
+    .step.tradesperson { background: var(--green-bg);  border: 1.5px solid var(--green);  color: #14532d; }
+    .step.fee          { background: var(--gold-light); border: 1.5px solid var(--gold);  color: #713f12; }
+
+    .step-num {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 19px;
+      height: 19px;
+      border-radius: 50%;
+      background: #374151;
+      color: white;
+      font-size: 10px;
+      font-weight: 700;
+      margin-right: 5px;
+      vertical-align: middle;
+      flex-shrink: 0;
+    }
+
+    .arch-arrow {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      color: #9ca3af;
+    }
+
+    /* ── Arch legend ──────────────────────────────────────── */
+    .arch-legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      padding: 14px 16px;
+      background: #f9fafb;
+      border-top: 1px solid var(--border);
+      font-size: 12px;
+    }
+
+    .legend-item { display: flex; align-items: center; gap: 7px; }
+    .legend-dot  { width: 12px; height: 12px; border-radius: 3px; flex-shrink: 0; }
+
+    /* ── Example box ──────────────────────────────────────── */
+    .example-box {
+      background: #f8f9fa;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 20px 24px;
+      margin: 16px 0;
+    }
+
+    .example-box h4 {
+      font-size: 13px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--muted);
+      margin-bottom: 12px;
+    }
+
+    .example-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 6px 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 13.5px;
+    }
+
+    .example-row:last-child { border-bottom: none; font-weight: 700; }
+    .example-row .label     { color: var(--text); }
+    .example-row .value     { font-variant-numeric: tabular-nums; }
+    .example-row .value.deduct { color: #dc2626; }
+    .example-row .value.keep   { color: var(--green); }
+    .example-row .value.total  { color: var(--red-dark); }
+
+    /* ── Open questions ───────────────────────────────────── */
+    .question-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+
+    .question-list li {
+      padding: 14px 16px;
+      border-left: 3px solid var(--gold);
+      background: var(--gold-light);
+      border-radius: 0 6px 6px 0;
+      margin-bottom: 10px;
+      font-size: 13.5px;
+    }
+
+    .question-list li strong {
+      display: block;
+      margin-bottom: 4px;
+      color: var(--red-dark);
+    }
+
+    /* ── Footer ───────────────────────────────────────────── */
+    .footer {
+      margin-top: 48px;
+      padding-top: 20px;
+      border-top: 1px solid var(--border);
+      font-size: 12px;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    /* ── Print styles ─────────────────────────────────────── */
+    @media print {
+      body { padding: 0; max-width: 100%; font-size: 12px; }
+      .cover { border-radius: 0; margin: 0 0 32px; }
+      h2 { page-break-after: avoid; }
+      table, .arch, .example-box { page-break-inside: avoid; }
+      .callout { page-break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Cover -->
+  <div class="cover">
+    <div class="cover-logo">Onsite Monday</div>
+    <h1>Protected Payments<br>Design &amp; Strategy</h1>
+    <p style="opacity:0.85;font-size:14px;margin-top:8px;">How Onsite Monday will handle payments between job posters and tradespeople at launch</p>
+    <div class="cover-meta">
+      <span><strong>Date:</strong> 3 September 2026</span>
+      <span><strong>Audience:</strong> Founders</span>
+      <span><span class="badge">Approved</span></span>
+    </div>
+  </div>
+
+  <!-- Overview -->
+  <h2>Overview</h2>
+  <p>This document describes how Onsite Monday will handle payments between job posters and tradespeople. It replaces the original escrow approach with a simpler, cheaper model built on Stripe — a payment provider we already use for subscriptions.</p>
+  <p>The model is called <strong>Protected Payments</strong>. It works like escrow from the user's perspective — the poster's money is held securely until the job is done and reviewed — but it avoids the regulatory and cost burden of running a formal escrow service.</p>
+
+  <div class="callout info">
+    <strong>Important terminology:</strong> We do not call this "escrow" in our terms or marketing. Escrow is a regulated term in the UK requiring FCA authorisation. What we offer is functionally identical — held funds, released on completion — but Stripe holds the funds and the regulatory licence, not us. This means Onsite Monday does not need its own FCA authorisation for this payment model.
+  </div>
+
+  <!-- Why We Changed -->
+  <h2>Why We Changed Approach</h2>
+  <p>The original plan used Mangopay, a specialist escrow and e-money platform. Mangopay is well-suited for large, mature marketplaces but carries meaningful upfront cost that is hard to absorb before we have volume. Stripe Connect achieves the same outcome at a fraction of the cost:</p>
+
+  <table>
+    <thead>
+      <tr>
+        <th></th>
+        <th>Mangopay (original plan)</th>
+        <th>Stripe Connect (new plan)</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td>Setup fee</td><td>Yes</td><td class="highlight">None</td></tr>
+      <tr><td>Monthly fee</td><td>Yes</td><td class="highlight">None</td></tr>
+      <tr><td>Per-transaction fee</td><td>Yes + Mangopay margin</td><td class="highlight">~1.5% + 20p (UK cards)</td></tr>
+      <tr><td>Identity verification (KYC/KYB)</td><td>Custom — built by us</td><td class="highlight">Handled by Stripe natively</td></tr>
+      <tr><td>Already in codebase?</td><td>Yes</td><td class="highlight">Yes — already used for subscriptions</td></tr>
+      <tr><td>Vendors to manage</td><td>2 (Mangopay + Stripe)</td><td class="highlight">1 (Stripe only)</td></tr>
+    </tbody>
+  </table>
+
+  <p>Stripe is already integrated into the app for subscription billing, so extending it to handle job payments means one vendor, one dashboard, and significantly less complexity to build and maintain at launch.</p>
+
+  <!-- What Is Protected Payments -->
+  <h2>What Is "Protected Payments"?</h2>
+  <p>Protected Payments is our name for the experience we offer users. In plain terms:</p>
+  <ul>
+    <li><strong>Job posters</strong> pay when they confirm a hire. Their money is held securely by Stripe — a regulated financial institution — and is not released to the tradesperson until the job is complete and a review has been submitted.</li>
+    <li><strong>Tradespeople</strong> know the money is sitting ready before they show up. Once the job is done and reviewed, it is transferred to their account and paid out within an agreed window.</li>
+    <li><strong>The platform</strong> retains a small percentage fee automatically on every job payment, in addition to subscription revenue.</li>
+  </ul>
+
+  <!-- How It Works -->
+  <h2>How It Works — Step by Step</h2>
+
+  <div class="arch">
+    <div class="arch-actors">
+      <div class="actor poster">Job Poster</div>
+      <div class="actor platform">OM Platform</div>
+      <div class="actor stripe">Stripe</div>
+      <div class="actor tradesperson">Tradesperson</div>
+    </div>
+    <div class="arch-body">
+
+      <div class="flow-row">
+        <div class="flow-cell">
+          <div class="step poster"><span class="step-num">1</span>Accepts hire &amp; enters card details in the app</div>
+        </div>
+        <div class="flow-cell arch-arrow">→</div>
+        <div class="flow-cell">
+          <div class="step stripe"><span class="step-num">2</span>Card charged. Funds held in OM's Stripe platform balance</div>
+        </div>
+        <div class="flow-cell"></div>
+      </div>
+
+      <div class="flow-row">
+        <div class="flow-cell"></div>
+        <div class="flow-cell">
+          <div class="step platform"><span class="step-num">3</span>Payment confirmed via webhook. Job status → <strong>Funds Held</strong></div>
+        </div>
+        <div class="flow-cell arch-arrow" style="transform:rotate(180deg)">→</div>
+        <div class="flow-cell"></div>
+      </div>
+
+      <div class="flow-row">
+        <div class="flow-cell"></div>
+        <div class="flow-cell">
+          <div class="step platform"><span class="step-num">4</span>Tradesperson notified to begin. Job status → <strong>In Progress</strong></div>
+        </div>
+        <div class="flow-cell"></div>
+        <div class="flow-cell">
+          <div class="step tradesperson"><span class="step-num">5</span>Completes the job on site</div>
+        </div>
+      </div>
+
+      <div class="flow-row">
+        <div class="flow-cell">
+          <div class="step poster"><span class="step-num">6</span>Marks job complete &amp; submits mandatory review</div>
+        </div>
+        <div class="flow-cell arch-arrow">→</div>
+        <div class="flow-cell"></div>
+        <div class="flow-cell"></div>
+      </div>
+
+      <div class="flow-row">
+        <div class="flow-cell"></div>
+        <div class="flow-cell">
+          <div class="step platform"><span class="step-num">7</span>Review gate passed. Triggers Stripe Transfer</div>
+        </div>
+        <div class="flow-cell arch-arrow">→</div>
+        <div class="flow-cell"></div>
+      </div>
+
+      <div class="flow-row">
+        <div class="flow-cell"></div>
+        <div class="flow-cell"></div>
+        <div class="flow-cell">
+          <div class="step fee"><span class="step-num">8</span>Platform fee retained automatically. Remainder transferred to tradesperson's Stripe account</div>
+        </div>
+        <div class="flow-cell arch-arrow">→</div>
+      </div>
+
+      <div class="flow-row">
+        <div class="flow-cell"></div>
+        <div class="flow-cell"></div>
+        <div class="flow-cell"></div>
+        <div class="flow-cell">
+          <div class="step tradesperson"><span class="step-num">9</span>Funds paid out to bank account within agreed window</div>
+        </div>
+      </div>
+
+    </div>
+    <div class="arch-legend">
+      <div class="legend-item"><div class="legend-dot" style="background:var(--blue)"></div><span>Job Poster</span></div>
+      <div class="legend-item"><div class="legend-dot" style="background:var(--red)"></div><span>OM Platform (backend)</span></div>
+      <div class="legend-item"><div class="legend-dot" style="background:var(--purple)"></div><span>Stripe (holds funds &amp; handles identity verification)</span></div>
+      <div class="legend-item"><div class="legend-dot" style="background:var(--green)"></div><span>Tradesperson</span></div>
+      <div class="legend-item"><div class="legend-dot" style="background:var(--gold)"></div><span>Platform fee (% TBD)</span></div>
+    </div>
+  </div>
+
+  <div class="callout compliance">
+    <strong>The critical gate:</strong> the payout is only triggered after the poster submits their review. Neither party can skip this step. This ensures reviews are genuine and timely, and protects tradespeople from non-payment.
+  </div>
+
+  <!-- Regulatory & Compliance -->
+  <h2>Regulatory &amp; Compliance</h2>
+
+  <h3>Who holds the money?</h3>
+  <p>Stripe. At no point does Onsite Monday hold funds directly. Stripe is an FCA-authorised e-money institution operating in the UK. They are the custodian of all funds between payment and payout.</p>
+
+  <h3>What does Onsite Monday need to do?</h3>
+  <ul>
+    <li>Accept Stripe's platform terms (already done for subscriptions)</li>
+    <li>Ensure our terms of service clearly describe the payment flow to users</li>
+    <li>Ensure job posters and tradespeople each accept Stripe's connected account agreement during sign-up</li>
+    <li>Support Strong Customer Authentication (SCA/3DS2) — Stripe handles this automatically in our checkout flow</li>
+  </ul>
+
+  <h3>What do we NOT need?</h3>
+  <ul>
+    <li>Our own FCA registration or e-money licence</li>
+    <li>A separate regulated escrow account</li>
+    <li>A formal escrow agent</li>
+  </ul>
+
+  <h3>Identity verification (KYC &amp; KYB)</h3>
+  <p>Stripe handles all identity verification automatically through its hosted onboarding flow, which we embed directly in the app. We do not build or manage any verification ourselves.</p>
+  <ul>
+    <li><strong>Individual tradesperson</strong> — Stripe verifies name, date of birth, address, and bank account details</li>
+    <li><strong>Sole trader or limited company</strong> — Stripe also verifies business registration details and directors</li>
+  </ul>
+  <p>Stripe owns this process and takes on the associated compliance burden.</p>
+
+  <!-- Cost & Revenue -->
+  <h2>Cost &amp; Revenue Model</h2>
+
+  <h3>What Stripe charges</h3>
+  <table>
+    <thead><tr><th>Fee</th><th>When it applies</th></tr></thead>
+    <tbody>
+      <tr><td>~1.5% + 20p per transaction</td><td>Each time a job poster's card is charged (UK cards)</td></tr>
+      <tr><td>Small payout fee</td><td>Each time funds are transferred to a tradesperson</td></tr>
+      <tr><td>Nothing</td><td>Monthly, setup, or account maintenance</td></tr>
+    </tbody>
+  </table>
+
+  <h3>What the platform earns</h3>
+  <p>On every job payment, the platform retains a percentage fee before transferring the remainder to the tradesperson. This happens automatically — Stripe transfers less than the amount charged, and the difference stays in our Stripe balance. This is separate from, and in addition to, subscription revenue.</p>
+  <p><strong>Platform transaction fee: TBD</strong> — to be decided by founders. Typical marketplace transaction fees range from 5–15%.</p>
+
+  <h3>Example (at 10% platform fee)</h3>
+  <div class="example-box">
+    <h4>Job valued at £500</h4>
+    <div class="example-row"><span class="label">Job poster pays</span><span class="value">£500.00</span></div>
+    <div class="example-row"><span class="label">Stripe processing fee (approx.)</span><span class="value deduct">− £7.70</span></div>
+    <div class="example-row"><span class="label">Platform fee (10%)</span><span class="value deduct">− £50.00</span></div>
+    <div class="example-row"><span class="label">Tradesperson receives</span><span class="value keep">£442.30</span></div>
+    <div class="example-row"><span class="label">Platform keeps (net of Stripe fees)</span><span class="value total">~£42.30</span></div>
+  </div>
+
+  <!-- User Experience -->
+  <h2>User Experience</h2>
+
+  <h3>Job Poster</h3>
+  <ol>
+    <li>Browses the jobs board and hires a tradesperson</li>
+    <li>Enters card details in the app — payment taken immediately on hire confirmation</li>
+    <li>Receives confirmation that funds are securely held</li>
+    <li>When the job is done, marks it complete and submits a mandatory review</li>
+    <li>Sees confirmation that the tradesperson has been paid</li>
+  </ol>
+
+  <h3>Tradesperson</h3>
+  <ol>
+    <li>Completes Stripe's identity verification once during sign-up (a few minutes, guided by Stripe)</li>
+    <li>Applies for and accepts jobs as normal</li>
+    <li>Can see in the app that payment is secured before starting work</li>
+    <li>Completes the job on site</li>
+    <li>Receives funds in their account within the payout window after the poster submits a review</li>
+    <li>Views earnings history and payout schedule in their account dashboard</li>
+  </ol>
+
+  <!-- Account Structure -->
+  <h2>Account Structure</h2>
+  <p>Both subscription payments and job payments run through the same Stripe account — no separation needed. Stripe tracks them separately by type and they appear distinctly in the dashboard.</p>
+
+  <table>
+    <thead><tr><th>Payment type</th><th>What it is</th><th>Stripe product</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Subscription</strong></td><td>Monthly fee from tradespeople (Bronze / Silver / Gold tiers)</td><td>Stripe Billing</td></tr>
+      <tr><td><strong>Job payment</strong></td><td>Client pays for a job; tradesperson receives payout</td><td>Stripe Connect</td></tr>
+    </tbody>
+  </table>
+
+  <!-- Open Questions -->
+  <h2>Open Questions for Founders</h2>
+  <ul class="question-list">
+    <li>
+      <strong>Platform transaction fee %</strong>
+      To be set before launch. Affects tradesperson take-home pay and our unit economics. Typical range: 5–15%. This is in addition to subscription revenue.
+    </li>
+    <li>
+      <strong>Payout window</strong>
+      How many days after job completion and review submission does the tradesperson receive their money? Recommendation: launch with one fixed window (e.g. 7 or 14 days). Tier-based speed differences (Bronze slower, Gold faster) can be added later as a product differentiator.
+    </li>
+    <li>
+      <strong>Dispute handling</strong>
+      If a job poster disputes a card charge after marking a job complete, Stripe's dispute process applies. We need a clear policy for how the platform mediates between the two parties.
+    </li>
+    <li>
+      <strong>Cancellation &amp; refunds</strong>
+      What happens if a job is cancelled after payment is taken but before work starts? A clear refund policy is needed before launch.
+    </li>
+  </ul>
+
+  <div class="footer">
+    Onsite Monday — Confidential &amp; For Internal Use — 3 September 2026
+  </div>
+
+</body>
+</html>

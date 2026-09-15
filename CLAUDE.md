@@ -28,7 +28,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Primary Dark: `#6B1818`
 - Accent: `#D4A843` (gold)
 - Background: `#FFF8F6`
-- App name stylised as **Ônsite Monday** / **ÔM**
+- App name: **Onsite Monday** / **OM** — do not use the circumflex accent (Ô) in any documents, UI copy, or code comments
 
 ## Core Features (MVP Scope)
 

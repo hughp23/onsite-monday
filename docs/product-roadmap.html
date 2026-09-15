@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Onsite Monday — Product Roadmap 2026–2027</title>
+  <style>
+    /* ── Brand tokens ─────────────────────────────────── */
+    :root {
+      --red:        #8B2020;
+      --red-light:  #A83232;
+      --red-dark:   #6B1818;
+      --red-mid:    #C44040;
+      --gold:       #D4A843;
+      --gold-dark:  #B8902E;
+      --bg:         #FFF8F6;
+      --border:     #EDE0DB;
+    }
+
+    /* ── Reset ────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+      background: #D8D0CC;
+      min-height: 100vh;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      padding: 32px 24px;
+    }
+
+    /* ── Page shell (screen only) ─────────────────────── */
+    .page-shell {
+      width: 100%;
+      max-width: 1060px;
+    }
+
+    /* ── Roadmap card ─────────────────────────────────── */
+    .roadmap-page {
+      background: var(--bg);
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 6px 32px rgba(0,0,0,0.22);
+    }
+
+    /* ══ 1. HEADER ════════════════════════════════════════ */
+    .rp-header {
+      background: var(--red);
+      padding: 18px 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+    .rp-logo-group {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+    .rp-logo {
+      font-size: 36px;
+      font-weight: 900;
+      color: var(--gold);
+      letter-spacing: -1.5px;
+      line-height: 1;
+    }
+    .rp-title {
+      font-size: 20px;
+      font-weight: 700;
+      color: #fff;
+      line-height: 1.15;
+    }
+    .rp-subtitle {
+      font-size: 12px;
+      color: rgba(255,255,255,0.6);
+      margin-top: 2px;
+      font-weight: 400;
+    }
+    .rp-tagline {
+      font-size: 11.5px;
+      color: var(--gold);
+      font-weight: 600;
+      text-align: right;
+      line-height: 1.5;
+      opacity: 0.92;
+    }
+
+    /* ══ 2. STATS STRIP ═══════════════════════════════════ */
+    .rp-stats {
+      background: #fff;
+      display: flex;
+      border-bottom: 2px solid var(--bg);
+    }
+    .rp-stat {
+      flex: 1;
+      padding: 10px 4px;
+      text-align: center;
+      border-right: 1px solid var(--border);
+    }
+    .rp-stat:last-child { border-right: none; }
+    .rp-stat-num {
+      font-size: 20px;
+      font-weight: 900;
+      color: var(--red);
+      line-height: 1;
+      white-space: nowrap;
+    }
+    .rp-stat-lbl {
+      font-size: 9px;
+      color: #999;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      margin-top: 3px;
+    }
+
+    /* ══ 3. TIER STRIP ════════════════════════════════════ */
+    .rp-tiers {
+      background: #fff;
+      padding: 9px 32px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      border-bottom: 2px solid var(--bg);
+    }
+    .tier-label {
+      font-size: 9px;
+      color: #bbb;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      white-space: nowrap;
+      flex-shrink: 0;
+      margin-right: 4px;
+    }
+    .tier-pill {
+      flex: 1;
+      border-radius: 20px;
+      padding: 5px 12px;
+      font-size: 11px;
+      font-weight: 700;
+      text-align: center;
+      white-space: nowrap;
+    }
+    .tier-pill.free {
+      background: var(--bg);
+      color: var(--red);
+      border: 1.5px solid var(--border);
+    }
+    .tier-pill.bronze {
+      background: linear-gradient(135deg, #CD7F32, #A0622A);
+      color: #fff;
+    }
+    .tier-pill.silver {
+      background: linear-gradient(135deg, #ABABAB, #888);
+      color: #fff;
+    }
+    .tier-pill.gold {
+      background: linear-gradient(135deg, var(--gold), var(--gold-dark));
+      color: #3A2800;
+    }
+    .tier-arrow {
+      font-size: 13px;
+      color: #ccc;
+      flex-shrink: 0;
+    }
+
+    /* ══ 4. PROGRESS BAR ══════════════════════════════════ */
+    .rp-progress {
+      background: #fff;
+      padding: 10px 32px 14px;
+      border-bottom: 2px solid var(--bg);
+    }
+    .rp-progress-labels {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 6px;
+      font-size: 10px;
+      color: #aaa;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+    .rp-progress-labels strong {
+      color: var(--red);
+      font-weight: 700;
+    }
+    .progress-track {
+      height: 9px;
+      background: #F0E8E4;
+      border-radius: 5px;
+      overflow: visible;
+      position: relative;
+    }
+    .progress-fill {
+      position: absolute;
+      left: 0; top: 0; bottom: 0;
+      width: 65%;
+      background: linear-gradient(90deg, var(--red-dark), var(--red-light));
+      border-radius: 5px;
+    }
+    .progress-marker {
+      position: absolute;
+      top: -3px;
+      left: calc(65% - 2px);
+      width: 4px;
+      height: 15px;
+      background: var(--gold);
+      border-radius: 2px;
+    }
+
+    /* ══ 5. PHASE COLUMNS ═════════════════════════════════ */
+    .rp-phases {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 14px;
+      padding: 16px 32px 18px;
+    }
+
+    /* Column header */
+    .phase-header {
+      border-radius: 8px 8px 0 0;
+      padding: 11px 14px;
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    .phase-header.mvp { background: var(--red); }
+    .phase-header.p1  { background: var(--red-mid); }
+    .phase-header.p2  { background: var(--gold); }
+
+    .phase-name {
+      font-size: 14px;
+      font-weight: 800;
+      line-height: 1.1;
+    }
+    .phase-name.light { color: #fff; }
+    .phase-name.dark  { color: #3A2800; }
+
+    .phase-quarter {
+      font-size: 10.5px;
+      font-weight: 600;
+      margin-top: 2px;
+    }
+    .phase-quarter.light { color: rgba(255,255,255,0.68); }
+    .phase-quarter.dark  { color: rgba(58,40,0,0.58); }
+
+    .phase-badge {
+      font-size: 9.5px;
+      font-weight: 700;
+      border-radius: 20px;
+      padding: 3px 9px;
+      white-space: nowrap;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+    .phase-badge.launch   { background: var(--gold);               color: #3A2800; }
+    .phase-badge.payments { background: rgba(255,255,255,0.22);    color: #fff; }
+    .phase-badge.scale    { background: rgba(58,40,0,0.14);        color: #3A2800; }
+
+    /* Column body */
+    .phase-body {
+      background: #fff;
+      border-radius: 0 0 8px 8px;
+      padding: 11px 13px;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .section-label {
+      font-size: 9px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #bbb;
+      padding: 0 3px;
+    }
+
+    .feature-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 7px;
+      padding: 5px 8px;
+      border-radius: 6px;
+      font-size: 11.5px;
+      line-height: 1.35;
+    }
+    .feature-row.done    { background: rgba(139,32,32,0.07); }
+    .feature-row.current { background: #F5F0ED; }
+    .feature-row.planned { background: #F8F4F2; }
+
+    .fi-icon { flex-shrink: 0; font-size: 11px; margin-top: 1px; }
+    .fi-text { font-weight: 500; color: #2A1A1A; }
+    .fi-text.done-text { color: var(--red-dark); }
+
+    .col-divider { height: 1px; background: #F0E8E4; margin: 2px 0; }
+
+    /* ══ 6. TIMELINE STRIP ════════════════════════════════ */
+    .rp-timeline {
+      background: #fff;
+      border-top: 2px solid var(--bg);
+      padding: 11px 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0;
+    }
+    .tl-node {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+    }
+    .tl-dot {
+      width: 13px;
+      height: 13px;
+      border-radius: 50%;
+      border: 2.5px solid;
+    }
+    .tl-dot.now { background: var(--red);      border-color: var(--red-dark); }
+    .tl-dot.mvp { background: var(--red-mid);  border-color: #A03030; }
+    .tl-dot.p1  { background: var(--gold);     border-color: var(--gold-dark); }
+    .tl-dot.p2  { background: #C4A870;         border-color: #A8906A; }
+    .tl-name {
+      font-size: 9.5px;
+      font-weight: 700;
+      color: #555;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+    .tl-date { font-size: 9px; color: #bbb; }
+    .tl-connector {
+      height: 2.5px;
+      width: 90px;
+      margin-bottom: 20px;
+    }
+    .tl-connector.done   { background: var(--red); }
+    .tl-connector.future { background: #DDD; }
+
+    /* ══ 7. FOOTER ════════════════════════════════════════ */
+    .rp-footer {
+      background: var(--red-dark);
+      padding: 7px 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .rp-footer-logo {
+      font-size: 12px;
+      font-weight: 800;
+      color: var(--gold);
+      letter-spacing: 0.08em;
+    }
+    .rp-footer-note { font-size: 9.5px; color: rgba(255,255,255,0.42); }
+    .rp-footer-url  { font-size: 9.5px; color: rgba(255,255,255,0.38); }
+
+    /* ══ PRINT ════════════════════════════════════════════ */
+    @page {
+      size: A4 landscape;
+      margin: 0;
+    }
+    @media print {
+      body {
+        background: white;
+        padding: 0;
+        display: block;
+      }
+      .page-shell {
+        max-width: 100%;
+      }
+      .roadmap-page {
+        box-shadow: none;
+        border-radius: 0;
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="page-shell">
+    <div class="roadmap-page">
+
+      <!-- 1. HEADER -->
+      <div class="rp-header">
+        <div class="rp-logo-group">
+          <div class="rp-logo">OM</div>
+          <div>
+            <div class="rp-title">Onsite Monday</div>
+            <div class="rp-subtitle">Product Roadmap &middot; 2026 &ndash; 2027</div>
+          </div>
+        </div>
+        <div class="rp-tagline">Connecting UK tradespeople<br>with the jobs that matter</div>
+      </div>
+
+      <!-- 2. STATS -->
+      <div class="rp-stats">
+        <div class="rp-stat">
+          <div class="rp-stat-num">65%</div>
+          <div class="rp-stat-lbl">MVP Complete</div>
+        </div>
+        <div class="rp-stat">
+          <div class="rp-stat-num">23</div>
+          <div class="rp-stat-lbl">Screens Built</div>
+        </div>
+        <div class="rp-stat">
+          <div class="rp-stat-num">2-sided</div>
+          <div class="rp-stat-lbl">Marketplace</div>
+        </div>
+        <div class="rp-stat">
+          <div class="rp-stat-num">Free &rarr; &pound;129</div>
+          <div class="rp-stat-lbl">Subscription Range</div>
+        </div>
+        <div class="rp-stat">
+          <div class="rp-stat-num">4</div>
+          <div class="rp-stat-lbl">Subscription Tiers</div>
+        </div>
+        <div class="rp-stat">
+          <div class="rp-stat-num">iOS + Android</div>
+          <div class="rp-stat-lbl">Platform</div>
+        </div>
+      </div>
+
+      <!-- 3. TIER STRIP -->
+      <div class="rp-tiers">
+        <div class="tier-label">Tiers</div>
+        <div class="tier-pill free">Free</div>
+        <div class="tier-arrow">&rarr;</div>
+        <div class="tier-pill bronze">Bronze &middot; &pound;29/mo</div>
+        <div class="tier-arrow">&rarr;</div>
+        <div class="tier-pill silver">Silver &middot; &pound;59/mo</div>
+        <div class="tier-arrow">&rarr;</div>
+        <div class="tier-pill gold">Gold &middot; &pound;129/mo</div>
+      </div>
+
+      <!-- 4. PROGRESS BAR -->
+      <div class="rp-progress">
+        <div class="rp-progress-labels">
+          <span>Core MVP Progress</span>
+          <strong>65% shipped &mdash; launch sprint underway</strong>
+        </div>
+        <div class="progress-track">
+          <div class="progress-fill"></div>
+          <div class="progress-marker"></div>
+        </div>
+      </div>
+
+      <!-- 5. PHASE COLUMNS -->
+      <div class="rp-phases">
+
+        <!-- MVP -->
+        <div>
+          <div class="phase-header mvp">
+            <div>
+              <div class="phase-name light">MVP</div>
+              <div class="phase-quarter light">Q3 2026 &middot; Community Launch</div>
+            </div>
+            <div class="phase-badge launch">🚀 Launch</div>
+          </div>
+          <div class="phase-body">
+            <div class="section-label">Already shipped</div>
+            <div class="feature-row done"><span class="fi-icon">✓</span><span class="fi-text done-text">Auth, sign-up &amp; onboarding</span></div>
+            <div class="feature-row done"><span class="fi-icon">✓</span><span class="fi-text done-text">Jobs board &amp; applications</span></div>
+            <div class="feature-row done"><span class="fi-icon">✓</span><span class="fi-text done-text">Real-time messaging</span></div>
+            <div class="feature-row done"><span class="fi-icon">✓</span><span class="fi-text done-text">Subscription tiers (Stripe)</span></div>
+            <div class="feature-row done"><span class="fi-icon">✓</span><span class="fi-text done-text">Profile system &amp; directory</span></div>
+            <div class="feature-row done"><span class="fi-icon">✓</span><span class="fi-text done-text">Push notifications</span></div>
+            <div class="col-divider"></div>
+            <div class="section-label">Completing now</div>
+            <div class="feature-row current"><span class="fi-icon">◎</span><span class="fi-text">Review &amp; rating flow</span></div>
+            <div class="feature-row current"><span class="fi-icon">◎</span><span class="fi-text">Free tier onboarding</span></div>
+            <div class="feature-row current"><span class="fi-icon">◎</span><span class="fi-text">Job status tracking</span></div>
+          </div>
+        </div>
+
+        <!-- Phase 1 -->
+        <div>
+          <div class="phase-header p1">
+            <div>
+              <div class="phase-name light">Phase 1</div>
+              <div class="phase-quarter light">Q4 2026 &middot; Payments &amp; Growth</div>
+            </div>
+            <div class="phase-badge payments">💳 Payments</div>
+          </div>
+          <div class="phase-body">
+            <div class="section-label">Payments &amp; compliance</div>
+            <div class="feature-row planned"><span class="fi-icon">○</span><span class="fi-text">Live payment escrow</span></div>
+            <div class="feature-row planned"><span class="fi-icon">○</span><span class="fi-text">KYC identity verification</span></div>
+            <div class="feature-row planned"><span class="fi-icon">○</span><span class="fi-text">Wallet &amp; bank account setup</span></div>
+            <div class="feature-row planned"><span class="fi-icon">○</span><span class="fi-text">Payout release automation</span></div>
+            <div class="feature-row planned"><span class="fi-icon">○</span><span class="fi-text">Transaction history</span></div>
+            <div class="col-divider"></div>
+            <div class="section-label">Product</div>
+            <div class="feature-row planned"><span class="fi-icon">○</span><span class="fi-text">Payout countdown dashboard</span></div>
+            <div class="feature-row planned"><span class="fi-icon">○</span><span class="fi-text">Subscription cancel / downgrade</span></div>
+            <div class="feature-row planned"><span class="fi-icon">○</span><span class="fi-text">Portfolio gallery</span></div>
+            <div class="feature-row planned"><span class="fi-icon">○</span><span class="fi-text">Chat file attachments</span></div>
+          </div>
+        </div>
+
+        <!-- Phase 2 -->
+        <div>
+          <div class="phase-header p2">
+            <div>
+              <div class="phase-name dark">Phase 2</div>
+              <div class="phase-quarter dark">Q1 2027 &middot; Platform Scale</div>
+            </div>
+            <div class="phase-badge scale">⬆ Scale</div>
+          </div>
+          <div class="phase-body">
+            <div class="section-label">Premium</div>
+            <div class="feature-row planned"><span class="fi-icon">○</span><span class="fi-text">Platinum Enterprise tier (2-day payout)</span></div>
+            <div class="feature-row planned"><span class="fi-icon">○</span><span class="fi-text">Promoted &amp; boosted job listings</span></div>
+            <div class="col-divider"></div>
+            <div class="section-label">Discovery</div>
+            <div class="feature-row planned"><span class="fi-icon">○</span><span class="fi-text">Advanced location &amp; skills matching</span></div>
+            <div class="feature-row planned"><span class="fi-icon">○</span><span class="fi-text">Tradesperson analytics dashboard</span></div>
+            <div class="col-divider"></div>
+            <div class="section-label">Platform</div>
+            <div class="feature-row planned"><span class="fi-icon">○</span><span class="fi-text">App Store &amp; Play Store launch</span></div>
+            <div class="feature-row planned"><span class="fi-icon">○</span><span class="fi-text">Third-party API integrations</span></div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- 6. TIMELINE STRIP -->
+      <div class="rp-timeline">
+        <div class="tl-node">
+          <div class="tl-dot now"></div>
+          <div class="tl-name">Now</div>
+          <div class="tl-date">Jun 2026</div>
+        </div>
+        <div class="tl-connector done"></div>
+        <div class="tl-node">
+          <div class="tl-dot mvp"></div>
+          <div class="tl-name">MVP</div>
+          <div class="tl-date">Q3 2026</div>
+        </div>
+        <div class="tl-connector future"></div>
+        <div class="tl-node">
+          <div class="tl-dot p1"></div>
+          <div class="tl-name">Phase 1</div>
+          <div class="tl-date">Q4 2026</div>
+        </div>
+        <div class="tl-connector future"></div>
+        <div class="tl-node">
+          <div class="tl-dot p2"></div>
+          <div class="tl-name">Phase 2</div>
+          <div class="tl-date">Q1 2027</div>
+        </div>
+      </div>
+
+      <!-- 7. FOOTER -->
+      <div class="rp-footer">
+        <div class="rp-footer-logo">ONSITE MONDAY</div>
+        <div class="rp-footer-note">Confidential &mdash; For investor use only</div>
+        <div class="rp-footer-url">onsitemonday.com</div>
+      </div>
+
+    </div>
+  </div>
+</body>
+</html>
