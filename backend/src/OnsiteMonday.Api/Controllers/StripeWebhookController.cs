@@ -129,8 +129,14 @@ public class StripeWebhookController : ControllerBase
         }
 
         job.PaymentStatus = "escrowed";
+
+        if (!string.IsNullOrEmpty(session.PaymentIntentId))
+            job.StripePaymentIntentId = session.PaymentIntentId;
+
         await _db.SaveChangesAsync();
-        _logger.LogInformation("Job {JobId} payment status updated to escrowed via session {SessionId}", job.Id, session.Id);
+        _logger.LogInformation(
+            "Job {JobId} escrowed, PaymentIntentId={PiId} via session {SessionId}",
+            job.Id, session.PaymentIntentId, session.Id);
     }
 
     private async Task HandleAccountUpdatedAsync(Stripe.Account account)

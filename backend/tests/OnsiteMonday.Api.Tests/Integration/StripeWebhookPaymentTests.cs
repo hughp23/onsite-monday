@@ -107,6 +107,44 @@ public class StripeWebhookPaymentTests : IClassFixture<TestWebApplicationFactory
     }
 
     [Fact]
+    public async Task Webhook_CheckoutSessionCompleted_Payment_StoresPaymentIntentId()
+    {
+        var jobId = Guid.NewGuid();
+        const string sessionId = "cs_test_pi_capture_001";
+        const string paymentIntentId = "pi_captured_001";
+
+        await _factory.SeedAsync(async db =>
+        {
+            var job = TestBuilders.MakeJob(_posterId, status: "in_progress", id: jobId,
+                paymentStatus: "payin_pending",
+                stripeCheckoutSessionId: sessionId);
+            db.Jobs.Add(job);
+            await db.SaveChangesAsync();
+        });
+
+        var eventPayload = new
+        {
+            id = sessionId,
+            mode = "payment",
+            payment_status = "paid",
+            payment_intent = paymentIntentId,
+            metadata = new Dictionary<string, string> { ["jobId"] = jobId.ToString() },
+        };
+        var content = StripeWebhookHelper.BuildWebhookRequest(
+            "checkout.session.completed", eventPayload, sessionId);
+
+        var response = await _webhookClient.PostAsync("/api/webhooks/stripe", content);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        await _factory.SeedAsync(async db =>
+        {
+            var job = await db.Jobs.FindAsync(jobId);
+            job!.PaymentStatus.Should().Be("escrowed");
+            job.StripePaymentIntentId.Should().Be(paymentIntentId);
+        });
+    }
+
+    [Fact]
     public async Task Webhook_AccountUpdated_Sets_OnboardingComplete()
     {
         var userId = Guid.NewGuid();

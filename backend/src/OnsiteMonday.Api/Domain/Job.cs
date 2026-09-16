@@ -27,6 +27,7 @@ public class Job
 
     // Stripe payment fields
     public string? StripeCheckoutSessionId { get; set; }
+    public string? StripePaymentIntentId { get; set; }
     public string? StripeTransferId { get; set; }
     public DateTimeOffset? PayoutScheduledAt { get; set; }
     public string PaymentStatus { get; set; } = "none"; // none|payin_pending|escrowed|refund_pending|payout_pending|paid

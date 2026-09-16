@@ -47,7 +47,8 @@ public static class TestBuilders
         string trade = "Builder",
         Guid? id = null,
         string paymentStatus = "none",
-        string? stripeCheckoutSessionId = null)
+        string? stripeCheckoutSessionId = null,
+        string? stripePaymentIntentId = null)
     {
         var today = DateOnly.FromDateTime(DateTime.UtcNow);
         return new Job
@@ -71,6 +72,7 @@ public static class TestBuilders
             Status = status,
             PaymentStatus = paymentStatus,
             StripeCheckoutSessionId = stripeCheckoutSessionId,
+            StripePaymentIntentId = stripePaymentIntentId,
             CreatedAt = DateTimeOffset.UtcNow,
             UpdatedAt = DateTimeOffset.UtcNow,
         };
