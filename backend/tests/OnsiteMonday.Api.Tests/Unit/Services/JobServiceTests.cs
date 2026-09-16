@@ -207,7 +207,17 @@ public class JobServiceTests
         _jobRepoMock.Setup(r => r.GetByIdAsync(jobId, posterId))
             .ReturnsAsync((job, false, 0));
         _jobRepoMock.Setup(r => r.GetApplicationCountAsync(jobId)).ReturnsAsync(1);
-        _jobRepoMock.Setup(r => r.GetApplicantsAsync(jobId)).ReturnsAsync(new List<(Domain.User, JobApplication)>());
+
+        var tradesperson = TestBuilders.MakeUser("tp-uid-checkout-test", "tp-checkout@test.com");
+        tradesperson.StripeConnectOnboardingComplete = true;
+        var acceptedApp = new JobApplication
+        {
+            Id = Guid.NewGuid(), JobId = jobId, ApplicantId = tradesperson.Id,
+            Status = "accepted", AppliedAt = DateTimeOffset.UtcNow,
+        };
+        _jobRepoMock.Setup(r => r.GetApplicantsAsync(jobId))
+            .ReturnsAsync(new List<(Domain.User Applicant, JobApplication Application)> { (tradesperson, acceptedApp) });
+
         _jobRepoMock.Setup(r => r.UpdateAsync(It.IsAny<Job>())).Returns(Task.CompletedTask);
 
         _stripeConnectMock
