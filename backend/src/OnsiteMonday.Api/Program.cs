@@ -95,7 +95,16 @@ builder.Services.AddScoped<IConversationService, ConversationService>();
 builder.Services.AddScoped<ISubscriptionService, SubscriptionService>();
 
 // Storage
-builder.Services.AddSingleton<IAmazonS3>(_ => new AmazonS3Client(Amazon.RegionEndpoint.EUWest2));
+builder.Services.AddSingleton<IAmazonS3>(sp =>
+{
+    var cfg = sp.GetRequiredService<IConfiguration>();
+    var region = Amazon.RegionEndpoint.GetBySystemName(cfg["Aws:Region"] ?? "eu-west-2");
+    var keyId = cfg["Aws:AccessKeyId"];
+    var secret = cfg["Aws:SecretAccessKey"];
+    if (!string.IsNullOrEmpty(keyId) && !string.IsNullOrEmpty(secret))
+        return new AmazonS3Client(new Amazon.Runtime.BasicAWSCredentials(keyId, secret), region);
+    return new AmazonS3Client(region);
+});
 builder.Services.AddScoped<IStorageService, S3StorageService>();
 
 // Stripe Connect — use stub in Development/Testing, real service in Production or Sandbox
