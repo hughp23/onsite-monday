@@ -279,6 +279,16 @@ public class JobService : IJobService
         if (job.Status != "accepted")
             throw new ArgumentException("Job must be accepted before it can be started.");
 
+        var applicants = await _jobRepo.GetApplicantsAsync(jobId);
+        var acceptedApplicant = applicants.FirstOrDefault(a => a.Application.Status == "accepted");
+        if (acceptedApplicant == default)
+            throw new KeyNotFoundException($"No accepted applicant found for job {jobId}.");
+
+        if (!acceptedApplicant.Applicant.StripeConnectOnboardingComplete)
+            throw new InvalidOperationException(
+                "The tradesperson has not completed payment account setup. " +
+                "Payment cannot be initiated until their Stripe account is verified.");
+
         var totalPence = ToMinorUnits(job.DayRate * job.Duration);
         var successUrl = $"https://app.onsitemonday.co.uk/jobs/{jobId}/payment-success";
         var cancelUrl = $"https://app.onsitemonday.co.uk/jobs/{jobId}/payment-cancel";
@@ -292,21 +302,16 @@ public class JobService : IJobService
         job.UpdatedAt = DateTimeOffset.UtcNow;
         await _jobRepo.UpdateAsync(job);
 
-        var applicants = await _jobRepo.GetApplicantsAsync(jobId);
-        var acceptedApplicant = applicants.FirstOrDefault(a => a.Application.Status == "accepted");
-        if (acceptedApplicant != default)
+        await _notificationRepo.CreateAsync(new Notification
         {
-            await _notificationRepo.CreateAsync(new Notification
-            {
-                Id = Guid.NewGuid(),
-                UserId = acceptedApplicant.Applicant.Id,
-                Type = "accepted",
-                Title = "Job started — payment secured",
-                Description = $"\"{job.Title}\" has started. Your payment is held securely and will be released once the job is complete and reviewed.",
-                LinkedId = jobId,
-                CreatedAt = DateTimeOffset.UtcNow,
-            });
-        }
+            Id = Guid.NewGuid(),
+            UserId = acceptedApplicant.Applicant.Id,
+            Type = "accepted",
+            Title = "Job started — payment secured",
+            Description = $"\"{job.Title}\" has started. Your payment is held securely and will be released once the job is complete and reviewed.",
+            LinkedId = jobId,
+            CreatedAt = DateTimeOffset.UtcNow,
+        });
 
         var count = await _jobRepo.GetApplicationCountAsync(jobId);
         return new JobStartResponse

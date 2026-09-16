@@ -71,7 +71,46 @@ public class PaymentFlowIntegrationTests : IClassFixture<TestWebApplicationFacto
 
     public Task DisposeAsync() => Task.CompletedTask;
 
-    // ── Test 1: StartJob returns Stripe checkout URL and sets payin_pending ──
+    // ── Test 1: StartJob blocks if tradesperson has not completed onboarding ──
+
+    [Fact]
+    public async Task StartJob_WhenTradespersonNotOnboarded_Returns409()
+    {
+        var jobId = Guid.NewGuid();
+        await _factory.SeedAsync(async db =>
+        {
+            var poster = db.Users.First(u => u.CognitoSub == FakeAuthHandler.TestFirebaseUid);
+
+            var notOnboarded = TestBuilders.MakeUserWithStripeConnect(
+                $"uid-not-onboarded-{_uniqueSuffix}",
+                $"not-onboarded-{_uniqueSuffix}@test.com",
+                $"acct_incomplete_{_uniqueSuffix}",
+                onboardingComplete: false);
+            db.Users.Add(notOnboarded);
+            await db.SaveChangesAsync();
+
+            var job = TestBuilders.MakeJob(poster.Id, status: "accepted", id: jobId);
+            db.Jobs.Add(job);
+            await db.SaveChangesAsync();
+
+            db.JobApplications.Add(new JobApplication
+            {
+                Id = Guid.NewGuid(),
+                JobId = jobId,
+                ApplicantId = notOnboarded.Id,
+                Status = "accepted",
+                AppliedAt = DateTimeOffset.UtcNow,
+                AcceptedAt = DateTimeOffset.UtcNow,
+            });
+            await db.SaveChangesAsync();
+        });
+
+        var response = await _posterClient.PutAsync($"/api/jobs/{jobId}/start", null);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Conflict);
+    }
+
+    // ── Test 2: StartJob returns Stripe checkout URL and sets payin_pending ──
 
     [Fact]
     public async Task StartJob_Returns_CheckoutUrl_And_Sets_PayinPending()
@@ -91,7 +130,7 @@ public class PaymentFlowIntegrationTests : IClassFixture<TestWebApplicationFacto
         });
     }
 
-    // ── Test 2: Stripe webhook checkout.session.completed sets escrowed ──
+    // ── Test 3: Stripe webhook checkout.session.completed sets escrowed ──
 
     [Fact]
     public async Task Webhook_CheckoutCompleted_Sets_Escrowed()
@@ -127,7 +166,7 @@ public class PaymentFlowIntegrationTests : IClassFixture<TestWebApplicationFacto
         });
     }
 
-    // ── Test 3: CompleteJob sets completed, leaves PaymentStatus as escrowed ──
+    // ── Test 4: CompleteJob sets completed, leaves PaymentStatus as escrowed ──
 
     [Fact]
     public async Task CompleteJob_Sets_Completed_And_Does_Not_Move_PaymentStatus()
@@ -162,7 +201,7 @@ public class PaymentFlowIntegrationTests : IClassFixture<TestWebApplicationFacto
         });
     }
 
-    // ── Test 4: SubmitReview on completed+escrowed job schedules payout ──
+    // ── Test 5: SubmitReview on completed+escrowed job schedules payout ──
 
     [Fact]
     public async Task SubmitReview_On_CompletedEscrowedJob_Schedules_Payout()
@@ -204,7 +243,7 @@ public class PaymentFlowIntegrationTests : IClassFixture<TestWebApplicationFacto
         });
     }
 
-    // ── Test 5: PayoutReleaseJob transfers funds and sets payout_complete ──
+    // ── Test 6: PayoutReleaseJob transfers funds and sets payout_complete ──
 
     [Fact]
     public async Task PayoutReleaseJob_Transfers_Funds_And_Sets_PayoutComplete()
@@ -240,7 +279,7 @@ public class PaymentFlowIntegrationTests : IClassFixture<TestWebApplicationFacto
         });
     }
 
-    // ── Test 6: PayoutReleaseJob is idempotent — skips if already payout_complete ──
+    // ── Test 7: PayoutReleaseJob is idempotent — skips if already payout_complete ──
 
     [Fact]
     public async Task PayoutReleaseJob_IsIdempotent_When_Already_PayoutComplete()
