@@ -120,6 +120,14 @@ public class StripeWebhookController : ControllerBase
             return;
         }
 
+        if (job.PaymentStatus != "payin_pending")
+        {
+            _logger.LogInformation(
+                "Stripe job payment: job {JobId} already has PaymentStatus={Status}, skipping re-delivery of session {SessionId}",
+                job.Id, job.PaymentStatus, session.Id);
+            return;
+        }
+
         job.PaymentStatus = "escrowed";
         await _db.SaveChangesAsync();
         _logger.LogInformation("Job {JobId} payment status updated to escrowed via session {SessionId}", job.Id, session.Id);

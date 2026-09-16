@@ -72,6 +72,41 @@ public class StripeWebhookPaymentTests : IClassFixture<TestWebApplicationFactory
     }
 
     [Fact]
+    public async Task Webhook_CheckoutSessionCompleted_WhenAlreadyProgressed_DoesNotRegressPaymentStatus()
+    {
+        var jobId = Guid.NewGuid();
+        const string sessionId = "cs_test_idempotent_001";
+        await _factory.SeedAsync(async db =>
+        {
+            var job = TestBuilders.MakeJob(_posterId, status: "completed", id: jobId,
+                paymentStatus: "payout_pending",   // already past escrowed
+                stripeCheckoutSessionId: sessionId);
+            db.Jobs.Add(job);
+            await db.SaveChangesAsync();
+        });
+
+        var eventPayload = new
+        {
+            id = sessionId,
+            mode = "payment",
+            payment_status = "paid",
+            payment_intent = "pi_redelivered_001",
+            metadata = new Dictionary<string, string> { ["jobId"] = jobId.ToString() },
+        };
+        var content = StripeWebhookHelper.BuildWebhookRequest(
+            "checkout.session.completed", eventPayload, sessionId);
+
+        var response = await _webhookClient.PostAsync("/api/webhooks/stripe", content);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        await _factory.SeedAsync(async db =>
+        {
+            var job = await db.Jobs.FindAsync(jobId);
+            job!.PaymentStatus.Should().Be("payout_pending"); // must NOT have regressed to "escrowed"
+        });
+    }
+
+    [Fact]
     public async Task Webhook_AccountUpdated_Sets_OnboardingComplete()
     {
         var userId = Guid.NewGuid();
