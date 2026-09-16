@@ -7,5 +7,7 @@ public interface IStripeConnectService
     Task<bool> GetOnboardingCompleteAsync(string stripeAccountId);
     Task<(string SessionId, string Url)> CreateJobCheckoutSessionAsync(
         Guid jobId, string jobTitle, long amountPence, string successUrl, string cancelUrl);
-    Task<string> CreateTransferAsync(Guid jobId, string destinationAccountId, long netAmountPence);
+    Task<long> GetPaymentIntentAmountAsync(string paymentIntentId);
+    Task<string> CreateTransferAsync(
+        Guid jobId, string destinationAccountId, long netAmountPence, string? sourceTransaction = null);
 }

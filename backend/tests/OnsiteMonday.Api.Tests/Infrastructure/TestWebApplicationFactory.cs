@@ -77,8 +77,12 @@ public class TestWebApplicationFactory : WebApplicationFactory<Program>
                     It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<long>(), It.IsAny<string>(), It.IsAny<string>()))
                 .ReturnsAsync(("stub_cs_test", "https://stub-checkout.stripe.com/pay/stub_cs_test"));
             connectMock
-                .Setup(m => m.CreateTransferAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<long>()))
+                .Setup(m => m.CreateTransferAsync(
+                    It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<long>(), It.IsAny<string?>()))
                 .ReturnsAsync("stub_tr_test");
+            connectMock
+                .Setup(m => m.GetPaymentIntentAmountAsync(It.IsAny<string>()))
+                .ReturnsAsync(125_000L); // matches default test job: DayRate=250, Duration=5
             services.AddScoped<IStripeConnectService>(_ => connectMock.Object);
 
             // Set test Stripe webhook secret so StripeWebhookHelper-signed payloads validate

@@ -87,16 +87,32 @@ public class StripeConnectService : IStripeConnectService
         return (session.Id, session.Url);
     }
 
-    public async Task<string> CreateTransferAsync(Guid jobId, string destinationAccountId, long netAmountPence)
+    public async Task<long> GetPaymentIntentAmountAsync(string paymentIntentId)
     {
-        var service = new TransferService();
-        var transfer = await service.CreateAsync(new TransferCreateOptions
+        var service = new PaymentIntentService();
+        var pi = await service.GetAsync(paymentIntentId);
+        _logger.LogInformation(
+            "Stripe Connect: PaymentIntent {PiId} AmountReceived={Amount}p",
+            paymentIntentId, pi.AmountReceived);
+        return pi.AmountReceived;
+    }
+
+    public async Task<string> CreateTransferAsync(
+        Guid jobId, string destinationAccountId, long netAmountPence, string? sourceTransaction = null)
+    {
+        var options = new TransferCreateOptions
         {
             Amount = netAmountPence,
             Currency = "gbp",
             Destination = destinationAccountId,
             Metadata = new Dictionary<string, string> { ["jobId"] = jobId.ToString() },
-        });
+        };
+
+        if (!string.IsNullOrEmpty(sourceTransaction))
+            options.SourceTransaction = sourceTransaction;
+
+        var service = new TransferService();
+        var transfer = await service.CreateAsync(options);
 
         _logger.LogInformation(
             "Stripe Connect: Transfer {TransferId} of £{Amount} to {AccountId} for job {JobId}",

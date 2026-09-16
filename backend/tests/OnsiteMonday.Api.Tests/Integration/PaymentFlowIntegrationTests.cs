@@ -254,7 +254,8 @@ public class PaymentFlowIntegrationTests : IClassFixture<TestWebApplicationFacto
         {
             var poster = db.Users.First(u => u.CognitoSub == FakeAuthHandler.TestFirebaseUid);
             var job = TestBuilders.MakeJob(poster.Id, status: "completed", id: jobId,
-                paymentStatus: "payout_pending", stripeCheckoutSessionId: "cs_test_payout_001");
+                paymentStatus: "payout_pending", stripeCheckoutSessionId: "cs_test_payout_001",
+                stripePaymentIntentId: "pi_test_payout_001");
             job.HangfireJobId = "fake-hangfire-job-id";
             db.Jobs.Add(job);
             await db.SaveChangesAsync();

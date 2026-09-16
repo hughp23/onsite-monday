@@ -38,11 +38,19 @@ public class StubStripeConnectService : IStripeConnectService
         return Task.FromResult((sessionId, url));
     }
 
-    public Task<string> CreateTransferAsync(Guid jobId, string destinationAccountId, long netAmountPence)
+    public Task<long> GetPaymentIntentAmountAsync(string paymentIntentId)
+    {
+        _logger.LogInformation("[STUB] Stripe Connect: GetPaymentIntentAmount {PiId} → 125000p", paymentIntentId);
+        return Task.FromResult(125_000L);
+    }
+
+    public Task<string> CreateTransferAsync(
+        Guid jobId, string destinationAccountId, long netAmountPence, string? sourceTransaction = null)
     {
         var transferId = "stub_tr_" + Guid.NewGuid().ToString("N")[..8];
-        _logger.LogInformation("[STUB] Stripe Connect: Transfer £{Amount} to {AccountId} for job {JobId} → {TransferId}",
-            netAmountPence / 100m, destinationAccountId, jobId, transferId);
+        _logger.LogInformation(
+            "[STUB] Stripe Connect: Transfer £{Amount} to {AccountId} for job {JobId} → {TransferId} (source: {Source})",
+            netAmountPence / 100m, destinationAccountId, jobId, transferId, sourceTransaction ?? "none");
         return Task.FromResult(transferId);
     }
 }
