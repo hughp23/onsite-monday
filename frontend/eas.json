@@ -16,7 +16,7 @@
         "EXPO_PUBLIC_GOOGLE_MAPS_API_KEY": "AIzaSyAMr0dm51OubuFpMavsQONF4NwjyUDgz7I",
         "EXPO_PUBLIC_API_URL": "https://onsite-monday-production.up.railway.app/api",
         "EXPO_PUBLIC_AWS_REGION": "eu-west-2",
-        "EXPO_PUBLIC_ESCROW_ENABLED": "false"
+        "EXPO_PUBLIC_ESCROW_ENABLED": "true"
       }
     },
     "production": {
