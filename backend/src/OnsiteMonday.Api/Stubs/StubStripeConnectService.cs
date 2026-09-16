@@ -17,7 +17,7 @@ public class StubStripeConnectService : IStripeConnectService
 
     public Task<string> CreateAccountLinkAsync(string stripeAccountId, string refreshUrl, string returnUrl)
     {
-        var url = $"https://stub-connect.stripe.com/onboarding/{stripeAccountId}";
+        var url = $"https://stub-connect.stripe.com/onboarding/{stripeAccountId}?return={Uri.EscapeDataString(returnUrl)}";
         _logger.LogInformation("[STUB] Stripe Connect: AccountLink for {AccountId} → {Url}", stripeAccountId, url);
         return Task.FromResult(url);
     }

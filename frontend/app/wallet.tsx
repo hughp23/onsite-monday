@@ -15,7 +15,10 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import * as Linking from 'expo-linking';
+import * as WebBrowser from 'expo-web-browser';
 import { walletService } from '@/src/services/walletService';
+import { stripeConnectService } from '@/src/services/stripeConnectService';
 import { WalletDto, KycStatus } from '@/constants/types';
 import { colors } from '@/constants/colors';
 import { fonts } from '@/constants/typography';
@@ -38,38 +41,43 @@ function kycPill(status: KycStatus): PillConfig {
 function SetupBanner({
   kycStatus,
   hasBankAccount,
+  onStartOnboarding,
 }: {
   kycStatus: KycStatus;
   hasBankAccount: boolean;
+  onStartOnboarding: () => void;
 }) {
   if (kycStatus === 'verified' && hasBankAccount) return null;
 
   let message: string;
   let ctaLabel: string | null = null;
+  let ctaAction: (() => void) | null = null;
 
   if (kycStatus === 'none') {
     message = 'Verify your identity to receive payouts.';
     ctaLabel = 'Verify identity →';
+    ctaAction = onStartOnboarding;
   } else if (kycStatus === 'pending') {
     message = "Identity verification in progress — we'll notify you when complete.";
+    ctaLabel = 'Continue setup →';
+    ctaAction = onStartOnboarding;
   } else if (kycStatus === 'failed') {
     message = 'Verification failed — please try again.';
     ctaLabel = 'Retry verification →';
+    ctaAction = onStartOnboarding;
   } else {
     // kycStatus === 'verified' but !hasBankAccount
     message = 'Add a bank account to enable withdrawals.';
     ctaLabel = 'Add bank account →';
+    ctaAction = onStartOnboarding;
   }
-
-  const handleCta = () =>
-    Alert.alert('Setup Required', 'Complete identity verification through your account settings.');
 
   return (
     <View style={bannerStyles.banner}>
       <Text style={bannerStyles.title}>⚠ Complete your setup</Text>
       <Text style={bannerStyles.message}>{message}</Text>
-      {ctaLabel !== null && (
-        <TouchableOpacity onPress={handleCta} activeOpacity={0.8}>
+      {ctaLabel !== null && ctaAction !== null && (
+        <TouchableOpacity onPress={ctaAction} activeOpacity={0.8}>
           <Text style={bannerStyles.cta}>{ctaLabel}</Text>
         </TouchableOpacity>
       )}
@@ -125,6 +133,7 @@ export default function WalletScreen() {
   const [withdrawSuccess, setWithdrawSuccess] = useState(false);
 
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [onboarding, setOnboarding] = useState(false);
 
   const isSetupComplete =
     wallet !== null && wallet.kycStatus === 'verified' && wallet.hasBankAccount;
@@ -165,6 +174,22 @@ export default function WalletScreen() {
       Alert.alert('Error', 'Could not update auto-withdraw setting. Please try again.');
     }
   };
+
+  const handleStartOnboarding = useCallback(async () => {
+    setOnboarding(true);
+    try {
+      const returnUrl = Linking.createURL('/stripe-connect/return');
+      const refreshUrl = Linking.createURL('/stripe-connect/refresh');
+      const { onboardingUrl } = await stripeConnectService.getOnboardingLink(returnUrl, refreshUrl);
+      await WebBrowser.openAuthSessionAsync(onboardingUrl, returnUrl);
+      // Refresh wallet status after the browser session ends
+      await load();
+    } catch {
+      Alert.alert('Error', 'Could not start verification. Please try again.');
+    } finally {
+      setOnboarding(false);
+    }
+  }, [load]);
 
   const openSheet = () => {
     setWithdrawError(null);
@@ -230,7 +255,11 @@ export default function WalletScreen() {
         }
       >
         {/* Setup banner */}
-        <SetupBanner kycStatus={wallet.kycStatus} hasBankAccount={wallet.hasBankAccount} />
+        <SetupBanner
+          kycStatus={wallet.kycStatus}
+          hasBankAccount={wallet.hasBankAccount}
+          onStartOnboarding={handleStartOnboarding}
+        />
 
         {/* Balance card */}
         <LinearGradient

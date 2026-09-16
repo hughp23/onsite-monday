@@ -68,7 +68,8 @@ public class TestWebApplicationFactory : WebApplicationFactory<Program>
                 .ReturnsAsync("stub_acct_test");
             connectMock
                 .Setup(m => m.CreateAccountLinkAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()))
-                .ReturnsAsync("https://stub-connect.stripe.com/onboarding/stub_acct_test");
+                .Returns((string acct, string _, string ret) =>
+                    Task.FromResult($"https://stub-connect.stripe.com/onboarding/{acct}?return={Uri.EscapeDataString(ret)}"));
             connectMock
                 .Setup(m => m.GetOnboardingCompleteAsync(It.IsAny<string>()))
                 .ReturnsAsync(true);

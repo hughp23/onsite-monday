@@ -16,10 +16,11 @@ public class StubStripeConnectServiceTests
     }
 
     [Fact]
-    public async Task CreateAccountLink_ReturnsUrl()
+    public async Task CreateAccountLink_ReturnsUrl_ContainingReturnUrl()
     {
-        var url = await _sut.CreateAccountLinkAsync("acct_stub", "https://refresh", "https://return");
+        var url = await _sut.CreateAccountLinkAsync("acct_stub", "https://refresh", "onsitemonday://stripe-connect/return");
         url.Should().StartWith("https://stub-connect.stripe.com/");
+        url.Should().Contain("onsitemonday");
     }
 
     [Fact]

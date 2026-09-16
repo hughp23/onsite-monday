@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using OnsiteMonday.Api.Data;
+using OnsiteMonday.Api.DTOs.StripeConnect;
 using OnsiteMonday.Api.Services.Interfaces;
 using System.Security.Claims;
 
@@ -33,8 +34,9 @@ public class StripeConnectController : ControllerBase
     // POST /api/stripe-connect/onboarding-link
     // Creates (or reuses) a Stripe Express account and returns a hosted onboarding URL.
     // The URL is time-limited (~5 min) — the client must open it promptly.
+    // Accepts optional returnUrl/refreshUrl; falls back to web URLs for non-mobile callers.
     [HttpPost("onboarding-link")]
-    public async Task<IActionResult> CreateOnboardingLink()
+    public async Task<IActionResult> CreateOnboardingLink([FromBody] OnboardingLinkRequest? request = null)
     {
         var user = await _db.Users.FirstOrDefaultAsync(u => u.CognitoSub == CognitoSub);
         if (user is null)
@@ -48,8 +50,8 @@ public class StripeConnectController : ControllerBase
                 user.StripeConnectAccountId, user.Id);
         }
 
-        var refreshUrl = "https://app.onsitemonday.co.uk/stripe-connect/refresh";
-        var returnUrl = "https://app.onsitemonday.co.uk/stripe-connect/return";
+        var refreshUrl = request?.RefreshUrl ?? "https://app.onsitemonday.co.uk/stripe-connect/refresh";
+        var returnUrl = request?.ReturnUrl ?? "https://app.onsitemonday.co.uk/stripe-connect/return";
 
         var onboardingUrl = await _stripeConnect.CreateAccountLinkAsync(
             user.StripeConnectAccountId, refreshUrl, returnUrl);

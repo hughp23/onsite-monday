@@ -91,6 +91,16 @@ public class StripeConnectControllerTests : IClassFixture<TestWebApplicationFact
     }
 
     [Fact]
+    public async Task CreateOnboardingLink_WithDeepLinkUrls_ReturnsUrlContainingReturnUrl()
+    {
+        var body = new { returnUrl = "onsitemonday://stripe-connect/return", refreshUrl = "onsitemonday://stripe-connect/refresh" };
+        var response = await _client.PostAsJsonAsync("/api/stripe-connect/onboarding-link", body);
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var result = await response.Content.ReadFromJsonAsync<OnboardingLinkResponse>();
+        result!.OnboardingUrl.Should().Contain("onsitemonday");
+    }
+
+    [Fact]
     public async Task CreateOnboardingLink_SetsStripeConnectAccountId_OnUser()
     {
         var response = await _client.PostAsync("/api/stripe-connect/onboarding-link", null);

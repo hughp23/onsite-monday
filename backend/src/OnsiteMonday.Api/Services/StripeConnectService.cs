@@ -7,18 +7,18 @@ namespace OnsiteMonday.Api.Services;
 
 public class StripeConnectService : IStripeConnectService
 {
-    private readonly StripeOptions _opts;
+    private readonly StripeClient _client;
     private readonly ILogger<StripeConnectService> _logger;
 
-    public StripeConnectService(IOptions<StripeOptions> opts, ILogger<StripeConnectService> logger)
+    public StripeConnectService(StripeClient client, ILogger<StripeConnectService> logger)
     {
-        _opts = opts.Value;
+        _client = client;
         _logger = logger;
     }
 
     public async Task<string> CreateConnectedAccountAsync(Guid userId, string email)
     {
-        var service = new AccountService();
+        var service = new AccountService(_client);
         var account = await service.CreateAsync(new AccountCreateOptions
         {
             Type = "express",
@@ -32,7 +32,7 @@ public class StripeConnectService : IStripeConnectService
 
     public async Task<string> CreateAccountLinkAsync(string stripeAccountId, string refreshUrl, string returnUrl)
     {
-        var service = new AccountLinkService();
+        var service = new AccountLinkService(_client);
         var link = await service.CreateAsync(new AccountLinkCreateOptions
         {
             Account = stripeAccountId,
@@ -45,7 +45,7 @@ public class StripeConnectService : IStripeConnectService
 
     public async Task<bool> GetOnboardingCompleteAsync(string stripeAccountId)
     {
-        var service = new AccountService();
+        var service = new AccountService(_client);
         var account = await service.GetAsync(stripeAccountId);
         return account.ChargesEnabled && account.PayoutsEnabled;
     }
@@ -53,10 +53,9 @@ public class StripeConnectService : IStripeConnectService
     public async Task<(string SessionId, string Url)> CreateJobCheckoutSessionAsync(
         Guid jobId, string jobTitle, long amountPence, string successUrl, string cancelUrl)
     {
-        var service = new SessionService();
+        var service = new SessionService(_client);
         var session = await service.CreateAsync(new SessionCreateOptions
         {
-            PaymentMethodTypes = new List<string> { "card" },
             Mode = "payment",
             LineItems = new List<SessionLineItemOptions>
             {
@@ -89,7 +88,7 @@ public class StripeConnectService : IStripeConnectService
 
     public async Task<long> GetPaymentIntentAmountAsync(string paymentIntentId)
     {
-        var service = new PaymentIntentService();
+        var service = new PaymentIntentService(_client);
         var pi = await service.GetAsync(paymentIntentId);
         _logger.LogInformation(
             "Stripe Connect: PaymentIntent {PiId} AmountReceived={Amount}p",
@@ -111,7 +110,7 @@ public class StripeConnectService : IStripeConnectService
         if (!string.IsNullOrEmpty(sourceTransaction))
             options.SourceTransaction = sourceTransaction;
 
-        var service = new TransferService();
+        var service = new TransferService(_client);
         var transfer = await service.CreateAsync(options);
 
         _logger.LogInformation(

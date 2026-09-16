@@ -117,7 +117,8 @@ else
 builder.Services.Configure<StripeOptions>(builder.Configuration.GetSection("Stripe"));
 if (useLivePayments)
 {
-    Stripe.StripeConfiguration.ApiKey = builder.Configuration["Stripe:SecretKey"];
+    var stripeClient = new Stripe.StripeClient(builder.Configuration["Stripe:SecretKey"]);
+    builder.Services.AddSingleton(stripeClient);
     builder.Services.AddScoped<IStripeBillingService, StripeBillingService>();
 }
 else

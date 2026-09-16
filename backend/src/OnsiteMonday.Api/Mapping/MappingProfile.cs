@@ -13,7 +13,9 @@ public class MappingProfile : Profile
                 opt => opt.MapFrom(src =>
                     src.ActiveSubscription != null ? src.ActiveSubscription.Tier : "bronze"))
             .ForMember(dest => dest.KycStatus,
-                opt => opt.MapFrom(src => src.StripeConnectOnboardingComplete ? "verified" : "none"))
+                opt => opt.MapFrom(src =>
+                    src.StripeConnectOnboardingComplete ? "verified" :
+                    src.StripeConnectAccountId != null ? "pending" : "none"))
             .ForMember(dest => dest.HasBankAccount,
                 opt => opt.MapFrom(src => src.StripeConnectOnboardingComplete))
             .ForMember(dest => dest.AutoWithdraw,
