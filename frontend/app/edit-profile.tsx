@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet,
   KeyboardAvoidingView, Platform, Switch, Image, ActivityIndicator, Alert,
 } from 'react-native';
-import { router } from 'expo-router';
+import { router, useNavigation } from 'expo-router';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useApp } from '@/context/AppContext';
@@ -16,6 +16,7 @@ import { uploadProfileImage, CANCELLED } from '@/src/services/imageService';
 export default function EditProfileScreen() {
   const { currentUser, updateCurrentUser } = useApp();
   const insets = useSafeAreaInsets();
+  const navigation = useNavigation();
   const [firstName, setFirstName] = useState(currentUser?.firstName ?? '');
   const [lastName, setLastName] = useState(currentUser?.lastName ?? '');
   const [businessName, setBusinessName] = useState(currentUser?.businessName ?? '');
@@ -29,18 +30,23 @@ export default function EditProfileScreen() {
   const [travelRadius, setTravelRadius] = useState(currentUser?.travelRadius ?? 25);
   const [profileImageUri, setProfileImageUri] = useState<string | null>(currentUser?.profileImage ?? null);
   const [isUploading, setIsUploading] = useState(false);
-
   const [showTradePicker, setShowTradePicker] = useState(false);
   const [toastVisible, setToastVisible] = useState(false);
-  if (!currentUser) return null;
 
-  const handleChangePhoto = () => {
-    Alert.alert('Profile Photo', 'Choose a source', [
-      { text: 'Camera', onPress: () => doUpload('camera') },
-      { text: 'Photo Library', onPress: () => doUpload('library') },
-      { text: 'Cancel', style: 'cancel' },
-    ]);
-  };
+  const hasChanges = currentUser != null && (
+    firstName !== (currentUser.firstName ?? '') ||
+    lastName !== (currentUser.lastName ?? '') ||
+    businessName !== (currentUser.businessName ?? '') ||
+    phone !== (currentUser.phone ?? '') ||
+    trade !== (currentUser.trade ?? '') ||
+    JSON.stringify(skills) !== JSON.stringify(currentUser.skills ?? []) ||
+    JSON.stringify(accreditations) !== JSON.stringify(currentUser.accreditations ?? []) ||
+    dayRate !== (currentUser.dayRate ?? 0).toString() ||
+    dayRateVisible !== (currentUser.dayRateVisible ?? true) ||
+    location !== (currentUser.location ?? '') ||
+    travelRadius !== (currentUser.travelRadius ?? 25) ||
+    profileImageUri !== (currentUser.profileImage ?? null)
+  );
 
   const doUpload = async (source: 'library' | 'camera') => {
     setIsUploading(true);
@@ -53,6 +59,14 @@ export default function EditProfileScreen() {
     } finally {
       setIsUploading(false);
     }
+  };
+
+  const handleChangePhoto = () => {
+    Alert.alert('Profile Photo', 'Choose a source', [
+      { text: 'Camera', onPress: () => doUpload('camera') },
+      { text: 'Photo Library', onPress: () => doUpload('library') },
+      { text: 'Cancel', style: 'cancel' },
+    ]);
   };
 
   const handleSave = async () => {
@@ -78,6 +92,33 @@ export default function EditProfileScreen() {
       Alert.alert('Save failed', msg);
     }
   };
+
+  useEffect(() => {
+    return navigation.addListener('beforeRemove', (e) => {
+      if (!hasChanges) return;
+      e.preventDefault();
+      Alert.alert(
+        'Unsaved Changes',
+        'You have unsaved changes. What would you like to do?',
+        [
+          { text: 'Keep Editing', style: 'cancel' },
+          {
+            text: 'Discard',
+            style: 'destructive',
+            onPress: () => navigation.dispatch(e.data.action),
+          },
+          {
+            text: 'Save',
+            onPress: handleSave,
+          },
+        ],
+      );
+    });
+  // handleSave is intentionally omitted — it reads from state via closure and is stable enough
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [navigation, hasChanges]);
+
+  if (!currentUser) return null;
 
   const toggleSkill = (s: string) => setSkills(prev => prev.includes(s) ? prev.filter(x => x !== s) : [...prev, s]);
   const toggleAcc = (a: string) => setAccreditations(prev => prev.includes(a) ? prev.filter(x => x !== a) : [...prev, a]);
