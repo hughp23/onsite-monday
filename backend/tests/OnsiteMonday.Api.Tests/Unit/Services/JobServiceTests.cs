@@ -404,6 +404,69 @@ public class JobServiceTests
     }
 
     [Fact]
+    public async Task InviteToJob_CreatesJobInviteNotification()
+    {
+        var poster = TestBuilders.MakeUser(firstName: "Pat");
+        var tradie = TestBuilders.MakeUser(firebaseUid: "tp", email: "tp@test.com");
+        var job = TestBuilders.MakeJob(poster.Id);
+        _jobRepoMock.Setup(r => r.GetByIdRawAsync(job.Id)).ReturnsAsync(job);
+        _userRepoMock.Setup(r => r.GetByIdAsync(tradie.Id)).ReturnsAsync(tradie);
+        _userRepoMock.Setup(r => r.GetByIdAsync(poster.Id)).ReturnsAsync(poster);
+
+        await _sut.InviteToJobAsync(job.Id, poster.Id, tradie.Id);
+
+        _notificationRepoMock.Verify(r => r.CreateAsync(It.Is<Notification>(n =>
+            n.UserId == tradie.Id && n.Type == "job_invite" && n.LinkedId == job.Id)), Times.Once);
+    }
+
+    [Fact]
+    public async Task InviteToJob_NotPoster_Throws()
+    {
+        var job = TestBuilders.MakeJob(Guid.NewGuid());
+        _jobRepoMock.Setup(r => r.GetByIdRawAsync(job.Id)).ReturnsAsync(job);
+
+        await _sut.Invoking(s => s.InviteToJobAsync(job.Id, Guid.NewGuid(), Guid.NewGuid()))
+            .Should().ThrowAsync<UnauthorizedAccessException>();
+    }
+
+    [Fact]
+    public async Task InviteToJob_JobNotOpen_Throws()
+    {
+        var poster = TestBuilders.MakeUser();
+        var job = TestBuilders.MakeJob(poster.Id, status: "accepted");
+        _jobRepoMock.Setup(r => r.GetByIdRawAsync(job.Id)).ReturnsAsync(job);
+
+        await _sut.Invoking(s => s.InviteToJobAsync(job.Id, poster.Id, Guid.NewGuid()))
+            .Should().ThrowAsync<InvalidOperationException>().WithMessage("*no longer open*");
+    }
+
+    [Fact]
+    public async Task InviteToJob_Self_Throws()
+    {
+        var poster = TestBuilders.MakeUser();
+        var job = TestBuilders.MakeJob(poster.Id);
+        _jobRepoMock.Setup(r => r.GetByIdRawAsync(job.Id)).ReturnsAsync(job);
+
+        await _sut.Invoking(s => s.InviteToJobAsync(job.Id, poster.Id, poster.Id))
+            .Should().ThrowAsync<ArgumentException>();
+    }
+
+    [Fact]
+    public async Task InviteToJob_AlreadyApplied_Throws()
+    {
+        var poster = TestBuilders.MakeUser();
+        var tradieId = Guid.NewGuid();
+        var job = TestBuilders.MakeJob(poster.Id);
+        _jobRepoMock.Setup(r => r.GetByIdRawAsync(job.Id)).ReturnsAsync(job);
+        _userRepoMock.Setup(r => r.GetByIdAsync(tradieId)).ReturnsAsync(TestBuilders.MakeUser(id: tradieId, firebaseUid: "x", email: "x@test.com"));
+        _jobRepoMock.Setup(r => r.GetApplicationAsync(job.Id, tradieId))
+            .ReturnsAsync(new JobApplication { Status = "applied" });
+
+        await _sut.Invoking(s => s.InviteToJobAsync(job.Id, poster.Id, tradieId))
+            .Should().ThrowAsync<InvalidOperationException>().WithMessage("*already applied*");
+    }
+
+    [Fact]
     public async Task ApplyToJob_FromInterested_ResetsAppliedAtToNow()
     {
         var poster = TestBuilders.MakeUser();

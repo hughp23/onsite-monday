@@ -165,6 +165,15 @@ public class JobsController : ControllerBase
         return NoContent();
     }
 
+    // POST /api/jobs/{id}/invite
+    [HttpPost("{id:guid}/invite")]
+    public async Task<IActionResult> InviteToJob(Guid id, [FromBody] InviteToJobRequest request)
+    {
+        var userId = await GetCurrentUserIdAsync();
+        await _jobService.InviteToJobAsync(id, userId, request.TradespersonId);
+        return NoContent();
+    }
+
     // PUT /api/jobs/{id}/cancel
     [HttpPut("{id:guid}/cancel")]
     public async Task<ActionResult<JobDto>> CancelJob(Guid id, [FromBody] CancelJobRequest? request = null)

@@ -332,6 +332,40 @@ public class JobService : IJobService
         };
     }
 
+    public async Task InviteToJobAsync(Guid jobId, Guid posterId, Guid tradespersonId)
+    {
+        var job = await _jobRepo.GetByIdRawAsync(jobId)
+            ?? throw new KeyNotFoundException($"Job {jobId} not found.");
+
+        if (job.PostedById != posterId)
+            throw new UnauthorizedAccessException("Only the job poster can invite tradespeople.");
+        if (tradespersonId == posterId)
+            throw new ArgumentException("You cannot invite yourself.");
+        if (job.Status != "open")
+            throw new InvalidOperationException("This job is no longer open.");
+
+        var tradesperson = await _userRepo.GetByIdAsync(tradespersonId)
+            ?? throw new KeyNotFoundException("Tradesperson not found.");
+
+        var existing = await _jobRepo.GetApplicationAsync(jobId, tradespersonId);
+        if (existing != null && existing.Status != "interested")
+            throw new InvalidOperationException($"{tradesperson.FirstName} has already applied for this job.");
+
+        var poster = await _userRepo.GetByIdAsync(posterId);
+        var posterName = poster?.BusinessName ?? $"{poster?.FirstName} {poster?.LastName}".Trim();
+
+        await _notificationRepo.CreateAsync(new Notification
+        {
+            Id = Guid.NewGuid(),
+            UserId = tradespersonId,
+            Type = "job_invite",
+            Title = "You've been invited to apply",
+            Description = $"{posterName} would like you to apply for \"{job.Title}\".",
+            LinkedId = jobId,
+            CreatedAt = DateTimeOffset.UtcNow,
+        });
+    }
+
     private static long ToMinorUnits(decimal amount) =>
         (long)Math.Round(amount * 100, MidpointRounding.AwayFromZero);
 
