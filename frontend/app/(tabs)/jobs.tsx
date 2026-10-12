@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef, useEffect } from 'react';
+import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import {
   View, Text, FlatList, TouchableOpacity, StyleSheet,
   RefreshControl, Modal, Pressable, ActivityIndicator, Alert,
@@ -12,6 +12,8 @@ import JobCard from '@/components/JobCard';
 import EmptyState from '@/components/EmptyState';
 import AnimatedListItem from '@/components/AnimatedListItem';
 import UsageBanner from '@/components/UsageBanner';
+import FeaturedJobsStrip from '@/components/FeaturedJobsStrip';
+import { selectFeaturedJobs } from '@/src/utils/featuredJobs';
 import { colors } from '@/constants/colors';
 import { fonts } from '@/constants/typography';
 import { Job } from '@/constants/types';
@@ -43,7 +45,7 @@ function sortJobs(jobs: Job[], sort: SortOption): Job[] {
 }
 
 export default function JobsScreen() {
-  const { jobs, toggleJobInterest, currentUser, isLoading, refreshJobs } = useApp();
+  const { jobs, toggleJobInterest, currentUser, isLoading, refreshJobs, hasMoreJobs, loadMoreJobs } = useApp();
   const insets = useSafeAreaInsets();
 
   const [sort, setSort] = useState<SortOption>('newest');
@@ -113,6 +115,11 @@ export default function JobsScreen() {
   // Count of active non-trade filters (for badge)
   const extraFilterCount = (locationFilter ? 1 : 0) + (minDayRate !== null ? 1 : 0);
 
+  const featured = useMemo(
+    () => selectFeaturedJobs(jobs, currentUser ? { id: currentUser.id, trade: currentUser.trade } : null),
+    [jobs, currentUser],
+  );
+
   if (isLoading && jobs.length === 0) {
     return (
       <View style={[styles.container, styles.loadingCenter]}>
@@ -140,6 +147,16 @@ export default function JobsScreen() {
       <View style={styles.sortBar}>
         <Text style={styles.resultsText}>{sorted.length} job{sorted.length !== 1 ? 's' : ''}</Text>
         <View style={styles.sortBarRight}>
+          {/* Post job shortcut */}
+          <TouchableOpacity
+            style={styles.iconBtn}
+            onPress={() => router.push('/create-job')}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="add-circle-outline" size={16} color={colors.primary} />
+            <Text style={styles.iconBtnText}>Post job</Text>
+          </TouchableOpacity>
+
           {/* Filter button */}
           <TouchableOpacity
             style={[styles.iconBtn, extraFilterCount > 0 && styles.iconBtnActive]}
@@ -233,6 +250,16 @@ export default function JobsScreen() {
         )}
         contentContainerStyle={styles.list}
         showsVerticalScrollIndicator={false}
+        ListHeaderComponent={!anyFilterActive ? <FeaturedJobsStrip jobs={featured} /> : null}
+        onEndReached={() => { if (!anyFilterActive) loadMoreJobs(); }}
+        onEndReachedThreshold={0.4}
+        ListFooterComponent={
+          hasMoreJobs ? (
+            <TouchableOpacity style={styles.loadMoreBtn} onPress={() => loadMoreJobs()} activeOpacity={0.7}>
+              <Text style={styles.loadMoreText}>Load more jobs</Text>
+            </TouchableOpacity>
+          ) : null
+        }
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
         }
@@ -410,6 +437,16 @@ const styles = StyleSheet.create({
   clearBtn: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   clearBtnText: { fontFamily: fonts.bodySemiBold, fontSize: 12, color: colors.textMuted },
   list: { padding: 16, paddingTop: 8 },
+  loadMoreBtn: {
+    alignItems: 'center',
+    paddingVertical: 12,
+    marginTop: 4,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surfaceRaised,
+  },
+  loadMoreText: { fontFamily: fonts.bodySemiBold, fontSize: 14, color: colors.primary },
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.4)',

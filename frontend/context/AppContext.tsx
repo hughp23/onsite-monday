@@ -11,6 +11,7 @@ import { reviewService } from '@/src/services/reviewService';
 import { signalRService } from '@/src/services/signalRService';
 import { usageService } from '@/src/services/usageService';
 import { Usage } from '@/src/utils/tierUsage';
+import { PAGE_SIZE, mergePage } from '@/src/utils/pagination';
 
 interface AppContextType {
   currentUser: User | null;
@@ -43,6 +44,8 @@ interface AppContextType {
   cancelSubscription: () => Promise<SubscriptionDto>;
   loadTradespeople: (params?: { trade?: string; location?: string }) => Promise<void>;
   refreshJobs: () => Promise<void>;
+  hasMoreJobs: boolean;
+  loadMoreJobs: () => Promise<void>;
   refreshMyJobs: () => Promise<void>;
   refreshConversations: () => Promise<void>;
   refreshNotifications: () => Promise<void>;
@@ -66,6 +69,9 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
   const refreshAppData = useCallback(() => setRefreshKey(k => k + 1), []);
   const [tradespeople, setTradespeople] = useState<Tradesperson[]>([]);
   const [jobs, setJobs] = useState<Job[]>([]);
+  const [jobsPage, setJobsPage] = useState(1);
+  const [hasMoreJobs, setHasMoreJobs] = useState(true);
+  const loadingMoreJobs = useRef(false);
   const [myJobs, setMyJobs] = useState<{ liked: Job[]; applied: Job[]; accepted: Job[]; posted: Job[] }>({ liked: [], applied: [], accepted: [], posted: [] });
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
@@ -103,7 +109,7 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
         const user = await call('getMe', () => userService.getMe());
 
         const [jobList, likedJobs, appliedJobs, acceptedJobs, postedJobs, convs, notifs] = await Promise.all([
-          call('getJobs', () => jobService.getJobs()),
+          call('getJobs', () => jobService.getJobs({ page: 1, pageSize: PAGE_SIZE })),
           jobService.getMyLikedJobs().catch(() => [] as Job[]),
           jobService.getMyAppliedJobs().catch(() => [] as Job[]),
           call('getMyAcceptedJobs', () => jobService.getMyAcceptedJobs()),
@@ -113,6 +119,8 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
         ]);
         setCurrentUser(user);
         setJobs(jobList);
+        setJobsPage(1);
+        setHasMoreJobs(jobList.length === PAGE_SIZE);
         setMyJobs({ liked: likedJobs, applied: appliedJobs, accepted: acceptedJobs, posted: postedJobs });
         setConversations(convs);
         setNotifications(notifs);
@@ -428,9 +436,27 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
   }, []);
 
   const refreshJobs = useCallback(async () => {
-    const jobList = await jobService.getJobs();
-    setJobs(jobList);
+    const first = await jobService.getJobs({ page: 1, pageSize: PAGE_SIZE });
+    setJobs(first);
+    setJobsPage(1);
+    setHasMoreJobs(first.length === PAGE_SIZE);
   }, []);
+
+  const loadMoreJobs = useCallback(async () => {
+    if (!hasMoreJobs || loadingMoreJobs.current) return;
+    loadingMoreJobs.current = true;
+    try {
+      const next = jobsPage + 1;
+      const incoming = await jobService.getJobs({ page: next, pageSize: PAGE_SIZE });
+      // Merge outside any state updater (updaters must stay pure); dedupes by id.
+      const { items, hasMore } = mergePage(jobs, incoming, PAGE_SIZE);
+      setJobs(items);
+      setJobsPage(next);
+      setHasMoreJobs(hasMore);
+    } finally {
+      loadingMoreJobs.current = false;
+    }
+  }, [hasMoreJobs, jobsPage, jobs]);
 
   const refreshMyJobs = useCallback(async () => {
     const [liked, applied, accepted, posted] = await Promise.all([
@@ -505,6 +531,8 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
       cancelSubscription,
       loadTradespeople,
       refreshJobs,
+      hasMoreJobs,
+      loadMoreJobs,
       refreshMyJobs,
       refreshConversations,
       refreshNotifications,

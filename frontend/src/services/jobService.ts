@@ -76,9 +76,13 @@ export const jobService = {
   inviteToJob: async (jobId: string, tradespersonId: string): Promise<void> => {
     await apiRequest<void>('POST', `/jobs/${jobId}/invite`, { tradespersonId });
   },
-  getJobs: async (params?: { trade?: string; location?: string; status?: string }): Promise<Job[]> => {
+  getJobs: async (params?: { trade?: string; location?: string; status?: string; page?: number; pageSize?: number }): Promise<Job[]> => {
     const qs = params
-      ? '?' + new URLSearchParams(Object.entries(params).filter(([, v]) => v) as [string, string][]).toString()
+      ? '?' + new URLSearchParams(
+          Object.entries(params)
+            .filter(([, v]) => v !== undefined && v !== '')
+            .map(([k, v]) => [k, String(v)] as [string, string]),
+        ).toString()
       : '';
     const data = await apiRequest<ApiJob[]>('GET', `/jobs${qs}`);
     return data.map(toJob);
