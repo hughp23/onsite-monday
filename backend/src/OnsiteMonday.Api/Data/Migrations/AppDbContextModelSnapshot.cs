@@ -208,6 +208,9 @@ namespace OnsiteMonday.Api.Data.Migrations
                     b.Property<DateTimeOffset>("AppliedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<string>("CoverNote")
+                        .HasColumnType("text");
+
                     b.Property<Guid>("JobId")
                         .HasColumnType("uuid");
 

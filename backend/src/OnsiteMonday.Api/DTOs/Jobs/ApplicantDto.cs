@@ -13,4 +13,5 @@ public class ApplicantDto
     public List<string> Skills { get; set; } = [];
     public string ApplicationStatus { get; set; } = null!;
     public DateTimeOffset AppliedAt { get; set; }
+    public string? CoverNote { get; set; }
 }

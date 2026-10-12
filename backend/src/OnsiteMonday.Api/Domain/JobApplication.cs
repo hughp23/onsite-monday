@@ -10,4 +10,5 @@ public class JobApplication
     public string Status { get; set; } = "interested"; // interested | accepted | rejected
     public DateTimeOffset AppliedAt { get; set; }
     public DateTimeOffset? AcceptedAt { get; set; }
+    public string? CoverNote { get; set; }
 }

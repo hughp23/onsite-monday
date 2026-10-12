@@ -159,8 +159,10 @@ public class JobService : IJobService
         return ToDto(result.Job, nowInterested, newCount);
     }
 
-    public async Task<JobDto> ApplyToJobAsync(Guid jobId, Guid userId)
+    public async Task<JobDto> ApplyToJobAsync(Guid jobId, Guid userId, string? coverNote = null)
     {
+        var note = string.IsNullOrWhiteSpace(coverNote) ? null : coverNote.Trim();
+
         if (await _jobRepo.HasOutstandingTradesPersonReviewAsync(userId))
             throw new InvalidOperationException("You have outstanding reviews to complete before applying for new jobs.");
 
@@ -189,11 +191,13 @@ public class JobService : IJobService
                 ApplicantId = userId,
                 Status = "applied",
                 AppliedAt = DateTimeOffset.UtcNow,
+                CoverNote = note,
             });
         }
         else if (existing.Status == "interested")
         {
             existing.Status = "applied";
+            existing.CoverNote = note;
             existing.AppliedAt = DateTimeOffset.UtcNow; // count against the month of applying, not of liking
             await _jobRepo.UpdateApplicationAsync(existing);
         }
@@ -244,6 +248,7 @@ public class JobService : IJobService
             Skills = a.Applicant.Skills,
             ApplicationStatus = a.Application.Status,
             AppliedAt = a.Application.AppliedAt,
+            CoverNote = a.Application.CoverNote,
         }).ToList();
     }
 

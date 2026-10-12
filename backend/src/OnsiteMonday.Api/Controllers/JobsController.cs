@@ -113,10 +113,10 @@ public class JobsController : ControllerBase
 
     // POST /api/jobs/{id}/apply
     [HttpPost("{id:guid}/apply")]
-    public async Task<ActionResult<JobDto>> ApplyToJob(Guid id)
+    public async Task<ActionResult<JobDto>> ApplyToJob(Guid id, [FromBody] ApplyToJobRequest? request = null)
     {
         var userId = await GetCurrentUserIdAsync();
-        var job = await _jobService.ApplyToJobAsync(id, userId);
+        var job = await _jobService.ApplyToJobAsync(id, userId, request?.CoverNote);
         return Ok(job);
     }
 

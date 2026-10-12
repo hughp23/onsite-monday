@@ -480,4 +480,33 @@ public class JobServiceTests
 
         liked.AppliedAt.Should().BeCloseTo(DateTimeOffset.UtcNow, TimeSpan.FromSeconds(5));
     }
+
+    [Fact]
+    public async Task ApplyToJob_WithCoverNote_StoresTrimmedNote()
+    {
+        var poster = TestBuilders.MakeUser();
+        var applicantId = Guid.NewGuid();
+        var job = TestBuilders.MakeJob(poster.Id);
+        _jobRepoMock.Setup(r => r.GetByIdAsync(job.Id, applicantId)).ReturnsAsync((job, false, 0));
+        _jobRepoMock.Setup(r => r.GetApplicationAsync(job.Id, applicantId)).ReturnsAsync((JobApplication?)null);
+
+        await _sut.ApplyToJobAsync(job.Id, applicantId, "  Available from Monday, own van.  ");
+
+        _jobRepoMock.Verify(r => r.AddApplicationAsync(It.Is<JobApplication>(a =>
+            a.CoverNote == "Available from Monday, own van.")), Times.Once);
+    }
+
+    [Fact]
+    public async Task ApplyToJob_WhitespaceCoverNote_StoresNull()
+    {
+        var poster = TestBuilders.MakeUser();
+        var applicantId = Guid.NewGuid();
+        var job = TestBuilders.MakeJob(poster.Id);
+        _jobRepoMock.Setup(r => r.GetByIdAsync(job.Id, applicantId)).ReturnsAsync((job, false, 0));
+        _jobRepoMock.Setup(r => r.GetApplicationAsync(job.Id, applicantId)).ReturnsAsync((JobApplication?)null);
+
+        await _sut.ApplyToJobAsync(job.Id, applicantId, "   ");
+
+        _jobRepoMock.Verify(r => r.AddApplicationAsync(It.Is<JobApplication>(a => a.CoverNote == null)), Times.Once);
+    }
 }
