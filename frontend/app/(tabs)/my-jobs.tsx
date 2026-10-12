@@ -18,6 +18,9 @@ import JobCard from '@/components/JobCard';
 import EmptyState from '@/components/EmptyState';
 import AnimatedListItem from '@/components/AnimatedListItem';
 import UsageBanner from '@/components/UsageBanner';
+import InfoCard from '@/components/InfoCard';
+import { TIER_INFO } from '@/constants/tiers';
+import { splitLikedJobs } from '@/src/utils/likedJobs';
 import { isAtLimit } from '@/src/utils/tierUsage';
 import { colors } from '@/constants/colors';
 import { fonts } from '@/constants/typography';
@@ -47,6 +50,7 @@ export default function MyJobsScreen() {
   const [cancelReason, setCancelReason] = useState('');
   const [segWidth, setSegWidth] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
+  const [showArchived, setShowArchived] = useState(false);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -126,9 +130,11 @@ export default function MyJobsScreen() {
   };
 
   // Liked tab: jobs the user has bookmarked (isInterested: true, status open)
-  const renderLiked = () => (
+  const renderLiked = () => {
+    const { active, archived } = splitLikedJobs(myJobs.liked);
+    return (
     <FlatList
-      data={myJobs.liked}
+      data={active}
       keyExtractor={item => item.id}
       renderItem={({ item, index }) => (
         <AnimatedListItem index={index}>
@@ -165,22 +171,75 @@ export default function MyJobsScreen() {
       refreshControl={
         <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
       }
-      ListEmptyComponent={
-        <EmptyState
-          icon="heart-outline"
-          title="No liked jobs yet"
-          subtitle="Browse the jobs board and like jobs you're interested in."
+      ListHeaderComponent={
+        <InfoCard
+          icon="lightbulb-on-outline"
+          title="Tips for success"
+          body={[
+            'Complete your profile: a photo, bio and work gallery get more replies.',
+            'Apply early. Posters often hire from the first few applicants.',
+            'Add a short message saying when you can start.',
+          ]}
         />
       }
-      ListFooterComponent={
-        myJobs.liked.length > 0 ? (
-          <TouchableOpacity onPress={() => router.push('/(tabs)/jobs')} style={styles.findMoreLink}>
-            <Text style={styles.findMoreText}>Find more jobs →</Text>
-          </TouchableOpacity>
+      ListEmptyComponent={
+        active.length === 0 && archived.length === 0 ? (
+          <EmptyState
+            icon="heart-outline"
+            title="No liked jobs yet"
+            subtitle="Browse the jobs board and like jobs you're interested in."
+          />
         ) : null
       }
+      ListFooterComponent={
+        <View>
+          {archived.length > 0 && (
+            <View>
+              <TouchableOpacity
+                style={styles.archivedToggle}
+                onPress={() => setShowArchived(v => !v)}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.archivedToggleText}>Archived jobs ({archived.length})</Text>
+                <Ionicons
+                  name={showArchived ? 'chevron-up' : 'chevron-down'}
+                  size={16}
+                  color={colors.textMuted}
+                />
+              </TouchableOpacity>
+              {showArchived && archived.map(item => (
+                <View key={item.id} style={styles.archivedItem}>
+                  <JobCard
+                    job={item}
+                    onPress={() => router.push(`/job/${item.id}`)}
+                    showStatus
+                    footer={
+                      <View style={styles.cardFooterRow}>
+                        <TouchableOpacity
+                          style={styles.cardRemoveBtn}
+                          onPress={() => toggleJobInterest(item.id)}
+                          activeOpacity={0.8}
+                        >
+                          <MaterialCommunityIcons name="heart-off-outline" size={16} color={colors.error} />
+                          <Text style={styles.cardRemoveBtnText}>Remove</Text>
+                        </TouchableOpacity>
+                      </View>
+                    }
+                  />
+                </View>
+              ))}
+            </View>
+          )}
+          {myJobs.liked.length > 0 && (
+            <TouchableOpacity onPress={() => router.push('/(tabs)/jobs')} style={styles.findMoreLink}>
+              <Text style={styles.findMoreText}>Find more jobs →</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      }
     />
-  );
+    );
+  };
 
   // Applied tab: jobs the user has formally applied to (status: applied)
   const renderApplied = () => (
@@ -222,6 +281,18 @@ export default function MyJobsScreen() {
     <FlatList
       data={myJobs.accepted}
       keyExtractor={item => item.id}
+      ListHeaderComponent={
+        <InfoCard
+          icon="clipboard-check-outline"
+          title="How it works"
+          body={[
+            '1. The poster starts the job and pays into escrow.',
+            '2. Do the work, then the poster marks it complete.',
+            '3. Both of you leave a review.',
+            `4. Your payout is released within ${TIER_INFO[currentUser?.subscription ?? 'bronze'].paymentDays}.`,
+          ]}
+        />
+      }
       renderItem={({ item, index }) => (
         <AnimatedListItem index={index}>
           <View>
@@ -632,6 +703,15 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   completeBtnText: { fontFamily: fonts.bodyBold, color: colors.white, fontSize: 14 },
+  archivedToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+    paddingHorizontal: 4,
+  },
+  archivedToggleText: { fontFamily: fonts.bodySemiBold, fontSize: 14, color: colors.textMuted },
+  archivedItem: { opacity: 0.6 },
   findMoreLink: { alignItems: 'center', marginTop: 8, paddingVertical: 12 },
   findMoreText: { fontFamily: fonts.bodySemiBold, color: colors.primary, fontSize: 14 },
   fab: {
