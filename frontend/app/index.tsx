@@ -57,7 +57,7 @@ export default function WelcomeScreen() {
     if (isLoading) return;
 
     if (isAuthenticated && currentUser) {
-      router.replace(currentUser.isOnboarded ? '/(tabs)/jobs' : '/sign-up');
+      router.replace(currentUser.isOnboarded ? '/(tabs)/home' : '/sign-up');
       return;
     }
 

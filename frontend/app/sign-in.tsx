@@ -44,7 +44,7 @@ export default function SignInScreen() {
 
   // Redirect already-authenticated users and handle async Google OAuth callbacks
   useEffect(() => {
-    if (cognitoUser) router.replace('/(tabs)/jobs');
+    if (cognitoUser) router.replace('/(tabs)/home');
   }, [cognitoUser]);
 
   useEffect(() => {
@@ -114,7 +114,7 @@ export default function SignInScreen() {
     try {
       await signInWithEmail(email.trim(), password);
       await offerBiometricIfAvailable(email.trim(), password);
-      router.replace('/(tabs)/jobs');
+      router.replace('/(tabs)/home');
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       console.error('[SignIn] signIn failed:', err);
@@ -145,7 +145,7 @@ export default function SignInScreen() {
         return;
       }
       await signInWithEmail(credentials.email, credentials.password);
-      router.replace('/(tabs)/jobs');
+      router.replace('/(tabs)/home');
     } catch {
       Alert.alert('Sign in failed', 'Biometric sign-in failed. Please use your password.');
     } finally {
