@@ -12,11 +12,12 @@ import Toast from '@/components/Toast';
 import HireModal from '@/components/HireModal';
 import AnimatedListItem from '@/components/AnimatedListItem';
 import { colors } from '@/constants/colors';
+import { fonts } from '@/constants/typography';
 
 const FILTER_TRADES = ['All', 'Labourer', 'Joiner', 'Plumber', 'Electrician', 'Bricklayer', 'Roofer', 'Plasterer'];
 
 export default function PeopleScreen() {
-  const { tradespeople, loadTradespeople } = useApp();
+  const { tradespeople, loadTradespeople, hasMoreTradespeople, loadMoreTradespeople, loadMoreTradespeopleError } = useApp();
   const [search, setSearch] = useState('');
   const [tradeFilter, setTradeFilter] = useState('All');
   const [isLoadingPeople, setIsLoadingPeople] = useState(false);
@@ -118,6 +119,23 @@ export default function PeopleScreen() {
         )}
         contentContainerStyle={styles.list}
         showsVerticalScrollIndicator={false}
+        // Search and the trade chips filter the loaded rows client-side, so only
+        // auto-page when neither is active; the footer button still works for chips.
+        onEndReached={() => {
+          if (search === '' && tradeFilter === 'All' && hasMoreTradespeople && !loadMoreTradespeopleError) {
+            loadMoreTradespeople();
+          }
+        }}
+        onEndReachedThreshold={0.4}
+        ListFooterComponent={
+          hasMoreTradespeople && search === '' ? (
+            <TouchableOpacity style={styles.loadMoreBtn} onPress={() => loadMoreTradespeople()} activeOpacity={0.7}>
+              <Text style={styles.loadMoreText}>
+                {loadMoreTradespeopleError ? "Couldn't load more tradespeople. Tap to retry." : 'Load more'}
+              </Text>
+            </TouchableOpacity>
+          ) : null
+        }
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
         }
@@ -176,4 +194,14 @@ const styles = StyleSheet.create({
   filterChipText: { fontSize: 13, color: colors.text, fontWeight: '500' },
   filterChipTextActive: { color: colors.white },
   list: { padding: 16 },
+  loadMoreBtn: {
+    alignItems: 'center',
+    paddingVertical: 12,
+    marginTop: 4,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surfaceRaised,
+  },
+  loadMoreText: { fontFamily: fonts.bodySemiBold, fontSize: 14, color: colors.primary },
 });

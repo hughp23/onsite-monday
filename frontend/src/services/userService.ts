@@ -84,9 +84,13 @@ export const userService = {
     return toUser(data);
   },
 
-  getTradespeople: async (params?: { trade?: string; location?: string }): Promise<ApiUser[]> => {
+  getTradespeople: async (params?: { trade?: string; location?: string; page?: number; pageSize?: number }): Promise<ApiUser[]> => {
     const qs = params
-      ? '?' + new URLSearchParams(Object.entries(params).filter(([, v]) => v) as [string, string][]).toString()
+      ? '?' + new URLSearchParams(
+          Object.entries(params)
+            .filter(([, v]) => v !== undefined && v !== '')
+            .map(([k, v]) => [k, String(v)] as [string, string]),
+        ).toString()
       : '';
     return apiRequest<ApiUser[]>('GET', `/users/tradespeople${qs}`);
   },

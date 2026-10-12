@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useCallback, useEffect, use
 import { Alert } from 'react-native';
 import { User, Job, Tradesperson, Conversation, AppNotification, Review, SubscriptionTier } from '@/constants/types';
 import { useAuth } from '@/context/AuthContext';
-import { userService } from '@/src/services/userService';
+import { userService, ApiUser } from '@/src/services/userService';
 import { jobService } from '@/src/services/jobService';
 import { conversationService } from '@/src/services/conversationService';
 import { notificationService } from '@/src/services/notificationService';
@@ -12,6 +12,30 @@ import { signalRService } from '@/src/services/signalRService';
 import { usageService } from '@/src/services/usageService';
 import { Usage } from '@/src/utils/tierUsage';
 import { PAGE_SIZE, mergePage } from '@/src/utils/pagination';
+
+function toTradesperson(u: ApiUser): Tradesperson {
+  return {
+    id: u.id,
+    firstName: u.firstName,
+    lastName: u.lastName,
+    businessName: u.businessName ?? '',
+    trade: u.trade ?? '',
+    skills: u.skills,
+    accreditations: u.accreditations,
+    dayRate: u.dayRate ?? 0,
+    dayRateVisible: u.dayRateVisible,
+    location: u.location ?? '',
+    travelRadius: u.travelRadius,
+    rating: u.rating,
+    reviewCount: u.reviewCount,
+    profileImage: u.profileImageUrl ?? null,
+    gallery: u.gallery,
+    reviews: [],
+    phone: u.phone ?? '',
+    bio: u.bio ?? '',
+    email: u.email,
+  };
+}
 
 interface AppContextType {
   currentUser: User | null;
@@ -43,6 +67,9 @@ interface AppContextType {
   updateSubscription: (tier: SubscriptionTier, updateCardAndUpgrade?: boolean) => Promise<{ checkoutUrl: string | null }>;
   cancelSubscription: () => Promise<SubscriptionDto>;
   loadTradespeople: (params?: { trade?: string; location?: string }) => Promise<void>;
+  hasMoreTradespeople: boolean;
+  loadMoreTradespeople: () => Promise<void>;
+  loadMoreTradespeopleError: string | null;
   refreshJobs: () => Promise<void>;
   hasMoreJobs: boolean;
   loadMoreJobs: () => Promise<void>;
@@ -69,6 +96,11 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
   const [refreshKey, setRefreshKey] = useState(0);
   const refreshAppData = useCallback(() => setRefreshKey(k => k + 1), []);
   const [tradespeople, setTradespeople] = useState<Tradesperson[]>([]);
+  const [peopleParams, setPeopleParams] = useState<{ trade?: string; location?: string }>({});
+  const [peoplePage, setPeoplePage] = useState(1);
+  const [hasMoreTradespeople, setHasMoreTradespeople] = useState(true);
+  const [loadMoreTradespeopleError, setLoadMoreTradespeopleError] = useState<string | null>(null);
+  const loadingMoreTradespeople = useRef(false);
   const [jobs, setJobs] = useState<Job[]>([]);
   const [jobsPage, setJobsPage] = useState(1);
   const [hasMoreJobs, setHasMoreJobs] = useState(true);
@@ -412,30 +444,33 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
     return sub;
   }, []);
 
-  const loadTradespeople = useCallback(async (params?: { trade?: string; location?: string }) => {
-    const data = await userService.getTradespeople(params);
-    setTradespeople(data.map(u => ({
-      id: u.id,
-      firstName: u.firstName,
-      lastName: u.lastName,
-      businessName: u.businessName ?? '',
-      trade: u.trade ?? '',
-      skills: u.skills,
-      accreditations: u.accreditations,
-      dayRate: u.dayRate ?? 0,
-      dayRateVisible: u.dayRateVisible,
-      location: u.location ?? '',
-      travelRadius: u.travelRadius,
-      rating: u.rating,
-      reviewCount: u.reviewCount,
-      profileImage: u.profileImageUrl ?? null,
-      gallery: u.gallery,
-      reviews: [],
-      phone: u.phone ?? '',
-      bio: u.bio ?? '',
-      email: u.email,
-    })));
+  const loadTradespeople = useCallback(async (params: { trade?: string; location?: string } = {}) => {
+    const data = await userService.getTradespeople({ ...params, page: 1, pageSize: PAGE_SIZE });
+    setTradespeople(data.map(toTradesperson));
+    setPeopleParams(params);
+    setPeoplePage(1);
+    setHasMoreTradespeople(data.length === PAGE_SIZE);
+    setLoadMoreTradespeopleError(null);
   }, []);
+
+  const loadMoreTradespeople = useCallback(async () => {
+    if (!hasMoreTradespeople || loadingMoreTradespeople.current) return;
+    loadingMoreTradespeople.current = true;
+    setLoadMoreTradespeopleError(null);
+    try {
+      const next = peoplePage + 1;
+      const incoming = await userService.getTradespeople({ ...peopleParams, page: next, pageSize: PAGE_SIZE });
+      // Merge outside any state updater (updaters must stay pure); dedupes by id.
+      const { items, hasMore } = mergePage(tradespeople, incoming.map(toTradesperson), PAGE_SIZE);
+      setTradespeople(items);
+      setPeoplePage(next);
+      setHasMoreTradespeople(hasMore);
+    } catch (e) {
+      setLoadMoreTradespeopleError(e instanceof Error ? e.message : 'Failed to load more tradespeople');
+    } finally {
+      loadingMoreTradespeople.current = false;
+    }
+  }, [hasMoreTradespeople, peoplePage, peopleParams, tradespeople]);
 
   const refreshJobs = useCallback(async () => {
     const first = await jobService.getJobs({ page: 1, pageSize: PAGE_SIZE });
@@ -536,6 +571,9 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
       updateSubscription,
       cancelSubscription,
       loadTradespeople,
+      hasMoreTradespeople,
+      loadMoreTradespeople,
+      loadMoreTradespeopleError,
       refreshJobs,
       hasMoreJobs,
       loadMoreJobs,
