@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { useApp } from '@/context/AppContext';
+import { useJob } from '@/src/hooks/useJob';
 import UsageBanner from '@/components/UsageBanner';
 import { isAtLimit } from '@/src/utils/tierUsage';
 import { colors } from '@/constants/colors';
@@ -10,8 +11,8 @@ const MAX = 1000;
 
 export default function ApplyScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { getJob, applyToJob, usage } = useApp();
-  const job = getJob(id);
+  const { applyToJob, usage } = useApp();
+  const { job } = useJob(id);
   const [note, setNote] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);

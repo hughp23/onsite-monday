@@ -1,25 +1,35 @@
 import React, { useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Modal, Pressable, Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useApp } from '@/context/AppContext';
+import { useJob } from '@/src/hooks/useJob';
 import StarRating from '@/components/StarRating';
 import { colors } from '@/constants/colors';
 
 export default function ReviewPosterScreen() {
   const { jobId } = useLocalSearchParams<{ jobId: string }>();
-  const { getJob, submitTradesPersonReview } = useApp();
-  const job = getJob(jobId);
+  const { submitTradesPersonReview } = useApp();
+  const { job, loading } = useJob(jobId);
   const insets = useSafeAreaInsets();
   const [rating, setRating] = useState(0);
   const [reviewText, setReviewText] = useState('');
   const [showSuccess, setShowSuccess] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
-  if (!job) return null;
+  if (!job) {
+    return (
+      <View style={[styles.container, styles.notReady]}>
+        {loading
+          ? <ActivityIndicator color={colors.primary} />
+          : <Text style={styles.notReadyText}>Job not found</Text>}
+      </View>
+    );
+  }
 
   if (job.status !== 'completed') {
     return (

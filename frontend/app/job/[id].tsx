@@ -1,19 +1,20 @@
 import React, { useState } from 'react';
 import {
-  View, Text, ScrollView, TouchableOpacity, StyleSheet,
+  View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator,
 } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useApp } from '@/context/AppContext';
+import { useJob } from '@/src/hooks/useJob';
 import Toast from '@/components/Toast';
 import { colors } from '@/constants/colors';
 import { ESCROW_ENABLED } from '@/constants/featureFlags';
 
 export default function JobDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { getJob, toggleJobInterest, myJobs, currentUser, startConversation } = useApp();
-  const job = getJob(id);
+  const { toggleJobInterest, myJobs, currentUser, startConversation } = useApp();
+  const { job, loading } = useJob(id);
   const isOwnJob = job?.postedById === currentUser?.id;
   const hasApplied = (myJobs.applied ?? []).some(j => j.id === id);
   const insets = useSafeAreaInsets();
@@ -24,7 +25,9 @@ export default function JobDetailScreen() {
   if (!job) {
     return (
       <View style={styles.notFound}>
-        <Text style={styles.notFoundText}>Job not found</Text>
+        {loading
+          ? <ActivityIndicator color={colors.primary} />
+          : <Text style={styles.notFoundText}>Job not found</Text>}
       </View>
     );
   }
