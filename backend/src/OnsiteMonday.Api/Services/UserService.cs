@@ -34,7 +34,9 @@ public class UserService : IUserService
 
         if (request.FirstName != null) user.FirstName = request.FirstName;
         if (request.LastName != null) user.LastName = request.LastName;
-        if (request.BusinessName != null) user.BusinessName = request.BusinessName;
+        // Blank means "post as yourself": store null so name fallbacks apply, not an empty string.
+        if (request.BusinessName != null)
+            user.BusinessName = string.IsNullOrWhiteSpace(request.BusinessName) ? null : request.BusinessName.Trim();
         if (request.Bio != null) user.Bio = request.Bio.Trim();
         if (request.Phone != null) user.Phone = request.Phone;
         if (request.Trade != null) user.Trade = request.Trade;

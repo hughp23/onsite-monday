@@ -357,7 +357,9 @@ public class JobService : IJobService
             throw new InvalidOperationException($"{tradesperson.FirstName} has already applied for this job.");
 
         var poster = await _userRepo.GetByIdAsync(posterId);
-        var posterName = poster?.BusinessName ?? $"{poster?.FirstName} {poster?.LastName}".Trim();
+        var posterName = string.IsNullOrWhiteSpace(poster?.BusinessName)
+            ? $"{poster?.FirstName} {poster?.LastName}".Trim()
+            : poster!.BusinessName!;
 
         await _notificationRepo.CreateAsync(new Notification
         {

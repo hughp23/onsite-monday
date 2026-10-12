@@ -122,7 +122,7 @@ export default function JobDetailScreen() {
             </View>
             <View style={styles.detailItem}>
               <Text style={styles.detailLabel}>Posted By</Text>
-              <Text style={styles.detailValue}>{job.postedByName} // {job.postedByBusiness}</Text>
+              <Text style={styles.detailValue}>{job.postedByName}{job.postedByBusiness?.trim() ? ` // ${job.postedByBusiness}` : ''}</Text>
             </View>
             <View style={styles.detailItem}>
               <Text style={styles.detailLabel}>Applicants</Text>

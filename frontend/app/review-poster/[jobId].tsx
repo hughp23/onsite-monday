@@ -44,7 +44,7 @@ export default function ReviewPosterScreen() {
         <View style={styles.jobCard}>
           <Text style={styles.jobCardTitle}>{job.title}</Text>
           <Text style={styles.jobCardMeta}>
-            {job.postedByName} // {job.postedByBusiness}
+            {job.postedByName}{job.postedByBusiness?.trim() ? ` // ${job.postedByBusiness}` : ''}
           </Text>
           <Text style={styles.jobCardMeta}>
             {new Date(job.startDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })} –{' '}

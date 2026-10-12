@@ -187,4 +187,20 @@ public class UserServiceTests
 
         result.Bio.Should().Be("Time-served joiner, 15 years.");
     }
+
+    [Fact]
+    public async Task UpdateCurrentUser_BlankBusinessName_StoresNull()
+    {
+        var user = TestBuilders.MakeUser();
+        user.BusinessName = "Old Name Ltd";
+        _repoMock.Setup(r => r.GetOrCreateByCognitoSubAsync(FakeAuthHandler.TestFirebaseUid, FakeAuthHandler.TestEmail, null, null, null))
+            .ReturnsAsync(user);
+        _repoMock.Setup(r => r.UpdateAsync(It.IsAny<User>())).Returns(Task.CompletedTask);
+
+        var result = await _sut.UpdateCurrentUserAsync(FakeAuthHandler.TestFirebaseUid, FakeAuthHandler.TestEmail,
+            new UpdateUserRequest { BusinessName = "   " });
+
+        result.BusinessName.Should().BeNull();
+        _repoMock.Verify(r => r.UpdateAsync(It.Is<User>(u => u.BusinessName == null)), Times.Once);
+    }
 }

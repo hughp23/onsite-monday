@@ -24,6 +24,7 @@ export default function CreateJobScreen() {
   const postLimitReached = isAtLimit(usage, 'posts');
   const insets = useSafeAreaInsets();
   const [businessName, setBusinessName] = useState(currentUser?.businessName ?? '');
+  const [submitting, setSubmitting] = useState(false);
   const [title, setTitle] = useState('');
   const [trade, setTrade] = useState('');
   const [location, setLocation] = useState('');
@@ -49,17 +50,19 @@ export default function CreateJobScreen() {
   if (!currentUser) return null;
 
   const handlePost = async () => {
-    if (!title || !trade || !location || !dayRate) {
+    if (!title || !trade || !location || !dayRate || submitting) {
       return;
     }
-    if (businessName.trim() !== (currentUser.businessName ?? '')) {
-      try {
+    setSubmitting(true);
+    try {
+      if (businessName.trim() !== (currentUser.businessName ?? '')) {
         await updateCurrentUser({ businessName: businessName.trim() });
-      } catch (e: unknown) {
-        const msg = e instanceof Error ? `${e.name}: ${e.message}` : String(e);
-        Alert.alert('Save failed', msg);
-        return;
       }
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? `${e.name}: ${e.message}` : String(e);
+      Alert.alert('Save failed', msg);
+      setSubmitting(false);
+      return;
     }
     const durationNum = parseInt(duration) || 1;
     const now = new Date();
@@ -94,6 +97,7 @@ export default function CreateJobScreen() {
 
     addJob(newJob);
     setToastVisible(true);
+    // Stays disabled until the screen closes, so a second tap cannot post again.
     setTimeout(() => router.back(), 1800);
   };
 
@@ -332,9 +336,9 @@ export default function CreateJobScreen() {
         )}
 
         <TouchableOpacity
-          style={[styles.postBtn, (!title || !trade || !location || !dayRate || postLimitReached) && styles.postBtnDisabled]}
+          style={[styles.postBtn, (!title || !trade || !location || !dayRate || postLimitReached || submitting) && styles.postBtnDisabled]}
           onPress={handlePost}
-          disabled={!title || !trade || !location || !dayRate || postLimitReached}
+          disabled={!title || !trade || !location || !dayRate || postLimitReached || submitting}
           activeOpacity={0.85}
         >
           <MaterialCommunityIcons name="send" size={18} color={colors.white} />
