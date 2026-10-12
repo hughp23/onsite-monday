@@ -147,12 +147,32 @@ public class UserServiceTests
             TestBuilders.MakeUser("uid1", "a@b.com"),
             TestBuilders.MakeUser("uid2", "c@d.com"),
         };
-        _repoMock.Setup(r => r.GetTradespeopleAsync("Builder", "London")).ReturnsAsync(users);
+        _repoMock.Setup(r => r.GetTradespeopleAsync("Builder", "London", 1, 20)).ReturnsAsync(users);
 
         var result = await _sut.GetTradespeopleAsync("Builder", "London");
 
         result.Should().HaveCount(2);
-        _repoMock.Verify(r => r.GetTradespeopleAsync("Builder", "London"), Times.Once);
+        _repoMock.Verify(r => r.GetTradespeopleAsync("Builder", "London", 1, 20), Times.Once);
+    }
+
+    [Fact]
+    public async Task GetTradespeople_ClampsPageSizeTo50()
+    {
+        _repoMock.Setup(r => r.GetTradespeopleAsync(null, null, 1, 50)).ReturnsAsync(new List<User>());
+
+        await _sut.GetTradespeopleAsync(null, null, 1, 500);
+
+        _repoMock.Verify(r => r.GetTradespeopleAsync(null, null, 1, 50), Times.Once);
+    }
+
+    [Fact]
+    public async Task GetTradespeople_PageBelowOne_UsesOne()
+    {
+        _repoMock.Setup(r => r.GetTradespeopleAsync(null, null, 1, 20)).ReturnsAsync(new List<User>());
+
+        await _sut.GetTradespeopleAsync(null, null, 0, 20);
+
+        _repoMock.Verify(r => r.GetTradespeopleAsync(null, null, 1, 20), Times.Once);
     }
 
     [Fact]

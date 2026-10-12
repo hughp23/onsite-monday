@@ -70,9 +70,11 @@ public class UsersController : ControllerBase
     [HttpGet("tradespeople")]
     public async Task<ActionResult<List<TradespersonDto>>> GetTradespeople(
         [FromQuery] string? trade,
-        [FromQuery] string? location)
+        [FromQuery] string? location,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20)
     {
-        var tradespeople = await _userService.GetTradespeopleAsync(trade, location);
+        var tradespeople = await _userService.GetTradespeopleAsync(trade, location, page, pageSize);
         return Ok(tradespeople);
     }
 

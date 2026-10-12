@@ -64,7 +64,7 @@ public class UserRepository : IUserRepository
         }
     }
 
-    public async Task<List<User>> GetTradespeopleAsync(string? trade, string? location)
+    public async Task<List<User>> GetTradespeopleAsync(string? trade, string? location, int page, int pageSize)
     {
         try
         {
@@ -79,7 +79,11 @@ public class UserRepository : IUserRepository
             query = query.Where(u => u.Location != null &&
                 u.Location.ToLower().Contains(location.ToLower()));
 
-        return await query.ToListAsync();
+        return await query
+            // Cast to double: SQLite (used by integration tests) cannot ORDER BY decimal.
+            .OrderByDescending(u => (double)u.Rating).ThenBy(u => u.Id)
+            .Skip((page - 1) * pageSize).Take(pageSize)
+            .ToListAsync();
         }
         catch (Exception ex)
         {

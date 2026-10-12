@@ -60,9 +60,11 @@ public class UserService : IUserService
         return _mapper.Map<UserDto>(user);
     }
 
-    public async Task<List<TradespersonDto>> GetTradespeopleAsync(string? trade, string? location)
+    public async Task<List<TradespersonDto>> GetTradespeopleAsync(string? trade, string? location, int page = 1, int pageSize = 20)
     {
-        var users = await _repo.GetTradespeopleAsync(trade, location);
+        page = Math.Max(1, page);
+        pageSize = Math.Clamp(pageSize, 1, 50);
+        var users = await _repo.GetTradespeopleAsync(trade, location, page, pageSize);
         return _mapper.Map<List<TradespersonDto>>(users);
     }
 }

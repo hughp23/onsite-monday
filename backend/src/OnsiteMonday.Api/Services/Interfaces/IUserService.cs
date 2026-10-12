@@ -8,5 +8,5 @@ public interface IUserService
     Task<UserDto> GetByIdAsync(Guid id);
     Task<UserDto> UpdateCurrentUserAsync(string cognitoSub, string email, UpdateUserRequest request);
     Task<UserDto> CompleteOnboardingAsync(string cognitoSub, string email);
-    Task<List<TradespersonDto>> GetTradespeopleAsync(string? trade, string? location);
+    Task<List<TradespersonDto>> GetTradespeopleAsync(string? trade, string? location, int page = 1, int pageSize = 20);
 }
