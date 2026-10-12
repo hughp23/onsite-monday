@@ -118,6 +118,17 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
     try { setUsage(await usageService.get()); } catch { /* banner just stays hidden */ }
   }, []);
 
+  // A rejected post or application (e.g. 402 at the tier limit) means our usage is stale,
+  // so refresh it before rethrowing for the screen to show the server's message.
+  const withUsageRefreshOnError = useCallback(async <T,>(request: Promise<T>): Promise<T> => {
+    try {
+      return await request;
+    } catch (e) {
+      await refreshUsage();
+      throw e;
+    }
+  }, [refreshUsage]);
+
   // Load all app data when Cognito user becomes available
   useEffect(() => {
     if (!cognitoUser) {
@@ -314,7 +325,7 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
   }, []);
 
   const addJob = useCallback(async (jobData: Omit<Job, 'id' | 'createdAt' | 'status' | 'interestedCount' | 'isInterested' | 'applicantCount'>) => {
-    const newJob = await jobService.createJob({
+    const newJob = await withUsageRefreshOnError(jobService.createJob({
       title: jobData.title,
       trade: jobData.trade,
       location: jobData.location,
@@ -329,14 +340,14 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
       description: jobData.description,
       paymentTerms: jobData.paymentTerms,
       photos: jobData.photos,
-    });
+    }));
     setJobs(prev => [newJob, ...prev]);
     setMyJobs(prev => ({ ...prev, posted: [newJob, ...prev.posted] }));
     await refreshUsage();
-  }, [refreshUsage]);
+  }, [refreshUsage, withUsageRefreshOnError]);
 
   const applyToJob = useCallback(async (jobId: string, coverNote?: string) => {
-    const updated = await jobService.applyToJob(jobId, coverNote);
+    const updated = await withUsageRefreshOnError(jobService.applyToJob(jobId, coverNote));
     setJobs(prev => prev.map(j => j.id === jobId ? updated : j));
     setMyJobs(prev => {
       const liked = prev.liked ?? [];
@@ -350,7 +361,7 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
       };
     });
     await refreshUsage();
-  }, [refreshUsage]);
+  }, [refreshUsage, withUsageRefreshOnError]);
 
   const acceptJob = useCallback(async (jobId: string, applicantId: string) => {
     const updated = await jobService.acceptApplicant(jobId, applicantId);
@@ -452,8 +463,9 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
   const cancelSubscription = useCallback(async () => {
     const sub = await subscriptionService.cancel();
     setCurrentUser(prev => prev ? { ...prev, subscription: sub.tier as SubscriptionTier } : prev);
+    await refreshUsage();
     return sub;
-  }, []);
+  }, [refreshUsage]);
 
   const loadTradespeople = useCallback(async (params: { trade?: string; location?: string } = {}) => {
     // Invalidate any in-flight load-more before and after the fetch (see loadMoreTradespeople).

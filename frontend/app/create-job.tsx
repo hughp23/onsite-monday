@@ -95,7 +95,14 @@ export default function CreateJobScreen() {
       createdAt: new Date().toISOString(),
     };
 
-    addJob(newJob);
+    try {
+      await addJob(newJob);
+    } catch (e: unknown) {
+      // e.g. 402 when the monthly post limit is reached; usage is refreshed by addJob
+      Alert.alert('Could not post job', e instanceof Error ? e.message : 'Please try again.');
+      setSubmitting(false);
+      return;
+    }
     setToastVisible(true);
     // Stays disabled until the screen closes, so a second tap cannot post again.
     setTimeout(() => router.back(), 1800);
