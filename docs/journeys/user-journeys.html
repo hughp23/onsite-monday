@@ -144,7 +144,7 @@ flowchart TD
     JCP --> N2
     M --> N[Poster reviews tradesperson\n/review/jobId]
     M --> N2[Tradesperson reviews poster\n/review-poster/jobId]
-    N & N2 --> P{Payout gated\nby review submission}
+    N --> P{Payout scheduled on\nposter's review}
     P --> Q[Payout triggered\nafter subscription-tier delay]
     Q --> R[Funds appear in wallet]
     R --> S[Withdraw to bank account]
@@ -196,10 +196,10 @@ flowchart TD
     M --> N[Mark Complete button\nor autocompleted after 3 days\nvia JobCompletionScanJob]
     N --> O[Poster reviews tradesperson\n/review/jobId]
     N --> O2[Tradesperson reviews poster\n/review-poster/jobId]
-    O & O2 --> P[Funds released\nafter tier delay]
+    O --> P[Funds released\nafter tier delay]
     H -->|No| Q[Delete job\nif no applicants]
     J --> R[Cancel job\nwith optional reason]
-    R --> S[Refund issued\nto poster]
+    R --> S[Refund to poster\nrefund_pending - handled manually]
 
     classDef done     fill:#c8e6c9,stroke:#4caf50,color:#1b5e20
     classDef partial  fill:#fff9c4,stroke:#f9a825,color:#5d4037
@@ -229,17 +229,17 @@ flowchart TD
     D -->|No| F[Stay on accepted\nretry payment]
     E --> G[Job status: in_progress]
     G --> H[Poster marks job complete\nor autocompleted after 3 days]
-    H --> I[Poster reviews tradesperson\n/review/jobId]
+    H --> I[Poster reviews tradesperson\n/review/jobId\nknown gaps: reviewee chosen by trade;\nreviewer not authorised]
     H --> I2[Tradesperson reviews poster\n/review-poster/jobId]
-    I & I2 --> J{Both reviews gate\npayout release}
+    I --> J{Poster review of\ntradesperson gates payout}
     J --> K[Payout countdown begins\nbased on subscription tier]
     K --> L{Tier}
     L -->|Bronze| M[Released after\n30 days]
     L -->|Silver| N[Released after\n14 days]
     L -->|Gold| O[Released after\n7 days]
     M & N & O --> P[Funds in\ntradesperson wallet]
-    G --> Q[Job cancelled\nbefore completion]
-    Q --> R[Refund to poster]
+    A --> Q[Job cancelled while accepted\nbefore start or payment]
+    Q --> R[Refund to poster\nrefund_pending - handled manually]
 
     classDef done     fill:#c8e6c9,stroke:#4caf50,color:#1b5e20
     classDef partial  fill:#fff9c4,stroke:#f9a825,color:#5d4037
