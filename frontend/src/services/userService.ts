@@ -16,6 +16,7 @@ export interface UpdateUserPayload {
   travelRadius?: number;
   profileImageUrl?: string;
   gallery?: string[];
+  mutedNotificationTypes?: string[];
 }
 
 export interface ApiUser {
@@ -37,6 +38,7 @@ export interface ApiUser {
   reviewCount: number;
   profileImageUrl?: string;
   gallery: string[];
+  mutedNotificationTypes?: string[];
   isOnboarded: boolean;
   subscription: string;
   kycStatus?: string;
@@ -62,6 +64,7 @@ function toUser(u: ApiUser): User {
     reviewCount: u.reviewCount,
     profileImage: u.profileImageUrl ?? null,
     gallery: u.gallery,
+    mutedNotificationTypes: u.mutedNotificationTypes ?? [],
     subscription: (u.subscription as User['subscription']) ?? 'bronze',
     isOnboarded: u.isOnboarded,
     kycStatus: (u.kycStatus as User['kycStatus']) ?? 'none',

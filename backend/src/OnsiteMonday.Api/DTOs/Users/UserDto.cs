@@ -20,6 +20,7 @@ public class UserDto
     public int ReviewCount { get; set; }
     public string? ProfileImageUrl { get; set; }
     public List<string> Gallery { get; set; } = new();
+    public List<string> MutedNotificationTypes { get; set; } = new();
     public bool IsOnboarded { get; set; }
     public string Subscription { get; set; } = "bronze";
     public string KycStatus { get; set; } = "none";

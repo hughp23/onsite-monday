@@ -31,6 +31,7 @@ export interface User {
   reviewCount: number;
   profileImage: string | null;
   gallery: string[];
+  mutedNotificationTypes: string[];
   subscription: SubscriptionTier;
   isOnboarded: boolean;
   kycStatus: KycStatus;

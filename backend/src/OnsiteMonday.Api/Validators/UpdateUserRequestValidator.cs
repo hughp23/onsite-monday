@@ -33,5 +33,9 @@ public class UpdateUserRequestValidator : AbstractValidator<UpdateUserRequest>
         When(x => x.Gallery != null, () =>
             RuleFor(x => x.Gallery!.Count).LessThanOrEqualTo(MaxGalleryImages)
                 .WithMessage($"You can add up to {MaxGalleryImages} gallery photos."));
+
+        When(x => x.MutedNotificationTypes != null, () =>
+            RuleForEach(x => x.MutedNotificationTypes!).Must(t => t == "message")
+                .WithMessage("Unknown notification type."));
     }
 }

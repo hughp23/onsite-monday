@@ -114,11 +114,15 @@ public class ConversationService : IConversationService
             ? $"{sender.FirstName} {sender.LastName}".Trim()
             : "Someone";
 
-        _ = _pushService.SendPushAsync(
-            recipientId.ToString(),
-            senderName,
-            text.Length > 80 ? text[..80] + "…" : text,
-            new Dictionary<string, string> { ["conversationId"] = conversationId.ToString() });
+        var recipient = await _userRepo.GetByIdAsync(recipientId);
+        if (recipient?.MutedNotificationTypes.Contains("message") != true)
+        {
+            _ = _pushService.SendPushAsync(
+                recipientId.ToString(),
+                senderName,
+                text.Length > 80 ? text[..80] + "…" : text,
+                new Dictionary<string, string> { ["conversationId"] = conversationId.ToString() });
+        }
 
         return dto;
     }

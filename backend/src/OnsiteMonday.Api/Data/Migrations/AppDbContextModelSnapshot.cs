@@ -461,6 +461,10 @@ namespace OnsiteMonday.Api.Data.Migrations
                     b.Property<string>("Location")
                         .HasColumnType("text");
 
+                    b.Property<List<string>>("MutedNotificationTypes")
+                        .IsRequired()
+                        .HasColumnType("text[]");
+
                     b.Property<string>("Phone")
                         .HasColumnType("text");
 

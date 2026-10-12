@@ -248,6 +248,7 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
       travelRadius: updates.travelRadius,
       profileImageUrl: updates.profileImage ?? undefined,
       gallery: updates.gallery,
+      mutedNotificationTypes: updates.mutedNotificationTypes,
     });
     setCurrentUser(updated);
   }, []);

@@ -16,4 +16,5 @@ public class UpdateUserRequest
     public int? TravelRadius { get; set; }
     public string? ProfileImageUrl { get; set; }
     public List<string>? Gallery { get; set; }
+    public List<string>? MutedNotificationTypes { get; set; }
 }

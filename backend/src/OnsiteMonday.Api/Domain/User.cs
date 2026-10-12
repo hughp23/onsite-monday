@@ -23,6 +23,7 @@ public class User
     public int ReviewCount { get; set; } = 0;
     public string? ProfileImageUrl { get; set; }
     public List<string> Gallery { get; set; } = new();
+    public List<string> MutedNotificationTypes { get; set; } = new();
     public bool IsOnboarded { get; set; } = false;
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset UpdatedAt { get; set; }

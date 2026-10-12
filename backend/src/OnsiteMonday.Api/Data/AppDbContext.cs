@@ -59,12 +59,14 @@ public class AppDbContext : DbContext
                 e.Property(u => u.Skills).HasColumnType("text[]");
                 e.Property(u => u.Accreditations).HasColumnType("text[]");
                 e.Property(u => u.Gallery).HasColumnType("text[]");
+                e.Property(u => u.MutedNotificationTypes).HasColumnType("text[]");
             }
             else
             {
                 e.Property(u => u.Skills).HasConversion(listConverter);
                 e.Property(u => u.Accreditations).HasConversion(listConverter);
                 e.Property(u => u.Gallery).HasConversion(listConverter);
+                e.Property(u => u.MutedNotificationTypes).HasConversion(listConverter);
             }
             e.Property(u => u.Rating).HasPrecision(3, 2);
             e.Property(u => u.DayRate).HasPrecision(10, 2);

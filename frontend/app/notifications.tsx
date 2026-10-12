@@ -1,6 +1,7 @@
 import React, { useState, useCallback } from 'react';
-import { View, FlatList, StyleSheet, Text, ActivityIndicator, RefreshControl, Alert } from 'react-native';
-import { router } from 'expo-router';
+import { View, FlatList, StyleSheet, Text, ActivityIndicator, RefreshControl, Alert, TouchableOpacity } from 'react-native';
+import { router, Stack } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { useApp } from '@/context/AppContext';
 import NotificationItem from '@/components/NotificationItem';
 import EmptyState from '@/components/EmptyState';
@@ -49,6 +50,19 @@ export default function NotificationsScreen() {
 
   return (
     <View style={styles.container}>
+      <Stack.Screen
+        options={{
+          headerRight: () => (
+            <TouchableOpacity
+              onPress={() => router.push('/notification-settings')}
+              accessibilityRole="button"
+              accessibilityLabel="Notification settings"
+            >
+              <Ionicons name="settings-outline" size={22} color={colors.primary} />
+            </TouchableOpacity>
+          ),
+        }}
+      />
       {unreadCount > 0 && (
         <View style={styles.unreadBanner}>
           <Text style={styles.unreadBannerText}>{unreadCount} unread notification{unreadCount > 1 ? 's' : ''}</Text>

@@ -203,4 +203,17 @@ public class UserServiceTests
         result.BusinessName.Should().BeNull();
         _repoMock.Verify(r => r.UpdateAsync(It.Is<User>(u => u.BusinessName == null)), Times.Once);
     }
+
+    [Fact]
+    public async Task UpdateCurrentUser_SetsMutedNotificationTypes()
+    {
+        var user = TestBuilders.MakeUser();
+        _repoMock.Setup(r => r.GetOrCreateByCognitoSubAsync(FakeAuthHandler.TestFirebaseUid, FakeAuthHandler.TestEmail, null, null, null))
+            .ReturnsAsync(user);
+
+        var result = await _sut.UpdateCurrentUserAsync(FakeAuthHandler.TestFirebaseUid, FakeAuthHandler.TestEmail,
+            new UpdateUserRequest { MutedNotificationTypes = new() { "message" } });
+
+        result.MutedNotificationTypes.Should().Equal("message");
+    }
 }

@@ -48,6 +48,7 @@ public class UserService : IUserService
         if (request.TravelRadius != null) user.TravelRadius = request.TravelRadius.Value;
         if (request.ProfileImageUrl != null) user.ProfileImageUrl = request.ProfileImageUrl;
         if (request.Gallery != null) user.Gallery = request.Gallery;
+        if (request.MutedNotificationTypes != null) user.MutedNotificationTypes = request.MutedNotificationTypes;
 
         await _repo.UpdateAsync(user);
         return _mapper.Map<UserDto>(user);

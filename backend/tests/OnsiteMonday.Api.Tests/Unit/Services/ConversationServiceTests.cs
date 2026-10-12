@@ -116,6 +116,45 @@ public class ConversationServiceTests
         await act.Should().ThrowAsync<UnauthorizedAccessException>();
     }
 
+    private async Task SendMessageToRecipientAsync(User recipient)
+    {
+        var sender = TestBuilders.MakeUser("uid1", "a@b.com");
+        var conversation = TestBuilders.MakeConversation(sender.Id, recipient.Id);
+        conversation.Initiator = sender;
+        conversation.Participant = recipient;
+
+        _convRepoMock.Setup(r => r.GetByIdAsync(conversation.Id)).ReturnsAsync(conversation);
+        _userRepoMock.Setup(r => r.GetByIdAsync(sender.Id)).ReturnsAsync(sender);
+        _userRepoMock.Setup(r => r.GetByIdAsync(recipient.Id)).ReturnsAsync(recipient);
+        _pushServiceMock
+            .Setup(p => p.SendPushAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<Dictionary<string, string>>()))
+            .Returns(Task.CompletedTask);
+
+        var dto = await _sut.SendMessageAsync(conversation.Id, sender.Id, "Hello");
+        dto.Text.Should().Be("Hello");
+    }
+
+    [Fact]
+    public async Task SendMessage_WhenRecipientMutedMessages_DoesNotSendPush()
+    {
+        var recipient = TestBuilders.MakeUser("uid2", "c@d.com");
+        recipient.MutedNotificationTypes = new() { "message" };
+
+        await SendMessageToRecipientAsync(recipient);
+
+        _pushServiceMock.Verify(p => p.SendPushAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<Dictionary<string, string>>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task SendMessage_WhenRecipientNotMuted_SendsPush()
+    {
+        var recipient = TestBuilders.MakeUser("uid2", "c@d.com");
+
+        await SendMessageToRecipientAsync(recipient);
+
+        _pushServiceMock.Verify(p => p.SendPushAsync(recipient.Id.ToString(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<Dictionary<string, string>>()), Times.Once);
+    }
+
     [Fact]
     public async Task GetById_WhenCallerIsNotParticipant_ThrowsUnauthorized()
     {
