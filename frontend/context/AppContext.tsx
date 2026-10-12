@@ -234,7 +234,8 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
     const updated = await userService.updateMe({
       firstName: str(updates.firstName),
       lastName: str(updates.lastName),
-      businessName: str(updates.businessName),
+      // Sent as-is (not via str) so an emptied business name is cleared on the server
+      businessName: updates.businessName,
       phone: str(updates.phone),
       // Sent as-is (not via str) so an emptied bio is cleared on the server
       bio: updates.bio,

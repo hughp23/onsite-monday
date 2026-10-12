@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet,
-  KeyboardAvoidingView, Platform,
+  KeyboardAvoidingView, Platform, Alert,
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplete';
@@ -20,9 +20,10 @@ import { ESCROW_ENABLED } from '@/constants/featureFlags';
 const ALL_DAYS: DayLetter[] = ['M', 'T', 'W', 'Th', 'F', 'S', 'Su'];
 
 export default function CreateJobScreen() {
-  const { addJob, currentUser, usage } = useApp();
+  const { addJob, currentUser, usage, updateCurrentUser } = useApp();
   const postLimitReached = isAtLimit(usage, 'posts');
   const insets = useSafeAreaInsets();
+  const [businessName, setBusinessName] = useState(currentUser?.businessName ?? '');
   const [title, setTitle] = useState('');
   const [trade, setTrade] = useState('');
   const [location, setLocation] = useState('');
@@ -47,9 +48,18 @@ export default function CreateJobScreen() {
 
   if (!currentUser) return null;
 
-  const handlePost = () => {
+  const handlePost = async () => {
     if (!title || !trade || !location || !dayRate) {
       return;
+    }
+    if (businessName.trim() !== (currentUser.businessName ?? '')) {
+      try {
+        await updateCurrentUser({ businessName: businessName.trim() });
+      } catch (e: unknown) {
+        const msg = e instanceof Error ? `${e.name}: ${e.message}` : String(e);
+        Alert.alert('Save failed', msg);
+        return;
+      }
     }
     const durationNum = parseInt(duration) || 1;
     const now = new Date();
@@ -72,7 +82,7 @@ export default function CreateJobScreen() {
       description: description || `${title} job in ${location}.`,
       postedById: currentUser.id,
       postedByName: `${currentUser.firstName} ${currentUser.lastName.charAt(0)}`,
-      postedByBusiness: currentUser.businessName,
+      postedByBusiness: businessName.trim(),
       paymentTerms: `Paid within ${paymentTerms}, confirmed by both parties.`,
       status: 'open',
       interestedCount: 0,
@@ -100,6 +110,24 @@ export default function CreateJobScreen() {
       >
         <UsageBanner kind="posts" />
 
+        <Text style={styles.sectionHeading}>Company information</Text>
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Business name</Text>
+          <View style={styles.inputWrap}>
+            <TextInput
+              style={styles.input}
+              placeholder="e.g. Smith & Sons Builders (leave blank to post as yourself)"
+              placeholderTextColor={colors.textMuted}
+              value={businessName}
+              onChangeText={setBusinessName}
+            />
+          </View>
+          <Text style={styles.hint}>
+            Shown on the job as "Posted by {businessName.trim() || `${currentUser?.firstName} ${currentUser?.lastName}`}". Saved to your profile.
+          </Text>
+        </View>
+
+        <Text style={styles.sectionHeading}>Job details</Text>
         <View style={styles.inputGroup}>
           <Text style={styles.label}>Job Title *</Text>
           <View style={styles.inputWrap}>
@@ -323,6 +351,8 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   content: { padding: 20 },
   inputGroup: { marginBottom: 16 },
+  sectionHeading: { fontSize: 16, fontWeight: '700', color: colors.text, marginTop: 16, marginBottom: 4 },
+  hint: { fontSize: 12, color: colors.textMuted, marginTop: 4 },
   row: { flexDirection: 'row', alignItems: 'flex-end' },
   label: { fontSize: 13, fontWeight: '600', color: colors.text, marginBottom: 6 },
   inputWrap: {
