@@ -7,9 +7,11 @@ import NotificationItem from '@/components/NotificationItem';
 import EmptyState from '@/components/EmptyState';
 import AnimatedListItem from '@/components/AnimatedListItem';
 import { colors } from '@/constants/colors';
+import { NotificationType } from '@/constants/types';
+import { notificationRoute } from '@/src/utils/notificationRoute';
 
 export default function NotificationsScreen() {
-  const { notifications, markNotificationRead, isLoading, refreshNotifications } = useApp();
+  const { notifications, myJobs, markNotificationRead, isLoading, refreshNotifications } = useApp();
 
   const sorted = [...notifications].sort(
     (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
@@ -33,11 +35,8 @@ export default function NotificationsScreen() {
 
   const handlePress = (id: string, linkedId?: string, type?: string) => {
     markNotificationRead(id);
-    if (linkedId) {
-      if (type === 'application' || type === 'accepted') {
-        router.push(`/job/${linkedId}`);
-      }
-    }
+    const route = notificationRoute({ type: type as NotificationType, linkedId }, myJobs.posted.map(j => j.id));
+    if (route) router.push(route as any);
   };
 
   if (isLoading && notifications.length === 0) {

@@ -17,6 +17,9 @@ const ICONS: Record<NotificationType, string> = {
   profile_view: 'eye',
   job_completion_pending: 'clipboard-check-outline',
   job_autocompleted: 'check-circle-outline',
+  review_required: 'star-half',
+  cancelled: 'close-circle',
+  job_invite: 'mail-unread',
 };
 
 function timeAgo(timestamp: string): string {
