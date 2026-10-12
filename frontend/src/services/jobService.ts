@@ -73,6 +73,9 @@ function toJob(j: ApiJob): Job {
 }
 
 export const jobService = {
+  inviteToJob: async (jobId: string, tradespersonId: string): Promise<void> => {
+    await apiRequest<void>('POST', `/jobs/${jobId}/invite`, { tradespersonId });
+  },
   getJobs: async (params?: { trade?: string; location?: string; status?: string }): Promise<Job[]> => {
     const qs = params
       ? '?' + new URLSearchParams(Object.entries(params).filter(([, v]) => v) as [string, string][]).toString()

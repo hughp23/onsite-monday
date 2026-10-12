@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import {
   View, Text, FlatList, TextInput, StyleSheet, TouchableOpacity,
-  Modal, Pressable, ScrollView, ActivityIndicator, RefreshControl, Alert,
+  ScrollView, ActivityIndicator, RefreshControl, Alert,
 } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -9,13 +9,14 @@ import { useApp } from '@/context/AppContext';
 import PersonCard from '@/components/PersonCard';
 import EmptyState from '@/components/EmptyState';
 import Toast from '@/components/Toast';
+import HireModal from '@/components/HireModal';
 import AnimatedListItem from '@/components/AnimatedListItem';
 import { colors } from '@/constants/colors';
 
 const FILTER_TRADES = ['All', 'Labourer', 'Joiner', 'Plumber', 'Electrician', 'Bricklayer', 'Roofer', 'Plasterer'];
 
 export default function PeopleScreen() {
-  const { tradespeople, myJobs, loadTradespeople } = useApp();
+  const { tradespeople, loadTradespeople } = useApp();
   const [search, setSearch] = useState('');
   const [tradeFilter, setTradeFilter] = useState('All');
   const [isLoadingPeople, setIsLoadingPeople] = useState(false);
@@ -37,8 +38,7 @@ export default function PeopleScreen() {
       setRefreshing(false);
     }
   }, [loadTradespeople]);
-  const [hireModalPerson, setHireModalPerson] = useState<string | null>(null);
-  const [selectedJobForHire, setSelectedJobForHire] = useState<string | null>(null);
+  const [hireModalPerson, setHireModalPerson] = useState<{ id: string; firstName: string } | null>(null);
   const [toastVisible, setToastVisible] = useState(false);
   const [toastMsg, setToastMsg] = useState('');
 
@@ -62,14 +62,6 @@ export default function PeopleScreen() {
       </View>
     );
   }
-
-  const handleHireConfirm = () => {
-    const person = tradespeople.find(tp => tp.id === hireModalPerson);
-    setToastMsg(`Invite sent to ${person?.firstName}!`);
-    setToastVisible(true);
-    setHireModalPerson(null);
-    setSelectedJobForHire(null);
-  };
 
   return (
     <View style={styles.container}>
@@ -120,7 +112,7 @@ export default function PeopleScreen() {
             <PersonCard
               person={item}
               onPress={() => router.push(`/person/${item.id}`)}
-              onHire={() => setHireModalPerson(item.id)}
+              onHire={() => setHireModalPerson({ id: item.id, firstName: item.firstName })}
             />
           </AnimatedListItem>
         )}
@@ -138,48 +130,11 @@ export default function PeopleScreen() {
         }
       />
 
-      {/* Hire modal */}
-      <Modal visible={!!hireModalPerson} transparent animationType="slide">
-        <Pressable style={styles.overlay} onPress={() => setHireModalPerson(null)}>
-          <View style={styles.modal}>
-            {(() => {
-              const person = tradespeople.find(tp => tp.id === hireModalPerson);
-              return (
-                <>
-                  <Text style={styles.modalTitle}>
-                    Invite {person?.firstName} to a job
-                  </Text>
-                  <Text style={styles.modalSub}>Select one of your posted jobs:</Text>
-                  {myJobs.posted.length === 0 ? (
-                    <Text style={styles.noJobsText}>No jobs posted yet. Post a job first.</Text>
-                  ) : (
-                    myJobs.posted.map(job => (
-                      <TouchableOpacity
-                        key={job.id}
-                        style={[
-                          styles.jobOption,
-                          selectedJobForHire === job.id && styles.jobOptionSelected,
-                        ]}
-                        onPress={() => setSelectedJobForHire(job.id)}
-                      >
-                        <Text style={styles.jobOptionText}>{job.title}</Text>
-                        <Text style={styles.jobOptionMeta}>{job.location} · £{job.dayRate}/d</Text>
-                      </TouchableOpacity>
-                    ))
-                  )}
-                  <TouchableOpacity
-                    style={[styles.confirmBtn, !selectedJobForHire && styles.confirmBtnDisabled]}
-                    onPress={handleHireConfirm}
-                    disabled={!selectedJobForHire}
-                  >
-                    <Text style={styles.confirmBtnText}>Send Invite</Text>
-                  </TouchableOpacity>
-                </>
-              );
-            })()}
-          </View>
-        </Pressable>
-      </Modal>
+      <HireModal
+        person={hireModalPerson}
+        onClose={() => setHireModalPerson(null)}
+        onInvited={msg => { setToastMsg(msg); setToastVisible(true); }}
+      />
 
       <Toast visible={toastVisible} message={toastMsg} onHide={() => setToastVisible(false)} />
     </View>
@@ -221,38 +176,4 @@ const styles = StyleSheet.create({
   filterChipText: { fontSize: 13, color: colors.text, fontWeight: '500' },
   filterChipTextActive: { color: colors.white },
   list: { padding: 16 },
-  overlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.4)',
-    justifyContent: 'flex-end',
-  },
-  modal: {
-    backgroundColor: colors.white,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    padding: 24,
-    paddingBottom: 40,
-  },
-  modalTitle: { fontSize: 18, fontWeight: '800', color: colors.text, marginBottom: 4 },
-  modalSub: { fontSize: 13, color: colors.textLight, marginBottom: 16 },
-  noJobsText: { fontSize: 14, color: colors.textLight, textAlign: 'center', paddingVertical: 16 },
-  jobOption: {
-    borderWidth: 1.5,
-    borderColor: colors.border,
-    borderRadius: 10,
-    padding: 12,
-    marginBottom: 8,
-  },
-  jobOptionSelected: { borderColor: colors.primary, backgroundColor: colors.chipBg },
-  jobOptionText: { fontSize: 15, fontWeight: '600', color: colors.text },
-  jobOptionMeta: { fontSize: 12, color: colors.textLight, marginTop: 2 },
-  confirmBtn: {
-    backgroundColor: colors.primary,
-    borderRadius: 10,
-    paddingVertical: 14,
-    alignItems: 'center',
-    marginTop: 8,
-  },
-  confirmBtnDisabled: { backgroundColor: colors.border },
-  confirmBtnText: { color: colors.white, fontWeight: '700', fontSize: 15 },
 });

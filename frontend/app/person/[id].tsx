@@ -6,6 +6,8 @@ import { useLocalSearchParams, router } from 'expo-router';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useApp } from '@/context/AppContext';
+import HireModal from '@/components/HireModal';
+import Toast from '@/components/Toast';
 import StarRating from '@/components/StarRating';
 import ReviewCard from '@/components/ReviewCard';
 import { colors } from '@/constants/colors';
@@ -30,6 +32,9 @@ export default function PersonDetailScreen() {
   const { tradespeople, startConversation, currentUser } = useApp();
   const insets = useSafeAreaInsets();
   const [startingConv, setStartingConv] = useState(false);
+  const [hireOpen, setHireOpen] = useState(false);
+  const [toastVisible, setToastVisible] = useState(false);
+  const [toastMsg, setToastMsg] = useState('');
   const [fetchedPerson, setFetchedPerson] = useState<Tradesperson | null>(null);
   const [loading, setLoading] = useState(false);
   const [notFound, setNotFound] = useState(false);
@@ -198,7 +203,7 @@ export default function PersonDetailScreen() {
       {/* Sticky footer — hidden when viewing own profile */}
       {currentUser?.id !== person.id && (
         <View style={styles.stickyFooter}>
-          <TouchableOpacity style={styles.hireBtn} activeOpacity={0.85}>
+          <TouchableOpacity style={styles.hireBtn} activeOpacity={0.85} onPress={() => setHireOpen(true)}>
             <MaterialCommunityIcons name="account-check" size={18} color={colors.white} />
             <Text style={styles.hireBtnText}>Hire {person.firstName}</Text>
           </TouchableOpacity>
@@ -208,6 +213,13 @@ export default function PersonDetailScreen() {
           </TouchableOpacity>
         </View>
       )}
+
+      <HireModal
+        person={hireOpen ? { id: person.id, firstName: person.firstName } : null}
+        onClose={() => setHireOpen(false)}
+        onInvited={msg => { setToastMsg(msg); setToastVisible(true); }}
+      />
+      <Toast visible={toastVisible} message={toastMsg} onHide={() => setToastVisible(false)} />
     </View>
   );
 }
