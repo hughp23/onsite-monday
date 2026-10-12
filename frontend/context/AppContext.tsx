@@ -46,6 +46,7 @@ interface AppContextType {
   refreshJobs: () => Promise<void>;
   hasMoreJobs: boolean;
   loadMoreJobs: () => Promise<void>;
+  loadMoreJobsError: string | null;
   refreshMyJobs: () => Promise<void>;
   refreshConversations: () => Promise<void>;
   refreshNotifications: () => Promise<void>;
@@ -71,6 +72,7 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
   const [jobs, setJobs] = useState<Job[]>([]);
   const [jobsPage, setJobsPage] = useState(1);
   const [hasMoreJobs, setHasMoreJobs] = useState(true);
+  const [loadMoreJobsError, setLoadMoreJobsError] = useState<string | null>(null);
   const loadingMoreJobs = useRef(false);
   const [myJobs, setMyJobs] = useState<{ liked: Job[]; applied: Job[]; accepted: Job[]; posted: Job[] }>({ liked: [], applied: [], accepted: [], posted: [] });
   const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -440,11 +442,13 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
     setJobs(first);
     setJobsPage(1);
     setHasMoreJobs(first.length === PAGE_SIZE);
+    setLoadMoreJobsError(null);
   }, []);
 
   const loadMoreJobs = useCallback(async () => {
     if (!hasMoreJobs || loadingMoreJobs.current) return;
     loadingMoreJobs.current = true;
+    setLoadMoreJobsError(null);
     try {
       const next = jobsPage + 1;
       const incoming = await jobService.getJobs({ page: next, pageSize: PAGE_SIZE });
@@ -453,6 +457,8 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
       setJobs(items);
       setJobsPage(next);
       setHasMoreJobs(hasMore);
+    } catch (e) {
+      setLoadMoreJobsError(e instanceof Error ? e.message : 'Failed to load more jobs');
     } finally {
       loadingMoreJobs.current = false;
     }
@@ -533,6 +539,7 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
       refreshJobs,
       hasMoreJobs,
       loadMoreJobs,
+      loadMoreJobsError,
       refreshMyJobs,
       refreshConversations,
       refreshNotifications,

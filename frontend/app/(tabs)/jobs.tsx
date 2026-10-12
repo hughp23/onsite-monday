@@ -14,6 +14,7 @@ import AnimatedListItem from '@/components/AnimatedListItem';
 import UsageBanner from '@/components/UsageBanner';
 import FeaturedJobsStrip from '@/components/FeaturedJobsStrip';
 import { selectFeaturedJobs } from '@/src/utils/featuredJobs';
+import { isDefaultJobFilter } from '@/src/utils/jobFilters';
 import { colors } from '@/constants/colors';
 import { fonts } from '@/constants/typography';
 import { Job } from '@/constants/types';
@@ -45,7 +46,7 @@ function sortJobs(jobs: Job[], sort: SortOption): Job[] {
 }
 
 export default function JobsScreen() {
-  const { jobs, toggleJobInterest, currentUser, isLoading, refreshJobs, hasMoreJobs, loadMoreJobs } = useApp();
+  const { jobs, toggleJobInterest, currentUser, isLoading, refreshJobs, hasMoreJobs, loadMoreJobs, loadMoreJobsError } = useApp();
   const insets = useSafeAreaInsets();
 
   const [sort, setSort] = useState<SortOption>('newest');
@@ -118,6 +119,12 @@ export default function JobsScreen() {
   const featured = useMemo(
     () => selectFeaturedJobs(jobs, currentUser ? { id: currentUser.id, trade: currentUser.trade } : null),
     [jobs, currentUser],
+  );
+
+  // True only when filters differ from the default (own trade pre-selected, nothing else).
+  const userFiltersActive = !isDefaultJobFilter(
+    { selectedTrades, location: locationFilter, minDayRate },
+    currentUser?.trade,
   );
 
   if (isLoading && jobs.length === 0) {
@@ -250,13 +257,15 @@ export default function JobsScreen() {
         )}
         contentContainerStyle={styles.list}
         showsVerticalScrollIndicator={false}
-        ListHeaderComponent={!anyFilterActive ? <FeaturedJobsStrip jobs={featured} /> : null}
-        onEndReached={() => { if (!anyFilterActive) loadMoreJobs(); }}
+        ListHeaderComponent={!userFiltersActive ? <FeaturedJobsStrip jobs={featured} /> : null}
+        onEndReached={() => { if (!userFiltersActive && hasMoreJobs && !loadMoreJobsError) loadMoreJobs(); }}
         onEndReachedThreshold={0.4}
         ListFooterComponent={
           hasMoreJobs ? (
             <TouchableOpacity style={styles.loadMoreBtn} onPress={() => loadMoreJobs()} activeOpacity={0.7}>
-              <Text style={styles.loadMoreText}>Load more jobs</Text>
+              <Text style={styles.loadMoreText}>
+                {loadMoreJobsError ? "Couldn't load more jobs. Tap to retry." : 'Load more jobs'}
+              </Text>
             </TouchableOpacity>
           ) : null
         }
