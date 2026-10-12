@@ -19,6 +19,7 @@ export interface User {
   businessName: string;
   email: string;
   phone: string;
+  bio: string;
   trade: string;
   skills: string[];
   accreditations: string[];
@@ -64,6 +65,7 @@ export interface Tradesperson {
   reviews: Review[];
   phone: string;
   email: string;
+  bio: string;
 }
 
 export interface Job {

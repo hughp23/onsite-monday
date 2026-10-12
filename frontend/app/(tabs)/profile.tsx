@@ -157,6 +157,16 @@ export default function ProfileScreen() {
             <Text style={styles.editBtnText}>Edit Profile</Text>
           </TouchableOpacity>
 
+          {/* About */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>About</Text>
+            {currentUser.bio ? (
+              <Text style={styles.bioText}>{currentUser.bio}</Text>
+            ) : (
+              <Text style={styles.emptyText}>Add a short bio from Edit Profile.</Text>
+            )}
+          </View>
+
           {/* Skills */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Skills</Text>
@@ -245,7 +255,15 @@ export default function ProfileScreen() {
           {/* Gallery */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Gallery</Text>
-            <Text style={styles.emptyText}>No gallery photos yet. Add some from Edit Profile.</Text>
+            {currentUser.gallery.length > 0 ? (
+              <View style={styles.gallery}>
+                {currentUser.gallery.map((img, i) => (
+                  <Image key={i} source={{ uri: img }} style={styles.galleryImage} />
+                ))}
+              </View>
+            ) : (
+              <Text style={styles.emptyText}>No gallery photos yet. Add some from Edit Profile.</Text>
+            )}
           </View>
 
           {/* Sign out */}
@@ -362,6 +380,9 @@ const styles = StyleSheet.create({
   chipText: { fontFamily: fonts.bodyMedium, fontSize: 12, color: colors.primary },
   chipTextAccred: { color: colors.success },
   emptyText: { fontFamily: fonts.body, fontSize: 13, color: colors.textMuted, fontStyle: 'italic' },
+  bioText: { fontFamily: fonts.body, fontSize: 14, color: colors.text, lineHeight: 20 },
+  gallery: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  galleryImage: { width: 80, height: 80, borderRadius: 8, backgroundColor: colors.background },
   dayRate: {
     fontFamily: fonts.display,
     fontSize: 34,

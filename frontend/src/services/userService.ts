@@ -6,6 +6,7 @@ export interface UpdateUserPayload {
   lastName?: string;
   businessName?: string;
   phone?: string;
+  bio?: string;
   trade?: string;
   skills?: string[];
   accreditations?: string[];
@@ -24,6 +25,7 @@ export interface ApiUser {
   businessName?: string;
   email: string;
   phone?: string;
+  bio?: string;
   trade?: string;
   skills: string[];
   accreditations: string[];
@@ -48,6 +50,7 @@ function toUser(u: ApiUser): User {
     businessName: u.businessName ?? '',
     email: u.email,
     phone: u.phone ?? '',
+    bio: u.bio ?? '',
     trade: u.trade ?? '',
     skills: u.skills,
     accreditations: u.accreditations,

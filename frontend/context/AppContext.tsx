@@ -185,6 +185,8 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
       lastName: str(updates.lastName),
       businessName: str(updates.businessName),
       phone: str(updates.phone),
+      // Sent as-is (not via str) so an emptied bio is cleared on the server
+      bio: updates.bio,
       trade: str(updates.trade),
       skills: updates.skills,
       accreditations: updates.accreditations,
@@ -420,6 +422,7 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
       gallery: u.gallery,
       reviews: [],
       phone: u.phone ?? '',
+      bio: u.bio ?? '',
       email: u.email,
     })));
   }, []);

@@ -63,6 +63,7 @@ export default function PersonDetailScreen() {
         gallery: u.gallery,
         reviews: [],
         phone: u.phone ?? '',
+        bio: u.bio ?? '',
         email: u.email,
       }))
       .catch(() => setNotFound(true))
@@ -137,6 +138,14 @@ export default function PersonDetailScreen() {
         </View>
 
         <View style={styles.body}>
+          {/* About */}
+          {person.bio.length > 0 && (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>About</Text>
+              <Text style={styles.bioText}>{person.bio}</Text>
+            </View>
+          )}
+
           {/* Skills */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Skills</Text>
@@ -189,7 +198,7 @@ export default function PersonDetailScreen() {
               <View style={styles.gallery}>
                 {person.gallery.map((img, i) => (
                   <View key={i} style={styles.galleryItem}>
-                    <MaterialCommunityIcons name="image" size={32} color={colors.border} />
+                    <Image source={{ uri: img }} style={styles.galleryImage} />
                   </View>
                 ))}
               </View>
@@ -266,7 +275,9 @@ const styles = StyleSheet.create({
   chipText: { fontSize: 12, color: colors.primary, fontWeight: '500' },
   dayRate: { fontSize: 22, fontWeight: '800', color: colors.primary },
   emptyText: { fontSize: 13, color: colors.textLight, fontStyle: 'italic' },
+  bioText: { fontSize: 14, color: colors.text, lineHeight: 20 },
   gallery: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  galleryImage: { width: 80, height: 80, borderRadius: 8 },
   galleryItem: {
     width: 80,
     height: 80,
@@ -276,6 +287,7 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
   },
   stickyFooter: {
     position: 'absolute',

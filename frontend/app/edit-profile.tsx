@@ -11,7 +11,8 @@ import ChipSelector from '@/components/ChipSelector';
 import Toast from '@/components/Toast';
 import { colors } from '@/constants/colors';
 import { TRADES, SKILLS_BY_TRADE, ACCREDITATIONS } from '@/constants/trades';
-import { uploadProfileImage, CANCELLED } from '@/src/services/imageService';
+import { uploadProfileImage, uploadGalleryImage, CANCELLED } from '@/src/services/imageService';
+import { MAX_GALLERY, addToGallery, removeFromGallery, canAddToGallery } from '@/src/utils/gallery';
 
 export default function EditProfileScreen() {
   const { currentUser, updateCurrentUser } = useApp();
@@ -29,6 +30,9 @@ export default function EditProfileScreen() {
   const [location, setLocation] = useState(currentUser?.location ?? '');
   const [travelRadius, setTravelRadius] = useState(currentUser?.travelRadius ?? 25);
   const [profileImageUri, setProfileImageUri] = useState<string | null>(currentUser?.profileImage ?? null);
+  const [bio, setBio] = useState(currentUser?.bio ?? '');
+  const [gallery, setGallery] = useState<string[]>(currentUser?.gallery ?? []);
+  const [uploadingGallery, setUploadingGallery] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [showTradePicker, setShowTradePicker] = useState(false);
   const [toastVisible, setToastVisible] = useState(false);
@@ -38,6 +42,8 @@ export default function EditProfileScreen() {
     lastName !== (currentUser.lastName ?? '') ||
     businessName !== (currentUser.businessName ?? '') ||
     phone !== (currentUser.phone ?? '') ||
+    bio !== (currentUser.bio ?? '') ||
+    JSON.stringify(gallery) !== JSON.stringify(currentUser.gallery ?? []) ||
     trade !== (currentUser.trade ?? '') ||
     JSON.stringify(skills) !== JSON.stringify(currentUser.skills ?? []) ||
     JSON.stringify(accreditations) !== JSON.stringify(currentUser.accreditations ?? []) ||
@@ -69,6 +75,26 @@ export default function EditProfileScreen() {
     ]);
   };
 
+  const addGalleryPhoto = async (source: 'library' | 'camera') => {
+    setUploadingGallery(true);
+    try {
+      const url = await uploadGalleryImage(source);
+      if (url !== CANCELLED) setGallery(g => addToGallery(g, url));
+    } catch (e) {
+      Alert.alert('Photo upload failed', e instanceof Error ? e.message : 'Could not upload photo.');
+    } finally {
+      setUploadingGallery(false);
+    }
+  };
+
+  const handleAddGalleryPhoto = () => {
+    Alert.alert('Work Photo', 'Choose a source', [
+      { text: 'Camera', onPress: () => addGalleryPhoto('camera') },
+      { text: 'Photo Library', onPress: () => addGalleryPhoto('library') },
+      { text: 'Cancel', style: 'cancel' },
+    ]);
+  };
+
   const handleSave = async () => {
     try {
       await updateCurrentUser({
@@ -76,6 +102,8 @@ export default function EditProfileScreen() {
         lastName,
         businessName,
         phone,
+        bio,
+        gallery,
         trade,
         skills,
         accreditations,
@@ -183,6 +211,49 @@ export default function EditProfileScreen() {
           <Text style={styles.label}>Phone Number</Text>
           <TextInput style={styles.input} value={phone} onChangeText={setPhone} keyboardType="phone-pad" />
         </View>
+
+        <Text style={styles.sectionHeader}>About you</Text>
+        <View style={styles.inputGroup}>
+          <TextInput
+            style={[styles.input, { minHeight: 110, textAlignVertical: 'top', paddingTop: 12 }]}
+            value={bio}
+            onChangeText={t => setBio(t.slice(0, 1000))}
+            placeholder="Your experience, the kind of work you take on, tickets and cards…"
+            placeholderTextColor={colors.textMuted}
+            multiline
+          />
+        </View>
+
+        <Text style={styles.sectionHeader}>Work gallery</Text>
+        <View style={styles.galleryGrid}>
+          {gallery.map((uri, i) => (
+            <View key={uri} style={styles.galleryThumb}>
+              <Image source={{ uri }} style={styles.galleryThumbImage} />
+              <TouchableOpacity
+                style={styles.galleryRemove}
+                onPress={() => setGallery(g => removeFromGallery(g, i))}
+                hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+              >
+                <Ionicons name="close" size={14} color={colors.white} />
+              </TouchableOpacity>
+            </View>
+          ))}
+          {canAddToGallery(gallery) && (
+            <TouchableOpacity
+              style={[styles.galleryThumb, styles.galleryAdd]}
+              onPress={handleAddGalleryPhoto}
+              disabled={uploadingGallery}
+              activeOpacity={0.75}
+            >
+              {uploadingGallery ? (
+                <ActivityIndicator color={colors.primary} size="small" />
+              ) : (
+                <Ionicons name="add" size={28} color={colors.primary} />
+              )}
+            </TouchableOpacity>
+          )}
+        </View>
+        <Text style={styles.galleryCount}>{gallery.length}/{MAX_GALLERY} photos</Text>
 
         <Text style={styles.sectionHeader}>Trade & Skills</Text>
         <View style={styles.inputGroup}>
@@ -327,6 +398,31 @@ const styles = StyleSheet.create({
 
   sectionHeader: { fontSize: 16, fontWeight: '700', color: colors.text, marginBottom: 12, marginTop: 8 },
   row: { flexDirection: 'row' },
+  galleryGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  galleryThumb: { width: 96, height: 96, borderRadius: 10, overflow: 'visible' },
+  galleryThumbImage: { width: 96, height: 96, borderRadius: 10, backgroundColor: colors.border },
+  galleryRemove: {
+    position: 'absolute',
+    top: -6,
+    right: -6,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: colors.white,
+  },
+  galleryAdd: {
+    borderWidth: 1.5,
+    borderStyle: 'dashed',
+    borderColor: colors.primary,
+    backgroundColor: colors.white,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  galleryCount: { fontSize: 12, color: colors.textMuted, marginTop: 8, marginBottom: 14 },
   inputGroup: { marginBottom: 14 },
   label: { fontSize: 13, fontWeight: '600', color: colors.text, marginBottom: 6 },
   input: {

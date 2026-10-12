@@ -18,6 +18,7 @@ export const SEED_TRADESPEOPLE: Tradesperson[] = [
     profileImage: null,
     gallery: [],
     phone: '07712345601',
+    bio: '',
     email: 'harry@hwbuilds.co.uk',
     reviews: [
       {
@@ -66,6 +67,7 @@ export const SEED_TRADESPEOPLE: Tradesperson[] = [
     profileImage: null,
     gallery: [],
     phone: '07712345602',
+    bio: '',
     email: 'joe.bloggs@email.co.uk',
     reviews: [
       {
@@ -105,6 +107,7 @@ export const SEED_TRADESPEOPLE: Tradesperson[] = [
     profileImage: null,
     gallery: [],
     phone: '07712345603',
+    bio: '',
     email: 'sarah@collinselectrical.co.uk',
     reviews: [
       {
@@ -144,6 +147,7 @@ export const SEED_TRADESPEOPLE: Tradesperson[] = [
     profileImage: null,
     gallery: [],
     phone: '07712345604',
+    bio: '',
     email: 'mike@turnerplumbing.co.uk',
     reviews: [
       {
@@ -183,6 +187,7 @@ export const SEED_TRADESPEOPLE: Tradesperson[] = [
     profileImage: null,
     gallery: [],
     phone: '07712345605',
+    bio: '',
     email: 'aisha@appastering.co.uk',
     reviews: [
       {
@@ -213,6 +218,7 @@ export const SEED_TRADESPEOPLE: Tradesperson[] = [
     profileImage: null,
     gallery: [],
     phone: '07712345606',
+    bio: '',
     email: 'tom@bradleyroofing.co.uk',
     reviews: [
       {
@@ -252,6 +258,7 @@ export const SEED_TRADESPEOPLE: Tradesperson[] = [
     profileImage: null,
     gallery: [],
     phone: '07712345607',
+    bio: '',
     email: 'ryan@oconnorjoinery.co.uk',
     reviews: [
       {
@@ -291,6 +298,7 @@ export const SEED_TRADESPEOPLE: Tradesperson[] = [
     profileImage: null,
     gallery: [],
     phone: '07712345608',
+    bio: '',
     email: 'jim@jbbricklaying.co.uk',
     reviews: [
       {
@@ -321,6 +329,7 @@ export const SEED_TRADESPEOPLE: Tradesperson[] = [
     profileImage: null,
     gallery: [],
     phone: '07712345609',
+    bio: '',
     email: 'lucy@greenwoodpainters.co.uk',
     reviews: [
       {

@@ -15,8 +15,10 @@ interface UploadUrlResponse {
   publicUrl: string;
 }
 
-export async function uploadProfileImage(
-  source: 'library' | 'camera'
+async function pickAndUpload(
+  source: 'library' | 'camera',
+  endpoint: string,
+  options: ImagePicker.ImagePickerOptions
 ): Promise<string | typeof CANCELLED> {
   let result: ImagePicker.ImagePickerResult;
 
@@ -24,18 +26,18 @@ export async function uploadProfileImage(
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
     if (status !== 'granted') {
       throw new Error(
-        'Camera access was denied. Please enable it in your device Settings to take a profile photo.'
+        'Camera access was denied. Please enable it in your device Settings to take a photo.'
       );
     }
-    result = await ImagePicker.launchCameraAsync(PICKER_OPTIONS);
+    result = await ImagePicker.launchCameraAsync(options);
   } else {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
       throw new Error(
-        'Photo library access was denied. Please enable it in your device Settings to upload a profile photo.'
+        'Photo library access was denied. Please enable it in your device Settings to upload a photo.'
       );
     }
-    result = await ImagePicker.launchImageLibraryAsync(PICKER_OPTIONS);
+    result = await ImagePicker.launchImageLibraryAsync(options);
   }
 
   if (result.canceled) return CANCELLED;
@@ -54,7 +56,7 @@ export async function uploadProfileImage(
 
   const { uploadUrl, publicUrl } = await apiRequest<UploadUrlResponse>(
     'POST',
-    '/users/me/profile-image-upload-url',
+    endpoint,
     { contentType }
   );
 
@@ -70,3 +72,14 @@ export async function uploadProfileImage(
 
   return publicUrl;
 }
+
+export const uploadProfileImage = (source: 'library' | 'camera') =>
+  pickAndUpload(source, '/users/me/profile-image-upload-url', PICKER_OPTIONS);
+
+export const uploadGalleryImage = (source: 'library' | 'camera') =>
+  pickAndUpload(source, '/users/me/gallery-image-upload-url', {
+    mediaTypes: ['images'],
+    allowsEditing: true,
+    aspect: [4, 3],
+    quality: 0.8,
+  });
