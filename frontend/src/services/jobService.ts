@@ -104,8 +104,8 @@ export const jobService = {
     return data.map(toJob);
   },
 
-  applyToJob: async (jobId: string): Promise<Job> => {
-    const data = await apiRequest<ApiJob>('POST', `/jobs/${jobId}/apply`);
+  applyToJob: async (jobId: string, coverNote?: string): Promise<Job> => {
+    const data = await apiRequest<ApiJob>('POST', `/jobs/${jobId}/apply`, { coverNote: coverNote ?? null });
     return toJob(data);
   },
 
@@ -134,7 +134,7 @@ export const jobService = {
       id: string; firstName: string; lastName: string;
       trade?: string; profileImageUrl?: string; dayRate?: number;
       rating: number; reviewCount: number; skills: string[];
-      applicationStatus: string; appliedAt: string;
+      applicationStatus: string; appliedAt: string; coverNote?: string | null;
     }>>('GET', `/jobs/${jobId}/applicants`);
     return data.map(a => ({
       id: a.id,
@@ -148,6 +148,7 @@ export const jobService = {
       skills: a.skills,
       applicationStatus: a.applicationStatus,
       appliedAt: a.appliedAt,
+      coverNote: a.coverNote ?? null,
     }));
   },
 

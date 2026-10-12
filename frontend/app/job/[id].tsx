@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import {
-  View, Text, ScrollView, TouchableOpacity, StyleSheet, Modal, Pressable,
+  View, Text, ScrollView, TouchableOpacity, StyleSheet,
 } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
@@ -12,13 +12,11 @@ import { ESCROW_ENABLED } from '@/constants/featureFlags';
 
 export default function JobDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { getJob, toggleJobInterest, applyToJob, myJobs, currentUser, startConversation } = useApp();
+  const { getJob, toggleJobInterest, myJobs, currentUser, startConversation } = useApp();
   const job = getJob(id);
   const isOwnJob = job?.postedById === currentUser?.id;
   const hasApplied = (myJobs.applied ?? []).some(j => j.id === id);
   const insets = useSafeAreaInsets();
-  const [showApplyModal, setShowApplyModal] = useState(false);
-  const [applying, setApplying] = useState(false);
   const [toastVisible, setToastVisible] = useState(false);
   const [toastMsg, setToastMsg] = useState('');
   const [startingConv, setStartingConv] = useState(false);
@@ -39,18 +37,6 @@ export default function JobDetailScreen() {
     if (!job.isInterested) {
       setToastMsg('Job saved to your Liked list.');
       setToastVisible(true);
-    }
-  };
-
-  const confirmApply = async () => {
-    setApplying(true);
-    try {
-      await applyToJob(job.id);
-      setShowApplyModal(false);
-      setToastMsg('Application submitted! The poster will be in touch.');
-      setToastVisible(true);
-    } finally {
-      setApplying(false);
     }
   };
 
@@ -204,35 +190,15 @@ export default function JobDetailScreen() {
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.applyFooterBtn}
-              onPress={() => setShowApplyModal(true)}
+              onPress={() => router.push(`/apply/${job.id}` as any)}
               activeOpacity={0.85}
             >
               <MaterialCommunityIcons name="send" size={18} color={colors.white} />
-              <Text style={styles.applyFooterBtnText}>Apply</Text>
+              <Text style={styles.applyFooterBtnText}>Apply Now</Text>
             </TouchableOpacity>
           </View>
         )}
       </View>
-
-      {/* Apply confirmation modal */}
-      <Modal visible={showApplyModal} transparent animationType="fade">
-        <Pressable style={styles.overlay} onPress={() => !applying && setShowApplyModal(false)}>
-          <View style={styles.modal}>
-            <MaterialCommunityIcons name="send-circle" size={48} color={colors.primary} />
-            <Text style={styles.modalTitle}>Apply for this job?</Text>
-            <Text style={styles.modalDesc}>
-              Submit a formal application for "{job.title}" posted by {job.postedByName}. They'll be notified and can review your profile.
-            </Text>
-            <Text style={styles.modalRate}>£{job.dayRate}/day · {job.duration} day{job.duration > 1 ? 's' : ''}</Text>
-            <TouchableOpacity style={[styles.confirmBtn, applying && { opacity: 0.6 }]} onPress={confirmApply} disabled={applying}>
-              <Text style={styles.confirmBtnText}>{applying ? 'Submitting…' : 'Yes, Apply Now'}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => setShowApplyModal(false)} style={styles.cancelBtn} disabled={applying}>
-              <Text style={styles.cancelBtnText}>Cancel</Text>
-            </TouchableOpacity>
-          </View>
-        </Pressable>
-      </Modal>
 
       <Toast visible={toastVisible} message={toastMsg} onHide={() => setToastVisible(false)} />
     </View>
@@ -377,32 +343,4 @@ const styles = StyleSheet.create({
   applyFooterBtnText: { color: colors.white, fontSize: 14, fontWeight: '700' },
   statusRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 14 },
   statusText: { fontSize: 16, color: colors.textLight, fontWeight: '600' },
-  overlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.4)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 24,
-  },
-  modal: {
-    backgroundColor: colors.white,
-    borderRadius: 20,
-    padding: 28,
-    alignItems: 'center',
-    width: '100%',
-  },
-  modalTitle: { fontSize: 20, fontWeight: '800', color: colors.text, marginTop: 12, marginBottom: 8 },
-  modalDesc: { fontSize: 14, color: colors.textLight, textAlign: 'center', lineHeight: 20, marginBottom: 8 },
-  modalRate: { fontSize: 18, fontWeight: '700', color: colors.primary, marginBottom: 24 },
-  confirmBtn: {
-    backgroundColor: colors.primary,
-    borderRadius: 10,
-    paddingVertical: 14,
-    alignItems: 'center',
-    width: '100%',
-    marginBottom: 10,
-  },
-  confirmBtnText: { color: colors.white, fontWeight: '700', fontSize: 15 },
-  cancelBtn: { paddingVertical: 10 },
-  cancelBtnText: { color: colors.textLight, fontSize: 14 },
 });

@@ -30,7 +30,7 @@ interface AppContextType {
   acceptJob: (jobId: string, applicantId: string) => Promise<void>;
   startJob: (jobId: string) => Promise<void>;
   markJobComplete: (jobId: string) => Promise<void>;
-  applyToJob: (jobId: string) => Promise<void>;
+  applyToJob: (jobId: string, coverNote?: string) => Promise<void>;
   deleteJob: (jobId: string) => Promise<void>;
   cancelJob: (jobId: string, reason?: string) => Promise<void>;
   submitReview: (tradespersonId: string, review: { rating: number; text: string; jobId: string }) => Promise<void>;
@@ -280,8 +280,8 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
     await refreshUsage();
   }, [refreshUsage]);
 
-  const applyToJob = useCallback(async (jobId: string) => {
-    const updated = await jobService.applyToJob(jobId);
+  const applyToJob = useCallback(async (jobId: string, coverNote?: string) => {
+    const updated = await jobService.applyToJob(jobId, coverNote);
     setJobs(prev => prev.map(j => j.id === jobId ? updated : j));
     setMyJobs(prev => {
       const liked = prev.liked ?? [];

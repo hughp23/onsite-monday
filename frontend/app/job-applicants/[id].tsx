@@ -82,6 +82,9 @@ export default function JobApplicantsScreen() {
             <Text style={styles.rate}>
               {item.dayRate > 0 ? `£${item.dayRate}/day` : 'Rate on request'}
             </Text>
+            {item.coverNote ? (
+              <Text style={styles.coverNote} numberOfLines={4}>"{item.coverNote}"</Text>
+            ) : null}
           </View>
         </View>
         <View style={styles.cardActions}>
@@ -207,6 +210,7 @@ const styles = StyleSheet.create({
   trade: { fontSize: 12, color: colors.textLight, marginTop: 1 },
   starsRow: { flexDirection: 'row', alignItems: 'center', gap: 2, marginTop: 4 },
   ratingText: { fontSize: 11, color: colors.textLight, marginLeft: 3 },
+  coverNote: { fontSize: 13, fontStyle: 'italic', color: colors.textSecondary, marginTop: 8 },
   rate: { fontSize: 13, color: colors.primary, fontWeight: '700', marginTop: 3 },
   cardActions: { gap: 8, alignItems: 'flex-end' },
   viewBtn: {

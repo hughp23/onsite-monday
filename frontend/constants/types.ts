@@ -124,6 +124,7 @@ export interface Applicant {
   skills: string[];
   applicationStatus: string;
   appliedAt: string;
+  coverNote?: string | null;
 }
 
 export interface AppNotification {

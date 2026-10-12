@@ -37,7 +37,7 @@ const TAB_LABELS: Record<TabType, string> = {
 const SPRING = { damping: 22, stiffness: 200 };
 
 export default function MyJobsScreen() {
-  const { myJobs, toggleJobInterest, applyToJob, markJobComplete, startJob, deleteJob, cancelJob, isLoading, refreshMyJobs, currentUser, usage } = useApp();
+  const { myJobs, toggleJobInterest, markJobComplete, startJob, deleteJob, cancelJob, isLoading, refreshMyJobs, currentUser, usage } = useApp();
   const insets = useSafeAreaInsets();
   const [activeTab, setActiveTab] = useState<TabType>('liked');
   const [completeModalJob, setCompleteModalJob] = useState<Job | null>(null);
@@ -149,7 +149,7 @@ export default function MyJobsScreen() {
                 <View style={styles.cardFooterDivider} />
                 <TouchableOpacity
                   style={styles.cardApplyBtn}
-                  onPress={() => applyToJob(item.id)}
+                  onPress={() => router.push(`/apply/${item.id}` as any)}
                   activeOpacity={0.8}
                 >
                   <MaterialCommunityIcons name="send-outline" size={16} color={colors.primary} />
