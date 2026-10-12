@@ -7,16 +7,17 @@ import { TIER_INFO } from '@/constants/tiers';
 // Payout timing is built from TIER_INFO so tier logic stays centralised.
 const PAYOUT_ANSWER = `It depends on your plan: ${(['bronze', 'silver', 'gold'] as const)
   .map((t) => `${TIER_INFO[t].name} ${TIER_INFO[t].paymentDays}`)
-  .join(', ')} after release.`;
+  .join(', ')} after the job poster's review.`;
 
-// TODO(product owner): the support email and the cancellation/refund wording are
-// placeholders - confirm both before release.
+// TODO(product owner): the support email is a placeholder - confirm before release.
+// The cancellation/refund wording reflects today's manual refund process; update it
+// if refunds become automatic.
 const FAQS: { q: string; a: string }[] = [
-  { q: 'How do I get paid?', a: 'When you are hired, the job poster pays into escrow before the job starts. After the job is marked complete and both reviews are in, your payout is released to your bank account through Stripe.' },
+  { q: 'How do I get paid?', a: 'When the job poster starts the job, they pay into escrow through Stripe. After the job is marked complete and the job poster has left their review, your payout is released to your bank account through Stripe.' },
   { q: 'How long do payouts take?', a: PAYOUT_ANSWER },
   { q: 'Why do I have to leave a review?', a: 'Reviews keep the marketplace trustworthy. Payment is released only after the job poster reviews the tradesperson, and you cannot post or apply for new jobs while a review is outstanding.' },
   { q: 'How many jobs can I post or apply for?', a: 'Each plan includes a monthly allowance, shown on your Home screen and Subscription page. Limits reset on the 1st of each month.' },
-  { q: 'Can I cancel a job?', a: 'An accepted job can be cancelled by either side before it starts. If funds are held, they are refunded to the job poster.' },
+  { q: 'Can I cancel a job?', a: 'An accepted job can be cancelled by either side before it starts. If funds are held, we will arrange a refund to the job poster.' },
   { q: 'Why do I need to verify my identity?', a: 'Stripe needs to verify tradespeople before paying out, to meet UK financial regulations. You can do this from Wallet.' },
   { q: 'How do I contact support?', a: 'Email support@onsitemonday.co.uk and we will get back to you within one working day.' },
 ];
