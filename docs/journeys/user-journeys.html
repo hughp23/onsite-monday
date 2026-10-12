@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Ônsite Monday — User Journeys</title>
+  <title>Onsite Monday — User Journeys</title>
   <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -39,7 +39,7 @@
 <body>
 
 <header>
-  <h1>Ônsite Monday — User Journeys</h1>
+  <h1>Onsite Monday — User Journeys</h1>
 </header>
 
 <nav class="tab-bar">
@@ -92,6 +92,7 @@ flowchart TD
     S7 --> S8[Slide 8: Subscription tier]
     S8 --> S9[Slide 9: Confirm & complete]
     S9 --> MAIN
+    MAIN --> HOME[Home tab - first tab\nFinish setting up your profile · featured jobs\nPost a job · tier card · usage banners]
 
     classDef done     fill:#c8e6c9,stroke:#4caf50,color:#1b5e20
     classDef partial  fill:#fff9c4,stroke:#f9a825,color:#5d4037
@@ -101,7 +102,7 @@ flowchart TD
 
     class A,MAIN endpoint
     class B,E,SI1 decision
-    class D,SI,SU,G,SI2,FP,FP1,FP2,SU1,S1,S2,S3,S4,S5,S6,S7,S8,S9 done
+    class D,SI,SU,G,SI2,FP,FP1,FP2,SU1,S1,S2,S3,S4,S5,S6,S7,S8,S9,HOME done
   </div>
 </section>
 
@@ -109,22 +110,38 @@ flowchart TD
   <h2>Tradesperson Job Flow</h2>
   <div class="mermaid">
 flowchart TD
-    A([Main app]) --> B[Jobs board tab]
+    A([Main app]) --> B[Jobs board tab\napplications usage banner]
     B --> C[Sort / filter jobs\nnewest · highest pay · duration]
     C --> D[Job card in feed]
+    B --> FE[Featured for you strip]
+    B --> LM[Load more / infinite scroll]
+    B --> PJ[Post job shortcut]
+    FE --> E
     D --> E[Job detail view]
-    E --> F[Express interest button]
-    F --> G[Interest confirmation modal]
-    G --> H[Wait for acceptance\nnotification]
+    INV[Job invite notification\njob_invite] --> E
+    B --> LK[Liked tab]
+    LK --> LT[Tips for success card]
+    LK --> AR[Archived jobs\nno longer open]
+    LK --> E
+    E --> F[Apply Now button]
+    F --> G[Apply page /apply/id\noptional cover note up to 1000 chars]
+    G --> LIM{Monthly application\nlimit reached?}
+    LIM -->|No| AP[Applied]
+    LIM -->|Yes - Apply disabled| UP[Upgrade prompt\nHTTP 402 / usage banner]
+    UP --> SUB[Subscription screen]
+    AP --> H[Wait for acceptance\nnotification]
     H --> I[My Jobs — My Work tab]
     I --> I1[Outstanding review banner\nif unreviewed completed job]
     I1 --> I2[Rate job poster\n/review-poster/jobId]
+    I --> IW[How it works card]
     I --> J[View accepted job details]
     J --> K[Start Job button]
     K --> KE[Stripe redirect\nfunds held in escrow]
     KE --> L[Job status: in_progress]
     K -.-> L
     L --> M[Poster marks job complete\nor autocompleted after 3 days\nvia JobCompletionScanJob]
+    M --> JCP[job_completion_pending\nnotification]
+    JCP --> N2
     M --> N[Poster reviews tradesperson\n/review/jobId]
     M --> N2[Tradesperson reviews poster\n/review-poster/jobId]
     N & N2 --> P{Payout gated\nby review submission}
@@ -141,8 +158,9 @@ flowchart TD
     classDef flagged  fill:#fff3e0,stroke:#e65100,color:#bf360c
 
     class A endpoint
-    class P decision
-    class B,C,D,E,F,G,H,I,I1,I2,J,K,L,M,N,N2,T done
+    class P,LIM decision
+    class B,C,D,E,F,G,H,I,I1,I2,J,K,L,M,N2,T,FE,LM,PJ,INV,LK,LT,AR,AP,UP,SUB,IW,JCP done
+    class N partial
     class KE,Q,R,S flagged
   </div>
 </section>
@@ -153,13 +171,21 @@ flowchart TD
 flowchart TD
     A([Main app]) --> B[My Jobs — Posted tab]
     B --> C[FAB + button]
-    C --> CG{Unreviewed\ncompleted jobs?}
+    C --> PL{Monthly post limit\nreached?}
+    PL -->|Yes| PU[Limit banner\nredirect to Subscription\nsubmit disabled]
+    PL -->|No| CG{Unreviewed\ncompleted jobs?}
     CG -->|No| D[Create job form\ntitle · trade · location · dates · rate]
     CG -->|Yes - blocked| CG1[Review tradesperson first\n/review/jobId]
     CG1 --> D
-    D --> E[Job posted\nstatus: open]
+    D --> CI[Company information\nbusiness name saved to profile]
+    CI --> E[Job posted\nstatus: open]
+    PP[People list / profile] --> HN[Hire button\nHireModal: pick an open job]
+    HN --> HI[Invite sent\nPOST /jobs/id/invite]
+    HI --> NT[job_invite notification\nto tradesperson]
+    RR[review_required\nnotification] --> O
+    JC[job_completion_pending\nnotification] --> B
     E --> F[Tradespeople express interest]
-    F --> G[View applicants list\njob-applicants screen]
+    F --> G[View applicants list\nshows cover notes]
     G --> H{Accept a\ntradesperson?}
     H -->|Yes| I[Accept applicant\nconfirmation modal]
     I --> J[Job status: accepted]
@@ -183,9 +209,9 @@ flowchart TD
     classDef flagged  fill:#fff3e0,stroke:#e65100,color:#bf360c
 
     class A endpoint
-    class H,CG decision
-    class B,C,D,E,F,G,I,J,K,M,N,O,O2,Q,R done
-    class CG1 partial
+    class H,CG,PL decision
+    class B,C,D,E,F,G,I,J,K,M,N,O2,Q,R,PU,CI,PP,HN,HI,NT,RR,JC done
+    class CG1,O partial
     class L,P,S flagged
   </div>
 </section>
@@ -224,7 +250,8 @@ flowchart TD
 
     class A endpoint
     class D,J,L decision
-    class B,C,E,F,G,H,I,I2 done
+    class B,C,E,F,G,H,I2 done
+    class I partial
     class K,M,N,O,P partial
     class FLAG,Q,R flagged
   </div>
@@ -297,6 +324,9 @@ flowchart TD
     O -->|Silver 59/mo| Q[14-day payout]
     O -->|Gold 129/mo| R[7-day payout]
     J --> S[Cancel or\ndowngrade subscription]
+    U[Usage banners on Jobs · My Jobs\nCreate Job · Apply · Home\nGET /api/subscriptions/usage] --> LR{Monthly limit\nreached?}
+    LR -->|Yes| UP[Upgrade prompt] --> B
+    LR -->|No| U2[Remaining count shown]
     B --> T[Platinum Enterprise\ntier - post-launch]
 
     classDef done     fill:#c8e6c9,stroke:#4caf50,color:#1b5e20
@@ -307,8 +337,8 @@ flowchart TD
     classDef flagged  fill:#fff3e0,stroke:#e65100,color:#bf360c
 
     class A endpoint
-    class D,G,L,O decision
-    class B,C,E,F,H,I,J,K,M,N done
+    class D,G,L,O,LR decision
+    class B,C,E,F,H,I,J,K,M,N,U,UP,U2 done
     class P,Q,R flagged
     class S todo
     class T todo
@@ -325,6 +355,8 @@ flowchart TD
     B -->|Messages tab| E[Conversations list]
     C & D --> F[Get or create\nconversation via API]
     F --> G[Chat screen]
+    E --> CH[Category chips\nAll · Unread · Job chats]
+    CH --> G
     E --> G
     G --> H[Type message\nin input bar]
     H --> I[Send message]
@@ -335,6 +367,8 @@ flowchart TD
     M --> N[Mark as read\nclear unread badge]
     G --> O[File / image\nattachment button]
     J --> P[Push notification\nto recipient]
+    NS[Notifications - gear icon] --> NS2[Notification settings\nmessage push toggle]
+    NS2 -.->|off suppresses push only| P
 
     classDef done     fill:#c8e6c9,stroke:#4caf50,color:#1b5e20
     classDef partial  fill:#fff9c4,stroke:#f9a825,color:#5d4037
@@ -344,7 +378,7 @@ flowchart TD
 
     class A endpoint
     class B decision
-    class C,D,E,F,G,H,I,J,K,L,M,N,P done
+    class C,D,E,F,G,H,I,J,K,L,M,N,P,CH,NS,NS2 done
     class O todo
   </div>
 </section>
