@@ -159,6 +159,7 @@ public class ConversationService : IConversationService
             LastMessage = lastMessage?.Text ?? string.Empty,
             LastActivityAt = c.LastActivityAt,
             UnreadCount = unreadCount,
+            RelatedJobId = c.RelatedJobId,
             Messages = messages,
         };
     }

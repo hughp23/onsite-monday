@@ -18,6 +18,7 @@ interface ApiConversation {
   lastMessage: string;
   lastActivityAt: string;
   unreadCount: number;
+  relatedJobId?: string | null;
   messages: ApiMessage[];
 }
 
@@ -41,6 +42,7 @@ function toConversation(c: ApiConversation): Conversation {
     lastMessage: c.lastMessage,
     lastMessageTime: c.lastActivityAt,
     unreadCount: c.unreadCount,
+    relatedJobId: c.relatedJobId ?? null,
     messages: c.messages.map(toMessage),
   };
 }

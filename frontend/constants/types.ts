@@ -111,6 +111,7 @@ export interface Conversation {
   lastMessage: string;
   lastMessageTime: string;
   unreadCount: number;
+  relatedJobId: string | null;
   messages: Message[];
 }
 

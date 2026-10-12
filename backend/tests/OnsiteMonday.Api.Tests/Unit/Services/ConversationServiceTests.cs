@@ -43,6 +43,26 @@ public class ConversationServiceTests
     }
 
     [Fact]
+    public async Task GetConversations_ExposesRelatedJobId()
+    {
+        var initiator = TestBuilders.MakeUser("uid1", "a@b.com");
+        var participant = TestBuilders.MakeUser("uid2", "c@d.com");
+        var jobId = Guid.NewGuid();
+        var conv = TestBuilders.MakeConversation(initiator.Id, participant.Id);
+        conv.Initiator = initiator;
+        conv.Participant = participant;
+        conv.RelatedJobId = jobId;
+
+        _convRepoMock
+            .Setup(r => r.GetByUserIdAsync(initiator.Id))
+            .ReturnsAsync(new List<Conversation> { conv });
+
+        var result = await _sut.GetConversationsAsync(initiator.Id);
+
+        result[0].RelatedJobId.Should().Be(jobId);
+    }
+
+    [Fact]
     public async Task GetOrCreate_WhenNoConversationExists_CreatesNew()
     {
         var initiator = TestBuilders.MakeUser("uid1", "a@b.com");

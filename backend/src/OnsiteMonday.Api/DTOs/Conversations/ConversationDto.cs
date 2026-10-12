@@ -9,5 +9,6 @@ public class ConversationDto
     public string LastMessage { get; set; } = string.Empty;
     public DateTimeOffset LastActivityAt { get; set; }
     public int UnreadCount { get; set; }
+    public Guid? RelatedJobId { get; set; }
     public List<MessageDto> Messages { get; set; } = new();
 }

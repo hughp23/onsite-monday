@@ -657,6 +657,7 @@ export const SEED_CONVERSATIONS: Conversation[] = [
     lastMessage: "Sounds great, I'll be there at 8 on Monday!",
     lastMessageTime: '2026-02-22T16:45:00Z',
     unreadCount: 1,
+    relatedJobId: null,
     messages: [
       {
         id: 'msg-1',
@@ -732,6 +733,7 @@ export const SEED_CONVERSATIONS: Conversation[] = [
     lastMessage: 'Can you confirm the consumer unit make/model you want installed?',
     lastMessageTime: '2026-02-23T08:10:00Z',
     unreadCount: 2,
+    relatedJobId: null,
     messages: [
       {
         id: 'msg-9',
@@ -775,6 +777,7 @@ export const SEED_CONVERSATIONS: Conversation[] = [
     lastMessage: "No problem, I'll have it finished by Wednesday at the latest.",
     lastMessageTime: '2026-02-20T17:20:00Z',
     unreadCount: 0,
+    relatedJobId: null,
     messages: [
       {
         id: 'msg-13',
@@ -826,6 +829,7 @@ export const SEED_CONVERSATIONS: Conversation[] = [
     lastMessage: "I can be there Thursday morning, first thing.",
     lastMessageTime: '2026-02-22T11:00:00Z',
     unreadCount: 0,
+    relatedJobId: null,
     messages: [
       {
         id: 'msg-18',
