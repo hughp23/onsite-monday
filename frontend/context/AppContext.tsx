@@ -106,6 +106,9 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
   const [hasMoreJobs, setHasMoreJobs] = useState(true);
   const [loadMoreJobsError, setLoadMoreJobsError] = useState<string | null>(null);
   const loadingMoreJobs = useRef(false);
+  // Bumped on every list reset so an in-flight load-more can tell its result is stale.
+  const jobsGeneration = useRef(0);
+  const peopleGeneration = useRef(0);
   const [myJobs, setMyJobs] = useState<{ liked: Job[]; applied: Job[]; accepted: Job[]; posted: Job[] }>({ liked: [], applied: [], accepted: [], posted: [] });
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
@@ -119,6 +122,8 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
   useEffect(() => {
     if (!cognitoUser) {
       setCurrentUser(null);
+      jobsGeneration.current++;
+      loadingMoreJobs.current = false;
       setJobs([]);
       setMyJobs({ liked: [], applied: [], accepted: [], posted: [] });
       setConversations([]);
@@ -140,6 +145,8 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
         };
 
         // Fetch user first — ensures the DB row exists before parallel calls fire
+        jobsGeneration.current++;
+        loadingMoreJobs.current = false;
         const user = await call('getMe', () => userService.getMe());
 
         const [jobList, likedJobs, appliedJobs, acceptedJobs, postedJobs, convs, notifs] = await Promise.all([
@@ -152,6 +159,8 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
           call('getNotifications', () => notificationService.getNotifications()),
         ]);
         setCurrentUser(user);
+        jobsGeneration.current++;
+        loadingMoreJobs.current = false;
         setJobs(jobList);
         setJobsPage(1);
         setHasMoreJobs(jobList.length === PAGE_SIZE);
@@ -445,7 +454,12 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
   }, []);
 
   const loadTradespeople = useCallback(async (params: { trade?: string; location?: string } = {}) => {
+    // Invalidate any in-flight load-more before and after the fetch (see loadMoreTradespeople).
+    peopleGeneration.current++;
+    loadingMoreTradespeople.current = false;
     const data = await userService.getTradespeople({ ...params, page: 1, pageSize: PAGE_SIZE });
+    peopleGeneration.current++;
+    loadingMoreTradespeople.current = false;
     setTradespeople(data.map(toTradesperson));
     setPeopleParams(params);
     setPeoplePage(1);
@@ -456,24 +470,31 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
   const loadMoreTradespeople = useCallback(async () => {
     if (!hasMoreTradespeople || loadingMoreTradespeople.current) return;
     loadingMoreTradespeople.current = true;
+    const generation = peopleGeneration.current;
     setLoadMoreTradespeopleError(null);
     try {
       const next = peoplePage + 1;
       const incoming = await userService.getTradespeople({ ...peopleParams, page: next, pageSize: PAGE_SIZE });
-      // Merge outside any state updater (updaters must stay pure); dedupes by id.
-      const { items, hasMore } = mergePage(tradespeople, incoming.map(toTradesperson), PAGE_SIZE);
-      setTradespeople(items);
+      if (generation !== peopleGeneration.current) return; // a reset happened; discard
+      const mapped = incoming.map(toTradesperson);
+      // Merge against the latest list (pure updater); dedupes by id.
+      setTradespeople(prev => mergePage(prev, mapped, PAGE_SIZE).items);
       setPeoplePage(next);
-      setHasMoreTradespeople(hasMore);
+      setHasMoreTradespeople(incoming.length === PAGE_SIZE);
     } catch (e) {
+      if (generation !== peopleGeneration.current) return; // stale error must not surface
       setLoadMoreTradespeopleError(e instanceof Error ? e.message : 'Failed to load more tradespeople');
     } finally {
-      loadingMoreTradespeople.current = false;
+      if (generation === peopleGeneration.current) loadingMoreTradespeople.current = false;
     }
-  }, [hasMoreTradespeople, peoplePage, peopleParams, tradespeople]);
+  }, [hasMoreTradespeople, peoplePage, peopleParams]);
 
   const refreshJobs = useCallback(async () => {
+    jobsGeneration.current++;
+    loadingMoreJobs.current = false;
     const first = await jobService.getJobs({ page: 1, pageSize: PAGE_SIZE });
+    jobsGeneration.current++;
+    loadingMoreJobs.current = false;
     setJobs(first);
     setJobsPage(1);
     setHasMoreJobs(first.length === PAGE_SIZE);
@@ -483,21 +504,23 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
   const loadMoreJobs = useCallback(async () => {
     if (!hasMoreJobs || loadingMoreJobs.current) return;
     loadingMoreJobs.current = true;
+    const generation = jobsGeneration.current;
     setLoadMoreJobsError(null);
     try {
       const next = jobsPage + 1;
       const incoming = await jobService.getJobs({ page: next, pageSize: PAGE_SIZE });
-      // Merge outside any state updater (updaters must stay pure); dedupes by id.
-      const { items, hasMore } = mergePage(jobs, incoming, PAGE_SIZE);
-      setJobs(items);
+      if (generation !== jobsGeneration.current) return; // a refresh happened; discard
+      // Merge against the latest list (pure updater); dedupes by id.
+      setJobs(prev => mergePage(prev, incoming, PAGE_SIZE).items);
       setJobsPage(next);
-      setHasMoreJobs(hasMore);
+      setHasMoreJobs(incoming.length === PAGE_SIZE);
     } catch (e) {
+      if (generation !== jobsGeneration.current) return; // stale error must not surface
       setLoadMoreJobsError(e instanceof Error ? e.message : 'Failed to load more jobs');
     } finally {
-      loadingMoreJobs.current = false;
+      if (generation === jobsGeneration.current) loadingMoreJobs.current = false;
     }
-  }, [hasMoreJobs, jobsPage, jobs]);
+  }, [hasMoreJobs, jobsPage]);
 
   const refreshMyJobs = useCallback(async () => {
     const [liked, applied, accepted, posted] = await Promise.all([
