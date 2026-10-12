@@ -9,6 +9,8 @@ import { notificationService } from '@/src/services/notificationService';
 import { subscriptionService, SubscriptionDto } from '@/src/services/subscriptionService';
 import { reviewService } from '@/src/services/reviewService';
 import { signalRService } from '@/src/services/signalRService';
+import { usageService } from '@/src/services/usageService';
+import { Usage } from '@/src/utils/tierUsage';
 
 interface AppContextType {
   currentUser: User | null;
@@ -19,6 +21,8 @@ interface AppContextType {
   myJobs: { liked: Job[]; applied: Job[]; accepted: Job[]; posted: Job[] };
   conversations: Conversation[];
   notifications: AppNotification[];
+  usage: Usage | null;
+  refreshUsage: () => Promise<void>;
   updateCurrentUser: (updates: Partial<User>) => Promise<void>;
   completeOnboarding: () => Promise<void>;
   toggleJobInterest: (jobId: string) => Promise<void>;
@@ -65,6 +69,11 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
   const [myJobs, setMyJobs] = useState<{ liked: Job[]; applied: Job[]; accepted: Job[]; posted: Job[] }>({ liked: [], applied: [], accepted: [], posted: [] });
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
+  const [usage, setUsage] = useState<Usage | null>(null);
+
+  const refreshUsage = useCallback(async () => {
+    try { setUsage(await usageService.get()); } catch { /* banner just stays hidden */ }
+  }, []);
 
   // Load all app data when Cognito user becomes available
   useEffect(() => {
@@ -74,6 +83,7 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
       setMyJobs({ liked: [], applied: [], accepted: [], posted: [] });
       setConversations([]);
       setNotifications([]);
+      setUsage(null);
       return;
     }
 
@@ -106,6 +116,7 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
         setMyJobs({ liked: likedJobs, applied: appliedJobs, accepted: acceptedJobs, posted: postedJobs });
         setConversations(convs);
         setNotifications(notifs);
+        await refreshUsage();
       } catch (e) {
         const msg = e instanceof Error ? e.message : String(e);
         console.error('loadAppData failed:', msg);
@@ -116,7 +127,7 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
     };
 
     loadAppData();
-  }, [cognitoUser, refreshKey]);
+  }, [cognitoUser, refreshKey, refreshUsage]);
 
   const addIncomingMessage = useCallback((message: import('@/constants/types').Message) => {
     setConversations(prev => prev.map(conv =>
@@ -266,7 +277,8 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
     });
     setJobs(prev => [newJob, ...prev]);
     setMyJobs(prev => ({ ...prev, posted: [newJob, ...prev.posted] }));
-  }, []);
+    await refreshUsage();
+  }, [refreshUsage]);
 
   const applyToJob = useCallback(async (jobId: string) => {
     const updated = await jobService.applyToJob(jobId);
@@ -282,7 +294,8 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
           : [updated, ...applied],
       };
     });
-  }, []);
+    await refreshUsage();
+  }, [refreshUsage]);
 
   const acceptJob = useCallback(async (jobId: string, applicantId: string) => {
     const updated = await jobService.acceptApplicant(jobId, applicantId);
@@ -377,8 +390,9 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
       const { Linking } = await import('react-native');
       await Linking.openURL(checkoutUrl);
     }
+    await refreshUsage();
     return { checkoutUrl };
-  }, []);
+  }, [refreshUsage]);
 
   const cancelSubscription = useCallback(async () => {
     const sub = await subscriptionService.cancel();
@@ -466,6 +480,8 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
       myJobs,
       conversations,
       notifications,
+      usage,
+      refreshUsage,
       updateCurrentUser,
       completeOnboarding,
       toggleJobInterest,

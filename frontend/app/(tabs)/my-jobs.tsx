@@ -17,6 +17,8 @@ import { useApp } from '@/context/AppContext';
 import JobCard from '@/components/JobCard';
 import EmptyState from '@/components/EmptyState';
 import AnimatedListItem from '@/components/AnimatedListItem';
+import UsageBanner from '@/components/UsageBanner';
+import { isAtLimit } from '@/src/utils/tierUsage';
 import { colors } from '@/constants/colors';
 import { fonts } from '@/constants/typography';
 import { Job } from '@/constants/types';
@@ -35,7 +37,7 @@ const TAB_LABELS: Record<TabType, string> = {
 const SPRING = { damping: 22, stiffness: 200 };
 
 export default function MyJobsScreen() {
-  const { myJobs, toggleJobInterest, applyToJob, markJobComplete, startJob, deleteJob, cancelJob, isLoading, refreshMyJobs, currentUser } = useApp();
+  const { myJobs, toggleJobInterest, applyToJob, markJobComplete, startJob, deleteJob, cancelJob, isLoading, refreshMyJobs, currentUser, usage } = useApp();
   const insets = useSafeAreaInsets();
   const [activeTab, setActiveTab] = useState<TabType>('liked');
   const [completeModalJob, setCompleteModalJob] = useState<Job | null>(null);
@@ -382,6 +384,8 @@ export default function MyJobsScreen() {
         </View>
       </View>
 
+      <UsageBanner kind={activeTab === 'posted' ? 'posts' : 'applications'} />
+
       {/* Outstanding review banner */}
       {myJobs.posted.some(j => j.status === 'completed') && (
         <TouchableOpacity
@@ -423,7 +427,7 @@ export default function MyJobsScreen() {
       {activeTab === 'posted' && (
         <TouchableOpacity
           style={[styles.fab, { bottom: insets.bottom + 24 }]}
-          onPress={() => router.push('/create-job')}
+          onPress={() => isAtLimit(usage, 'posts') ? router.push('/subscription') : router.push('/create-job')}
           activeOpacity={0.85}
         >
           <Ionicons name="add" size={28} color={colors.white} />

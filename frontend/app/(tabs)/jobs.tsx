@@ -11,6 +11,7 @@ import { useApp } from '@/context/AppContext';
 import JobCard from '@/components/JobCard';
 import EmptyState from '@/components/EmptyState';
 import AnimatedListItem from '@/components/AnimatedListItem';
+import UsageBanner from '@/components/UsageBanner';
 import { colors } from '@/constants/colors';
 import { fonts } from '@/constants/typography';
 import { Job } from '@/constants/types';
@@ -133,6 +134,8 @@ export default function JobsScreen() {
 
   return (
     <View style={[styles.container, { paddingBottom: insets.bottom }]}>
+      <UsageBanner kind="applications" />
+
       {/* Sort + filter bar */}
       <View style={styles.sortBar}>
         <Text style={styles.resultsText}>{sorted.length} job{sorted.length !== 1 ? 's' : ''}</Text>

@@ -10,6 +10,8 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useApp } from '@/context/AppContext';
 import Toast from '@/components/Toast';
+import UsageBanner from '@/components/UsageBanner';
+import { isAtLimit } from '@/src/utils/tierUsage';
 import { colors } from '@/constants/colors';
 import { TRADES } from '@/constants/trades';
 import { DayLetter, Job } from '@/constants/types';
@@ -18,7 +20,8 @@ import { ESCROW_ENABLED } from '@/constants/featureFlags';
 const ALL_DAYS: DayLetter[] = ['M', 'T', 'W', 'Th', 'F', 'S', 'Su'];
 
 export default function CreateJobScreen() {
-  const { addJob, currentUser } = useApp();
+  const { addJob, currentUser, usage } = useApp();
+  const postLimitReached = isAtLimit(usage, 'posts');
   const insets = useSafeAreaInsets();
   const [title, setTitle] = useState('');
   const [trade, setTrade] = useState('');
@@ -95,6 +98,8 @@ export default function CreateJobScreen() {
         keyboardShouldPersistTaps="always"
         showsVerticalScrollIndicator={false}
       >
+        <UsageBanner kind="posts" />
+
         <View style={styles.inputGroup}>
           <Text style={styles.label}>Job Title *</Text>
           <View style={styles.inputWrap}>
@@ -299,9 +304,9 @@ export default function CreateJobScreen() {
         )}
 
         <TouchableOpacity
-          style={[styles.postBtn, (!title || !trade || !location || !dayRate) && styles.postBtnDisabled]}
+          style={[styles.postBtn, (!title || !trade || !location || !dayRate || postLimitReached) && styles.postBtnDisabled]}
           onPress={handlePost}
-          disabled={!title || !trade || !location || !dayRate}
+          disabled={!title || !trade || !location || !dayRate || postLimitReached}
           activeOpacity={0.85}
         >
           <MaterialCommunityIcons name="send" size={18} color={colors.white} />

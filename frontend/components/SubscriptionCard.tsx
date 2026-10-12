@@ -5,6 +5,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { SubscriptionTier } from '@/constants/types';
 import { colors } from '@/constants/colors';
 import { fonts } from '@/constants/typography';
+import { TIER_INFO } from '@/constants/tiers';
 import { ESCROW_ENABLED } from '@/constants/featureFlags';
 
 interface SubscriptionCardProps {
@@ -12,38 +13,6 @@ interface SubscriptionCardProps {
   isCurrentPlan: boolean;
   onSelect: () => void;
 }
-
-const TIER_INFO: Record<SubscriptionTier, {
-  name: string;
-  price: string;
-  paymentDays: string;
-  posts: string;
-  features: string[];
-  popular?: boolean;
-}> = {
-  bronze: {
-    name: 'Bronze',
-    price: '£29',
-    paymentDays: '30 days',
-    posts: '1-2 per month',
-    features: ['Basic invoice tools', 'Standard reporting', 'Email support'],
-  },
-  silver: {
-    name: 'Silver',
-    price: '£59',
-    paymentDays: '14 days',
-    posts: 'Up to 5 per month',
-    popular: true,
-    features: ['Invoice tools', 'Analytics dashboard', 'Priority support'],
-  },
-  gold: {
-    name: 'Gold',
-    price: '£129',
-    paymentDays: '7 days',
-    posts: 'Unlimited',
-    features: ['Advanced invoicing', 'Discounted insurance', 'Compliance tracking', 'Dedicated support'],
-  },
-};
 
 export default function SubscriptionCard({ tier, isCurrentPlan, onSelect }: SubscriptionCardProps) {
   const info = TIER_INFO[tier];
@@ -74,6 +43,10 @@ export default function SubscriptionCard({ tier, isCurrentPlan, onSelect }: Subs
         <View style={styles.detailRow}>
           <Ionicons name="briefcase-outline" size={15} color="rgba(255,255,255,0.6)" />
           <Text style={styles.detailTextGold}>Live posts: <Text style={styles.boldGold}>{info.posts}</Text></Text>
+        </View>
+        <View style={styles.detailRow}>
+          <Ionicons name="paper-plane-outline" size={15} color="rgba(255,255,255,0.6)" />
+          <Text style={styles.detailTextGold}>Applications: <Text style={styles.boldGold}>{info.applications}</Text></Text>
         </View>
         <View style={styles.featuresList}>
           {info.features.map(f => (
@@ -120,6 +93,10 @@ export default function SubscriptionCard({ tier, isCurrentPlan, onSelect }: Subs
       <View style={styles.detailRow}>
         <Ionicons name="briefcase-outline" size={15} color={colors.textMuted} />
         <Text style={styles.detailText}>Live posts: <Text style={styles.bold}>{info.posts}</Text></Text>
+      </View>
+      <View style={styles.detailRow}>
+        <Ionicons name="paper-plane-outline" size={15} color={colors.textMuted} />
+        <Text style={styles.detailText}>Applications: <Text style={styles.bold}>{info.applications}</Text></Text>
       </View>
       <View style={styles.featuresList}>
         {info.features.map(f => (
