@@ -157,6 +157,82 @@ public class JobsControllerTests : IClassFixture<TestWebApplicationFactory>, IAs
         response.StatusCode.Should().Be(HttpStatusCode.OK);
     }
 
+    private async Task<Guid> SeedOtherUsersJobAsync()
+    {
+        var tag = Guid.NewGuid().ToString("N");
+        Guid jobId = Guid.Empty;
+        await _factory.SeedAsync(async db =>
+        {
+            var poster = TestBuilders.MakeUser($"uid-poster-{tag}", $"poster-{tag}@test.com");
+            db.Users.Add(poster);
+            await db.SaveChangesAsync();
+
+            var job = TestBuilders.MakeJob(poster.Id);
+            db.Jobs.Add(job);
+            await db.SaveChangesAsync();
+            jobId = job.Id;
+        });
+        return jobId;
+    }
+
+    private async Task<string?> GetStoredCoverNoteAsync(Guid jobId)
+    {
+        string? note = null;
+        await _factory.SeedAsync(db =>
+        {
+            note = db.JobApplications.Single(a => a.JobId == jobId).CoverNote;
+            return Task.CompletedTask;
+        });
+        return note;
+    }
+
+    [Fact]
+    public async Task ApplyToJob_NoBody_JsonContentType_Returns200()
+    {
+        var jobId = await SeedOtherUsersJobAsync();
+        var request = new HttpRequestMessage(HttpMethod.Post, $"/api/jobs/{jobId}/apply")
+        {
+            Content = new ByteArrayContent([]),
+        };
+        request.Content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/json");
+
+        var response = await _client.SendAsync(request);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        (await GetStoredCoverNoteAsync(jobId)).Should().BeNull();
+    }
+
+    [Fact]
+    public async Task ApplyToJob_NoBodyNoContentType_Returns200()
+    {
+        var jobId = await SeedOtherUsersJobAsync();
+
+        var response = await _client.PostAsync($"/api/jobs/{jobId}/apply", null);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task ApplyToJob_WithCoverNote_StoresNote()
+    {
+        var jobId = await SeedOtherUsersJobAsync();
+
+        var response = await _client.PostAsJsonAsync($"/api/jobs/{jobId}/apply", new { coverNote = "Available Monday" });
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        (await GetStoredCoverNoteAsync(jobId)).Should().Be("Available Monday");
+    }
+
+    [Fact]
+    public async Task ApplyToJob_CoverNoteOver1000_Returns400()
+    {
+        var jobId = await SeedOtherUsersJobAsync();
+
+        var response = await _client.PostAsJsonAsync($"/api/jobs/{jobId}/apply", new { coverNote = new string('a', 1001) });
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
     [Fact]
     public async Task CompleteJob_WhenNotPoster_Returns403()
     {

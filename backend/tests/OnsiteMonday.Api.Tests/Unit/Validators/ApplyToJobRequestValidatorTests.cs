@@ -15,4 +15,8 @@ public class ApplyToJobRequestValidatorTests
     [Fact]
     public void CoverNoteOver1000Chars_IsInvalid() =>
         _sut.Validate(new ApplyToJobRequest { CoverNote = new string('a', 1001) }).IsValid.Should().BeFalse();
+
+    [Fact]
+    public void CoverNoteOf1000Chars_IsValid() =>
+        _sut.Validate(new ApplyToJobRequest { CoverNote = new string('a', 1000) }).IsValid.Should().BeTrue();
 }
