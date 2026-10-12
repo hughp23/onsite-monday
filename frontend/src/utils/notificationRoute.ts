@@ -21,7 +21,8 @@ export function notificationRoute(
     case 'review_required':
       return `/review/${id}`;
     case 'job_completion_pending':
-      return postedJobIds.includes(id) ? '/(tabs)/my-jobs' : `/review-poster/${id}`;
+      // Sent before the job is completed, so the tradesperson can't review the poster yet
+      return postedJobIds.includes(id) ? '/(tabs)/my-jobs' : `/job/${id}`;
     default:
       return null;
   }

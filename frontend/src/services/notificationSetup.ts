@@ -56,7 +56,8 @@ export function setupNotificationHandlers(onNotificationReceived?: () => void): 
       router.push(`/chat/${conversationId}`);
     } else if ((type === 'job_completion_pending' || type === 'job_autocompleted') && linkedId) {
       if (role === 'tradesperson') {
-        router.push(`/review-poster/${linkedId}` as any);
+        // job_completion_pending arrives before the job is completed, so it can't be reviewed yet
+        router.push((type === 'job_completion_pending' ? `/job/${linkedId}` : `/review-poster/${linkedId}`) as any);
       } else {
         router.push(`/review/${linkedId}` as any);
       }

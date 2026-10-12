@@ -18,8 +18,8 @@ test.each([
 test('job_completion_pending: poster goes to My Jobs to mark complete', () => {
   expect(notificationRoute({ type: 'job_completion_pending', linkedId: 'p1' }, posted)).toBe('/(tabs)/my-jobs');
 });
-test('job_completion_pending: tradesperson goes to review the poster', () => {
-  expect(notificationRoute({ type: 'job_completion_pending', linkedId: 'j9' }, posted)).toBe('/review-poster/j9');
+test('job_completion_pending: tradesperson goes to the job (it is not complete yet, so cannot be reviewed)', () => {
+  expect(notificationRoute({ type: 'job_completion_pending', linkedId: 'j9' }, posted)).toBe('/job/j9');
 });
 test('no linkedId and not review → null', () => {
   expect(notificationRoute({ type: 'accepted' }, posted)).toBeNull();

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import {
-  View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Modal, Pressable,
+  View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Modal, Pressable, Alert,
 } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -21,6 +21,21 @@ export default function ReviewPosterScreen() {
 
   if (!job) return null;
 
+  if (job.status !== 'completed') {
+    return (
+      <View style={[styles.container, styles.notReady]}>
+        <MaterialCommunityIcons name="clock-outline" size={48} color={colors.textLight} />
+        <Text style={styles.notReadyTitle}>Not ready to review yet</Text>
+        <Text style={styles.notReadyText}>
+          You can review once the poster marks the job complete.
+        </Text>
+        <TouchableOpacity style={styles.confirmBtn} onPress={() => router.replace(`/job/${job.id}`)}>
+          <Text style={styles.confirmBtnText}>View job</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
   const totalPay = (job.dayRate || 0) * (job.duration || 1);
 
   const handleSubmit = async () => {
@@ -32,6 +47,8 @@ export default function ReviewPosterScreen() {
         text: reviewText || undefined,
       });
       setShowSuccess(true);
+    } catch (e) {
+      Alert.alert('Could not submit review', e instanceof Error ? e.message : 'Please try again.');
     } finally {
       setSubmitting(false);
     }
@@ -124,6 +141,9 @@ export default function ReviewPosterScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
+  notReady: { alignItems: 'center', justifyContent: 'center', padding: 24, gap: 12 },
+  notReadyTitle: { fontSize: 18, fontWeight: '700', color: colors.text },
+  notReadyText: { fontSize: 15, color: colors.textLight, textAlign: 'center', lineHeight: 22 },
   content: { padding: 20, paddingBottom: 40 },
   jobCard: {
     backgroundColor: colors.white,
