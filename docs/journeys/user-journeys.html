@@ -117,7 +117,7 @@ flowchart TD
     B --> LM[Load more / infinite scroll]
     B --> PJ[Post job shortcut]
     FE --> E
-    D --> E[Job detail view]
+    D --> E[Job detail view\nfetched by id if not already loaded]
     INV[Job invite notification\njob_invite] --> E
     B --> LK[Liked tab]
     LK --> LT[Tips for success card]
@@ -141,7 +141,7 @@ flowchart TD
     K -.-> L
     L --> M[Poster marks job complete\nor autocompleted after 3 days\nvia JobCompletionScanJob]
     M --> JCP[job_completion_pending\nnotification]
-    JCP --> N2
+    JCP -->|job not complete yet| J
     M --> N[Poster reviews tradesperson\n/review/jobId]
     M --> N2[Tradesperson reviews poster\n/review-poster/jobId]
     N --> P{Payout scheduled on\nposter's review}
@@ -178,7 +178,9 @@ flowchart TD
     CG -->|Yes - blocked| CG1[Review tradesperson first\n/review/jobId]
     CG1 --> D
     D --> CI[Company information\nbusiness name saved to profile]
-    CI --> E[Job posted\nstatus: open]
+    CI --> PX{Server accepts\nthe post?}
+    PX -->|No - e.g. HTTP 402 at limit| PXE[Alert with server message\nform stays open · usage refreshed]
+    PX -->|Yes| E[Job posted\nstatus: open]
     PP[People list / profile] --> HN[Hire button\nHireModal: pick an open job]
     HN --> HI[Invite sent\nPOST /jobs/id/invite]
     HI --> NT[job_invite notification\nto tradesperson]
@@ -209,8 +211,8 @@ flowchart TD
     classDef flagged  fill:#fff3e0,stroke:#e65100,color:#bf360c
 
     class A endpoint
-    class H,CG,PL decision
-    class B,C,D,E,F,G,I,J,K,M,N,O2,Q,R,PU,CI,PP,HN,HI,NT,RR,JC done
+    class H,CG,PL,PX decision
+    class B,C,D,E,F,G,I,J,K,M,N,O2,Q,R,PU,CI,PP,HN,HI,NT,RR,JC,PXE done
     class CG1,O partial
     class L,P,S flagged
   </div>
@@ -312,8 +314,9 @@ flowchart TD
     E --> F[Stripe Checkout\nredirect]
     F --> G{Payment result}
     G -->|Success| H[Deep link return\nonsitemonday://subscription/success]
-    G -->|Cancelled| I[Return to\nsubscription screen]
-    H --> J[Subscription active]
+    G -->|Cancelled| I[Return to\nsubscription screen\nBronze limits until paid]
+    H --> WH[checkout.session.completed\nwebhook confirms subscription\npaid-tier limits unlock]
+    WH --> J[Subscription active]
     D -->|Yes| K[Upgrade modal\nappears]
     K --> L{Card on file?}
     L -->|Yes| M[Upgrade now\nusing saved card]
@@ -338,7 +341,7 @@ flowchart TD
 
     class A endpoint
     class D,G,L,O,LR decision
-    class B,C,E,F,H,I,J,K,M,N,U,UP,U2 done
+    class B,C,E,F,H,I,J,K,M,N,U,UP,U2,WH done
     class P,Q,R flagged
     class S todo
     class T todo
