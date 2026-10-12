@@ -104,6 +104,7 @@ export default function RootLayout() {
             <Stack.Screen name="notifications" options={{ title: 'Notifications' }} />
             <Stack.Screen name="notification-settings" options={{ title: 'Notification settings' }} />
             <Stack.Screen name="wallet" options={{ title: 'Wallet', headerBackTitle: 'Back' }} />
+            <Stack.Screen name="faqs" options={{ title: 'FAQs', headerBackTitle: 'Back' }} />
             <Stack.Screen name="job-applicants/[id]" options={{ title: 'Applicants', headerBackTitle: 'Back' }} />
           </Stack>
         </AppContextProvider>

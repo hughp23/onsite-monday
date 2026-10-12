@@ -252,6 +252,17 @@ export default function ProfileScreen() {
           </TouchableOpacity>
           )}
 
+          {/* FAQs (all roles) */}
+          <TouchableOpacity
+            style={[styles.section, styles.menuRow]}
+            onPress={() => router.push('/faqs')}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="help-circle-outline" size={20} color={colors.primary} />
+            <Text style={styles.menuRowLabel}>FAQs</Text>
+            <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+          </TouchableOpacity>
+
           {/* Gallery */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Gallery</Text>
