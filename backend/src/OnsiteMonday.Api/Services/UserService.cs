@@ -35,6 +35,7 @@ public class UserService : IUserService
         if (request.FirstName != null) user.FirstName = request.FirstName;
         if (request.LastName != null) user.LastName = request.LastName;
         if (request.BusinessName != null) user.BusinessName = request.BusinessName;
+        if (request.Bio != null) user.Bio = request.Bio.Trim();
         if (request.Phone != null) user.Phone = request.Phone;
         if (request.Trade != null) user.Trade = request.Trade;
         if (request.Skills != null) user.Skills = request.Skills;

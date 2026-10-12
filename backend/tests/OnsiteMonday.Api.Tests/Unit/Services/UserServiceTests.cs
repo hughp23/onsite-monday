@@ -154,4 +154,17 @@ public class UserServiceTests
         result.Should().HaveCount(2);
         _repoMock.Verify(r => r.GetTradespeopleAsync("Builder", "London"), Times.Once);
     }
+
+    [Fact]
+    public async Task UpdateCurrentUser_SetsBio()
+    {
+        var user = TestBuilders.MakeUser();
+        _repoMock.Setup(r => r.GetOrCreateByCognitoSubAsync(FakeAuthHandler.TestFirebaseUid, FakeAuthHandler.TestEmail, null, null, null))
+            .ReturnsAsync(user);
+
+        var result = await _sut.UpdateCurrentUserAsync(FakeAuthHandler.TestFirebaseUid, FakeAuthHandler.TestEmail,
+            new UpdateUserRequest { Bio = "Time-served joiner, 15 years." });
+
+        result.Bio.Should().Be("Time-served joiner, 15 years.");
+    }
 }

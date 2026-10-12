@@ -102,6 +102,11 @@ public class TestWebApplicationFactory : WebApplicationFactory<Program>
                 .ReturnsAsync((
                     "https://fake-presigned-url?sig=abc",
                     "https://onsite-monday-media.s3.eu-west-2.amazonaws.com/profile-images/test.png"));
+            storageMock
+                .Setup(m => m.GenerateGalleryImageUploadUrlAsync(It.IsAny<string>(), It.IsAny<string>()))
+                .ReturnsAsync((
+                    "https://fake-presigned-url?sig=abc",
+                    "https://onsite-monday-media.s3.eu-west-2.amazonaws.com/gallery/test/abc.jpg"));
             services.AddScoped<IStorageService>(_ => storageMock.Object);
         });
     }

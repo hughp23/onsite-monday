@@ -19,11 +19,17 @@ public class S3StorageService : IStorageService
     }
 
     public Task<(string UploadUrl, string PublicUrl)> GenerateProfileImageUploadUrlAsync(
-        string userId, string contentType)
-    {
-        var ext = contentType == "image/png" ? "png" : "jpg";
-        var key = $"profile-images/{userId}.{ext}";
+        string userId, string contentType) =>
+        PresignAsync($"profile-images/{userId}.{Ext(contentType)}", contentType);
 
+    public Task<(string UploadUrl, string PublicUrl)> GenerateGalleryImageUploadUrlAsync(
+        string userId, string contentType) =>
+        PresignAsync($"gallery/{userId}/{Guid.NewGuid():N}.{Ext(contentType)}", contentType);
+
+    private static string Ext(string contentType) => contentType == "image/png" ? "png" : "jpg";
+
+    private Task<(string UploadUrl, string PublicUrl)> PresignAsync(string key, string contentType)
+    {
         var uploadUrl = _s3.GetPreSignedURL(new GetPreSignedUrlRequest
         {
             BucketName = _bucket,

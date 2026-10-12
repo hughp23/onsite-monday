@@ -77,4 +77,19 @@ public class UpdateUserRequestValidatorTests
         var req = new UpdateUserRequest { TravelRadius = 201 };
         _validator.TestValidate(req).ShouldHaveValidationErrorFor(x => x.TravelRadius);
     }
+
+    [Fact]
+    public void Bio_Over1000Chars_IsInvalid() =>
+        _validator.TestValidate(new UpdateUserRequest { Bio = new string('a', 1001) })
+            .ShouldHaveValidationErrorFor(x => x.Bio);
+
+    [Fact]
+    public void Gallery_13Images_IsInvalid() =>
+        _validator.TestValidate(new UpdateUserRequest { Gallery = Enumerable.Repeat("https://x/y.jpg", 13).ToList() })
+            .ShouldHaveValidationErrorFor(x => x.Gallery!.Count);
+
+    [Fact]
+    public void Gallery_12Images_IsValid() =>
+        _validator.TestValidate(new UpdateUserRequest { Gallery = Enumerable.Repeat("https://x/y.jpg", 12).ToList() })
+            .ShouldNotHaveAnyValidationErrors();
 }

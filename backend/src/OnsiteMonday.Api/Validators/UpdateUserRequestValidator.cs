@@ -5,6 +5,8 @@ namespace OnsiteMonday.Api.Validators;
 
 public class UpdateUserRequestValidator : AbstractValidator<UpdateUserRequest>
 {
+    public const int MaxGalleryImages = 12;
+
     public UpdateUserRequestValidator()
     {
         When(x => x.FirstName != null, () =>
@@ -24,5 +26,12 @@ public class UpdateUserRequestValidator : AbstractValidator<UpdateUserRequest>
         When(x => x.TravelRadius != null, () =>
             RuleFor(x => x.TravelRadius).InclusiveBetween(1, 200)
                 .WithMessage("Travel radius must be between 1 and 200 miles."));
+
+        When(x => x.Bio != null, () =>
+            RuleFor(x => x.Bio).MaximumLength(1000));
+
+        When(x => x.Gallery != null, () =>
+            RuleFor(x => x.Gallery!.Count).LessThanOrEqualTo(MaxGalleryImages)
+                .WithMessage($"You can add up to {MaxGalleryImages} gallery photos."));
     }
 }

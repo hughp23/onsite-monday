@@ -151,4 +151,18 @@ public class UsersControllerTests : IClassFixture<TestWebApplicationFactory>, IA
 
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
+
+    [Fact]
+    public async Task GalleryUploadUrl_Jpeg_Returns200()
+    {
+        var response = await _client.PostAsJsonAsync("/api/users/me/gallery-image-upload-url", new { contentType = "image/jpeg" });
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task GalleryUploadUrl_Gif_Returns400()
+    {
+        var response = await _client.PostAsJsonAsync("/api/users/me/gallery-image-upload-url", new { contentType = "image/gif" });
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
 }

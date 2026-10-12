@@ -419,6 +419,9 @@ namespace OnsiteMonday.Api.Data.Migrations
                         .IsRequired()
                         .HasColumnType("text[]");
 
+                    b.Property<string>("Bio")
+                        .HasColumnType("text");
+
                     b.Property<string>("BusinessName")
                         .HasColumnType("text");
 

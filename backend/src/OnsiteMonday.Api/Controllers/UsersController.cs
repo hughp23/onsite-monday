@@ -98,4 +98,18 @@ public class UsersController : ControllerBase
 
         return Ok(new ProfileImageUploadUrlResponse(uploadUrl, publicUrl));
     }
+
+    // POST /api/users/me/gallery-image-upload-url
+    [HttpPost("me/gallery-image-upload-url")]
+    public async Task<ActionResult<ProfileImageUploadUrlResponse>> GetGalleryImageUploadUrl(
+        [FromBody] ProfileImageUploadUrlRequest request)
+    {
+        if (request.ContentType is not ("image/jpeg" or "image/png"))
+            return BadRequest(new { error = "contentType must be image/jpeg or image/png" });
+
+        var (uploadUrl, publicUrl) = await _storageService.GenerateGalleryImageUploadUrlAsync(
+            CognitoSub, request.ContentType);
+
+        return Ok(new ProfileImageUploadUrlResponse(uploadUrl, publicUrl));
+    }
 }

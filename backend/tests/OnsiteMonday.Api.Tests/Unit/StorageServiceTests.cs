@@ -70,4 +70,22 @@ public class StorageServiceTests
         captured.ContentType.Should().Be("image/jpeg");
         captured.Expires.Should().BeCloseTo(DateTime.UtcNow.AddMinutes(5), TimeSpan.FromSeconds(10));
     }
+
+    [Fact]
+    public async Task GenerateGalleryImageUploadUrlAsync_UsesUniqueGalleryKey()
+    {
+        var s3Mock = new Mock<IAmazonS3>();
+        var captured = new List<string>();
+        s3Mock.Setup(m => m.GetPreSignedURL(It.IsAny<GetPreSignedUrlRequest>()))
+            .Callback<GetPreSignedUrlRequest>(r => captured.Add(r.Key))
+            .Returns("https://signed");
+        var sut = new S3StorageService(s3Mock.Object, MakeConfig());
+
+        var (_, url1) = await sut.GenerateGalleryImageUploadUrlAsync("user-123", "image/jpeg");
+        var (_, url2) = await sut.GenerateGalleryImageUploadUrlAsync("user-123", "image/png");
+
+        captured[0].Should().StartWith("gallery/user-123/").And.EndWith(".jpg");
+        captured[1].Should().EndWith(".png");
+        url1.Should().NotBe(url2);
+    }
 }

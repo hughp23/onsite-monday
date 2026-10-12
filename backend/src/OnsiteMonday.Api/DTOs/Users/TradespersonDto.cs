@@ -6,6 +6,7 @@ public class TradespersonDto
     public string FirstName { get; set; } = null!;
     public string LastName { get; set; } = null!;
     public string? BusinessName { get; set; }
+    public string? Bio { get; set; }
     public string? Trade { get; set; }
     public List<string> Skills { get; set; } = new();
     public List<string> Accreditations { get; set; } = new();
