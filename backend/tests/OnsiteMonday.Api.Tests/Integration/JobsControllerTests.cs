@@ -36,6 +36,7 @@ public class JobsControllerTests : IClassFixture<TestWebApplicationFactory>, IAs
                 db.Subscriptions.Add(new Subscription
                 {
                     Id = Guid.NewGuid(), UserId = existing.Id, Tier = "gold", IsActive = true,
+                    StripeSubscriptionId = "sub_test_gold", // confirmed by Stripe checkout
                     PayoutDays = 7, StartedAt = DateTimeOffset.UtcNow,
                 });
             }

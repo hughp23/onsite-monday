@@ -8,18 +8,24 @@ public class UsageService : IUsageService
 {
     private readonly IJobRepository _jobRepo;
     private readonly IUserRepository _userRepo;
+    private readonly bool _requireStripeConfirmation;
 
-    public UsageService(IJobRepository jobRepo, IUserRepository userRepo)
+    /// <param name="requireStripeConfirmation">
+    /// When true (live payments), a subscription's tier only counts once Stripe has confirmed
+    /// checkout. Pass false only where billing is stubbed and no webhook can ever confirm it.
+    /// </param>
+    public UsageService(IJobRepository jobRepo, IUserRepository userRepo, bool requireStripeConfirmation = true)
     {
         _jobRepo = jobRepo;
         _userRepo = userRepo;
+        _requireStripeConfirmation = requireStripeConfirmation;
     }
 
     public async Task<UsageDto> GetUsageAsync(Guid userId)
     {
         var user = await _userRepo.GetByIdAsync(userId)
             ?? throw new KeyNotFoundException("User not found.");
-        var tier = user.ActiveSubscription?.Tier ?? "bronze";
+        var tier = TierLimits.LimitTier(user.ActiveSubscription, _requireStripeConfirmation);
         var periodStart = TierLimits.CurrentPeriodStart(DateTimeOffset.UtcNow);
 
         return new UsageDto

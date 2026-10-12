@@ -89,7 +89,12 @@ builder.Services.AddScoped<IConversationRepository, ConversationRepository>();
 // Services
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IJobService, JobService>();
-builder.Services.AddScoped<IUsageService, UsageService>();
+// Without live payments the billing service is stubbed and no webhook ever confirms a
+// subscription, so treat every active row (seeded or picked in-app) as confirmed.
+builder.Services.AddScoped<IUsageService>(sp => new UsageService(
+    sp.GetRequiredService<IJobRepository>(),
+    sp.GetRequiredService<IUserRepository>(),
+    requireStripeConfirmation: useLivePayments));
 builder.Services.AddScoped<IReviewService, ReviewService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<IConversationService, ConversationService>();

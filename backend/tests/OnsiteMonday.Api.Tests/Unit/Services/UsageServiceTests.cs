@@ -20,8 +20,64 @@ public class UsageServiceTests
         _sut = new UsageService(_jobRepo.Object, _userRepo.Object);
     }
 
+    // Stripe-confirmed: checkout.session.completed has set the Stripe subscription id
     private void WithTier(string tier) =>
+        _user.Subscriptions.Add(new Subscription
+        {
+            Id = Guid.NewGuid(), UserId = _user.Id, Tier = tier, IsActive = true,
+            StripeSubscriptionId = $"sub_{tier}_confirmed",
+        });
+
+    // Checkout started but never completed (e.g. the user closed the Stripe page)
+    private void WithUnconfirmedTier(string tier) =>
         _user.Subscriptions.Add(new Subscription { Id = Guid.NewGuid(), UserId = _user.Id, Tier = tier, IsActive = true });
+
+    [Fact]
+    public async Task GetUsage_UnconfirmedGold_ReturnsBronzeLimits()
+    {
+        WithUnconfirmedTier("gold");
+
+        var usage = await _sut.GetUsageAsync(_user.Id);
+
+        usage.Tier.Should().Be("bronze");
+        usage.PostsLimit.Should().Be(2);
+        usage.ApplicationsLimit.Should().Be(10);
+    }
+
+    [Fact]
+    public async Task GetUsage_ConfirmedGold_IsUnlimited()
+    {
+        WithTier("gold");
+
+        var usage = await _sut.GetUsageAsync(_user.Id);
+
+        usage.Tier.Should().Be("gold");
+        usage.PostsLimit.Should().BeNull();
+        usage.ApplicationsLimit.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task EnsureCanPost_UnconfirmedGold_AtBronzeLimit_Throws()
+    {
+        WithUnconfirmedTier("gold");
+        _jobRepo.Setup(r => r.CountJobsPostedSinceAsync(_user.Id, It.IsAny<DateTimeOffset>())).ReturnsAsync(2);
+
+        await _sut.Invoking(s => s.EnsureCanPostAsync(_user.Id))
+            .Should().ThrowAsync<TierLimitExceededException>().WithMessage("*Bronze*");
+    }
+
+    [Fact]
+    public async Task GetUsage_UnconfirmedGold_WhenStripeConfirmationNotRequired_IsUnlimited()
+    {
+        // Development/Testing run the stubbed billing service, so no webhook ever confirms a row
+        WithUnconfirmedTier("gold");
+        var sut = new UsageService(_jobRepo.Object, _userRepo.Object, requireStripeConfirmation: false);
+
+        var usage = await sut.GetUsageAsync(_user.Id);
+
+        usage.Tier.Should().Be("gold");
+        usage.PostsLimit.Should().BeNull();
+    }
 
     [Fact]
     public async Task GetUsage_NoSubscription_ReturnsBronzeLimits()

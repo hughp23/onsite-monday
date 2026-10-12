@@ -19,6 +19,18 @@ public static class TierLimits
     public static int? PostsPerMonth(string? tier) => For(tier).Posts;
     public static int? ApplicationsPerMonth(string? tier) => For(tier).Applications;
 
+    /// <summary>
+    /// The tier whose limits apply to a subscription. A paid tier only counts once Stripe has
+    /// confirmed checkout (checkout.session.completed sets StripeSubscriptionId); an abandoned
+    /// checkout leaves the row unconfirmed, so it falls back to bronze.
+    /// </summary>
+    public static string LimitTier(Subscription? subscription, bool requireStripeConfirmation)
+    {
+        if (subscription == null) return "bronze";
+        if (requireStripeConfirmation && string.IsNullOrEmpty(subscription.StripeSubscriptionId)) return "bronze";
+        return subscription.Tier;
+    }
+
     public static DateTimeOffset CurrentPeriodStart(DateTimeOffset now)
     {
         var utc = now.ToUniversalTime();
