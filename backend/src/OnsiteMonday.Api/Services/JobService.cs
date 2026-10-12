@@ -15,6 +15,7 @@ public class JobService : IJobService
     private readonly INotificationRepository _notificationRepo;
     private readonly IStripeConnectService _stripeConnect;
     private readonly IBackgroundJobClient _backgroundJobs;
+    private readonly IUsageService _usage;
     private readonly IMapper _mapper;
 
     public JobService(
@@ -23,6 +24,7 @@ public class JobService : IJobService
         INotificationRepository notificationRepo,
         IStripeConnectService stripeConnect,
         IBackgroundJobClient backgroundJobs,
+        IUsageService usage,
         IMapper mapper)
     {
         _jobRepo = jobRepo;
@@ -30,6 +32,7 @@ public class JobService : IJobService
         _notificationRepo = notificationRepo;
         _stripeConnect = stripeConnect;
         _backgroundJobs = backgroundJobs;
+        _usage = usage;
         _mapper = mapper;
     }
 
@@ -50,6 +53,8 @@ public class JobService : IJobService
     {
         if (await _jobRepo.HasOutstandingPosterReviewAsync(posterId))
             throw new InvalidOperationException("You have outstanding reviews to complete before posting new jobs.");
+
+        await _usage.EnsureCanPostAsync(posterId);
 
         var poster = await _userRepo.GetByIdAsync(posterId)
             ?? throw new KeyNotFoundException("Poster user not found.");
@@ -169,6 +174,11 @@ public class JobService : IJobService
             throw new InvalidOperationException("This job is no longer accepting applications.");
 
         var existing = await _jobRepo.GetApplicationAsync(jobId, userId);
+        var isNewApplication = existing == null || existing.Status == "interested";
+
+        // Only a brand-new application uses up the monthly allowance; re-applying is idempotent
+        if (isNewApplication)
+            await _usage.EnsureCanApplyAsync(userId);
 
         if (existing == null)
         {
@@ -184,11 +194,12 @@ public class JobService : IJobService
         else if (existing.Status == "interested")
         {
             existing.Status = "applied";
+            existing.AppliedAt = DateTimeOffset.UtcNow; // count against the month of applying, not of liking
             await _jobRepo.UpdateApplicationAsync(existing);
         }
-        // Already applied or accepted — idempotent, do nothing
+        // Already applied or accepted - idempotent, do nothing
 
-        if (existing == null || existing.Status == "interested")
+        if (isNewApplication)
         {
             var applicant = await _userRepo.GetByIdAsync(userId);
             if (applicant != null)

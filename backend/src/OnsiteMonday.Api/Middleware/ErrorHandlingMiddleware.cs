@@ -1,5 +1,6 @@
 using System.Net;
 using System.Text.Json;
+using OnsiteMonday.Api.Domain;
 
 namespace OnsiteMonday.Api.Middleware;
 
@@ -31,6 +32,10 @@ public class ErrorHandlingMiddleware
         catch (ArgumentException ex)
         {
             await WriteErrorAsync(context, HttpStatusCode.BadRequest, ex.Message);
+        }
+        catch (TierLimitExceededException ex)
+        {
+            await WriteErrorAsync(context, HttpStatusCode.PaymentRequired, ex.Message);
         }
         catch (InvalidOperationException ex)
         {

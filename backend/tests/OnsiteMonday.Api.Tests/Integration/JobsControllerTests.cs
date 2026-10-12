@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using FluentAssertions;
+using OnsiteMonday.Api.Domain;
 using OnsiteMonday.Api.DTOs.Jobs;
 using OnsiteMonday.Api.Tests.Infrastructure;
 
@@ -25,9 +26,20 @@ public class JobsControllerTests : IClassFixture<TestWebApplicationFactory>, IAs
             var existing = db.Users.FirstOrDefault(u => u.CognitoSub == FakeAuthHandler.TestFirebaseUid);
             if (existing == null)
             {
-                db.Users.Add(TestBuilders.MakeUser());
-                await db.SaveChangesAsync();
+                existing = TestBuilders.MakeUser();
+                db.Users.Add(existing);
             }
+
+            // This class posts more jobs per month than a Bronze plan allows, so run it as Gold
+            if (!db.Subscriptions.Any(s => s.UserId == existing.Id && s.IsActive))
+            {
+                db.Subscriptions.Add(new Subscription
+                {
+                    Id = Guid.NewGuid(), UserId = existing.Id, Tier = "gold", IsActive = true,
+                    PayoutDays = 7, StartedAt = DateTimeOffset.UtcNow,
+                });
+            }
+            await db.SaveChangesAsync();
         });
     }
 

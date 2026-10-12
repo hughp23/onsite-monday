@@ -21,6 +21,7 @@ public class JobServiceTests
     private readonly Mock<INotificationRepository> _notificationRepoMock = new();
     private readonly Mock<IStripeConnectService> _stripeConnectMock = new();
     private readonly Mock<IBackgroundJobClient> _backgroundJobsMock = new();
+    private readonly Mock<IUsageService> _usageMock = new();
     private readonly IMapper _mapper;
     private readonly JobService _sut;
 
@@ -35,7 +36,7 @@ public class JobServiceTests
         _backgroundJobsMock
             .Setup(b => b.Create(It.IsAny<HangfireJob>(), It.IsAny<Hangfire.States.IState>()))
             .Returns("stub_hangfire_job_id");
-        _sut = new JobService(_jobRepoMock.Object, _userRepoMock.Object, _notificationRepoMock.Object, _stripeConnectMock.Object, _backgroundJobsMock.Object, _mapper);
+        _sut = new JobService(_jobRepoMock.Object, _userRepoMock.Object, _notificationRepoMock.Object, _stripeConnectMock.Object, _backgroundJobsMock.Object, _usageMock.Object, _mapper);
     }
 
     [Fact]
@@ -357,5 +358,63 @@ public class JobServiceTests
         job.PaymentStatus.Should().Be("escrowed");
         job.PayoutScheduledAt.Should().BeNull();
         job.HangfireJobId.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task CreateJob_AtPostLimit_ThrowsAndDoesNotCreate()
+    {
+        var poster = TestBuilders.MakeUser();
+        _usageMock.Setup(u => u.EnsureCanPostAsync(poster.Id))
+            .ThrowsAsync(new TierLimitExceededException("limit"));
+        _userRepoMock.Setup(r => r.GetByIdAsync(poster.Id)).ReturnsAsync(poster);
+
+        var act = () => _sut.CreateJobAsync(poster.Id, new CreateJobRequest { Title = "x", Trade = "Builder", Location = "York", Postcode = "YO1 1AA", Duration = 1, Days = new() { "M" }, StartTime = "08:00", EndTime = "17:00", DayRate = 100, PaymentTerms = "7 days" });
+
+        await act.Should().ThrowAsync<TierLimitExceededException>();
+        _jobRepoMock.Verify(r => r.CreateAsync(It.IsAny<Job>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task ApplyToJob_AtLimit_NewApplication_Throws()
+    {
+        var poster = TestBuilders.MakeUser();
+        var applicantId = Guid.NewGuid();
+        var job = TestBuilders.MakeJob(poster.Id);
+        _jobRepoMock.Setup(r => r.GetByIdAsync(job.Id, applicantId)).ReturnsAsync((job, false, 0));
+        _jobRepoMock.Setup(r => r.GetApplicationAsync(job.Id, applicantId)).ReturnsAsync((JobApplication?)null);
+        _usageMock.Setup(u => u.EnsureCanApplyAsync(applicantId)).ThrowsAsync(new TierLimitExceededException("limit"));
+
+        await _sut.Invoking(s => s.ApplyToJobAsync(job.Id, applicantId))
+            .Should().ThrowAsync<TierLimitExceededException>();
+        _jobRepoMock.Verify(r => r.AddApplicationAsync(It.IsAny<JobApplication>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task ApplyToJob_AlreadyApplied_AtLimit_DoesNotThrow()
+    {
+        var poster = TestBuilders.MakeUser();
+        var applicantId = Guid.NewGuid();
+        var job = TestBuilders.MakeJob(poster.Id);
+        _jobRepoMock.Setup(r => r.GetByIdAsync(job.Id, applicantId)).ReturnsAsync((job, true, 1));
+        _jobRepoMock.Setup(r => r.GetApplicationAsync(job.Id, applicantId))
+            .ReturnsAsync(new JobApplication { JobId = job.Id, ApplicantId = applicantId, Status = "applied" });
+        _usageMock.Setup(u => u.EnsureCanApplyAsync(applicantId)).ThrowsAsync(new TierLimitExceededException("limit"));
+
+        await _sut.Invoking(s => s.ApplyToJobAsync(job.Id, applicantId)).Should().NotThrowAsync();
+    }
+
+    [Fact]
+    public async Task ApplyToJob_FromInterested_ResetsAppliedAtToNow()
+    {
+        var poster = TestBuilders.MakeUser();
+        var applicantId = Guid.NewGuid();
+        var job = TestBuilders.MakeJob(poster.Id);
+        var liked = new JobApplication { JobId = job.Id, ApplicantId = applicantId, Status = "interested", AppliedAt = DateTimeOffset.UtcNow.AddMonths(-2) };
+        _jobRepoMock.Setup(r => r.GetByIdAsync(job.Id, applicantId)).ReturnsAsync((job, true, 1));
+        _jobRepoMock.Setup(r => r.GetApplicationAsync(job.Id, applicantId)).ReturnsAsync(liked);
+
+        await _sut.ApplyToJobAsync(job.Id, applicantId);
+
+        liked.AppliedAt.Should().BeCloseTo(DateTimeOffset.UtcNow, TimeSpan.FromSeconds(5));
     }
 }

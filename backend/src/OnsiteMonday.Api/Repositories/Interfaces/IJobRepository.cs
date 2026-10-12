@@ -32,6 +32,10 @@ public interface IJobRepository
     Task<bool> HasOutstandingPosterReviewAsync(Guid posterId);
     Task<bool> HasOutstandingTradesPersonReviewAsync(Guid tradespersonId);
 
+    // Tier usage counts (calendar-month window supplied by caller)
+    Task<int> CountJobsPostedSinceAsync(Guid posterId, DateTimeOffset since);
+    Task<int> CountApplicationsSinceAsync(Guid applicantId, DateTimeOffset since);
+
     // Autocomplete scan: jobs past end date that are still active
     Task<List<Job>> GetJobsForAutocompleteAsync();
 }

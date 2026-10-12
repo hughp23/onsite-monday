@@ -185,4 +185,12 @@ public class JobRepository : IJobRepository
                         && new DateTimeOffset(j.EndDate.ToDateTime(TimeOnly.MinValue), TimeSpan.Zero) < cutoff)
             .ToListAsync();
     }
+
+    public Task<int> CountJobsPostedSinceAsync(Guid posterId, DateTimeOffset since) =>
+        _db.Jobs.CountAsync(j => j.PostedById == posterId && j.CreatedAt >= since);
+
+    // "interested" is a like, not an application, so it doesn't count
+    public Task<int> CountApplicationsSinceAsync(Guid applicantId, DateTimeOffset since) =>
+        _db.JobApplications.CountAsync(a =>
+            a.ApplicantId == applicantId && a.Status != "interested" && a.AppliedAt >= since);
 }
