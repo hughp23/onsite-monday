@@ -65,7 +65,7 @@ public class UserService : IUserService
 
     public async Task<List<TradespersonDto>> GetTradespeopleAsync(string? trade, string? location, int page = 1, int pageSize = 20)
     {
-        page = Math.Max(1, page);
+        page = Math.Clamp(page, 1, 10_000); // upper bound keeps (page - 1) * pageSize from overflowing
         pageSize = Math.Clamp(pageSize, 1, 50);
         var users = await _repo.GetTradespeopleAsync(trade, location, page, pageSize);
         return _mapper.Map<List<TradespersonDto>>(users);

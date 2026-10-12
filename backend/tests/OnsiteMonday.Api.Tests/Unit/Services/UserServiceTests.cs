@@ -176,6 +176,16 @@ public class UserServiceTests
     }
 
     [Fact]
+    public async Task GetTradespeople_HugePage_ClampsSoSkipCannotOverflow()
+    {
+        _repoMock.Setup(r => r.GetTradespeopleAsync(null, null, 10_000, 50)).ReturnsAsync(new List<User>());
+
+        await _sut.GetTradespeopleAsync(null, null, int.MaxValue, 50);
+
+        _repoMock.Verify(r => r.GetTradespeopleAsync(null, null, 10_000, 50), Times.Once);
+    }
+
+    [Fact]
     public async Task UpdateCurrentUser_SetsBio()
     {
         var user = TestBuilders.MakeUser();
