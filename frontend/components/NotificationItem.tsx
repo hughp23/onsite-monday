@@ -9,14 +9,14 @@ interface NotificationItemProps {
   onPress: () => void;
 }
 
-const ICONS: Record<NotificationType, string> = {
+export const ICONS: Record<NotificationType, string> = {
   application: 'person-add',
   accepted: 'checkmark-circle',
   payment: 'cash',
   review: 'star',
   profile_view: 'eye',
-  job_completion_pending: 'clipboard-check-outline',
-  job_autocompleted: 'check-circle-outline',
+  job_completion_pending: 'clipboard-outline',
+  job_autocompleted: 'checkmark-done-circle',
   review_required: 'star-half',
   cancelled: 'close-circle',
   job_invite: 'mail-unread',
