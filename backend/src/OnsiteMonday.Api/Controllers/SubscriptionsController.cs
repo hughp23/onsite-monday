@@ -14,11 +14,16 @@ public class SubscriptionsController : ControllerBase
 {
     private readonly ISubscriptionService _subscriptionService;
     private readonly IUserRepository _userRepo;
+    private readonly IUsageService _usageService;
 
-    public SubscriptionsController(ISubscriptionService subscriptionService, IUserRepository userRepo)
+    public SubscriptionsController(
+        ISubscriptionService subscriptionService,
+        IUserRepository userRepo,
+        IUsageService usageService)
     {
         _subscriptionService = subscriptionService;
         _userRepo = userRepo;
+        _usageService = usageService;
     }
 
     private string CognitoSub =>
@@ -45,6 +50,14 @@ public class SubscriptionsController : ControllerBase
             return Ok(new SubscriptionDto { Tier = "bronze", PayoutDays = 30, IsActive = false });
 
         return Ok(subscription);
+    }
+
+    // GET /api/subscriptions/usage
+    [HttpGet("usage")]
+    public async Task<ActionResult<UsageDto>> GetUsage()
+    {
+        var userId = await GetCurrentUserIdAsync();
+        return Ok(await _usageService.GetUsageAsync(userId));
     }
 
     // POST /api/subscriptions
