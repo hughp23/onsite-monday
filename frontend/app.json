@@ -13,11 +13,6 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
-    "splash": {
-      "image": "./assets/splash-icon.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#8B2020"
-    },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.onsitemonday.app",
@@ -25,7 +20,7 @@
       "usesAppleSignIn": true,
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
-        "NSFaceIDUsageDescription": "Ônsite Monday uses Face ID to sign you in quickly and securely."
+        "NSFaceIDUsageDescription": "Onsite Monday uses Face ID to sign you in quickly and securely."
       }
     },
     "android": {
@@ -49,8 +44,8 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "Ônsite Monday needs access to your photo library to set a profile photo.",
-          "cameraPermission": "Ônsite Monday needs camera access to take a profile photo."
+          "photosPermission": "Onsite Monday needs access to your photo library to set a profile photo.",
+          "cameraPermission": "Onsite Monday needs camera access to take a profile photo."
         }
       ],
       [
@@ -64,7 +59,17 @@
       "expo-secure-store",
       "expo-web-browser",
       "expo-asset",
-      "expo-font"
+      "expo-font",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "resizeMode": "contain",
+          "backgroundColor": "#8B2020",
+          "imageWidth": 200
+        }
+      ],
+      "expo-status-bar"
     ],
     "experiments": {
       "typedRoutes": true
