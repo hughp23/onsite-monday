@@ -72,9 +72,7 @@ public class UserRepository : IUserRepository
 
     public async Task<List<User>> GetTradespeopleAsync(string? trade, string? location, int page, int pageSize)
     {
-        try
-        {
-            var query = _db.Users
+        var query = _db.Users
             .Include(u => u.Subscriptions)
             .Where(u => u.Trade != null);
 
@@ -90,13 +88,6 @@ public class UserRepository : IUserRepository
             .OrderByDescending(u => (double)u.Rating).ThenBy(u => u.Id)
             .Skip((page - 1) * pageSize).Take(pageSize)
             .ToListAsync();
-        }
-        catch (Exception ex)
-        {
-            // Log the exception (not implemented here)
-            throw new Exception("An error occurred while retrieving tradespeople.", ex);
-        }
-        
     }
 
     public async Task UpdateAsync(User user)

@@ -202,6 +202,8 @@ The job is loaded via `GetByIdRawAsync` (no `Include`). `tradesperson.ActiveSubs
 
 ### BUG-14 · `UserRepository.GetTradespeopleAsync` swallows meaningful exception context
 
+**Status:** Fixed 2026-10-13. The try/catch is removed, so the original exception (type, message and stack) reaches `ErrorHandlingMiddleware` and the logs. The wrapper also hid the type the middleware maps to a status code.
+
 **File:** `backend/src/OnsiteMonday.Api/Repositories/UserRepository.cs:66-89`
 
 The method wraps the entire query in a try/catch that rethrows `new Exception("An error occurred while retrieving tradespeople.", ex)`. This replaces useful diagnostic information (e.g. a Postgres error) with a generic string.
