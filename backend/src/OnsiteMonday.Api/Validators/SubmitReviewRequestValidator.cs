@@ -9,7 +9,6 @@ public class SubmitReviewRequestValidator : AbstractValidator<SubmitReviewReques
     {
         RuleFor(x => x.Rating).InclusiveBetween(1, 5)
             .WithMessage("Rating must be between 1 and 5.");
-        RuleFor(x => x.JobId).NotEmpty();
         When(x => x.Text != null, () =>
             RuleFor(x => x.Text).MaximumLength(2000));
     }

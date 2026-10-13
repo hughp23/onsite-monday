@@ -33,13 +33,13 @@ public class ReviewsController : ControllerBase
         return user.Id;
     }
 
-    // POST /api/users/{id}/reviews  — job poster reviews tradesperson
-    [HttpPost("api/users/{id:guid}/reviews")]
-    public async Task<ActionResult<ReviewDto>> SubmitReview(Guid id, [FromBody] SubmitReviewRequest request)
+    // POST /api/jobs/{jobId}/review  — job poster reviews the accepted tradesperson
+    [HttpPost("api/jobs/{jobId:guid}/review")]
+    public async Task<ActionResult<ReviewDto>> SubmitReview(Guid jobId, [FromBody] SubmitReviewRequest request)
     {
         var reviewerId = await GetCurrentUserIdAsync();
-        var review = await _reviewService.SubmitReviewAsync(reviewerId, id, request);
-        return CreatedAtAction(nameof(GetReviews), new { id }, review);
+        var review = await _reviewService.SubmitReviewAsync(reviewerId, jobId, request);
+        return CreatedAtAction(nameof(GetReviews), new { id = review.RevieweeId }, review);
     }
 
     // GET /api/users/{id}/reviews

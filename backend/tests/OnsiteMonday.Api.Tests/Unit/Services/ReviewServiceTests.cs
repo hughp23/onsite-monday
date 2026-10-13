@@ -35,57 +35,74 @@ public class ReviewServiceTests
 
     private static SubmitReviewRequest MakeRequest(int rating = 4) => new()
     {
-        JobId = Guid.NewGuid(),
         Rating = rating,
         Text = "Great tradesperson.",
     };
 
-    [Fact]
-    public async Task SubmitReview_HappyPath_CreatesReviewAndNotification()
-    {
-        var reviewer = TestBuilders.MakeUser("uid-reviewer", "reviewer@test.com");
-        var reviewee = TestBuilders.MakeUser("uid-reviewee", "reviewee@test.com");
-        var request = MakeRequest();
+    private static (User Applicant, JobApplication Application) Application(
+        Guid jobId, User applicant, string status) =>
+        (applicant, new JobApplication
+        {
+            Id = Guid.NewGuid(), JobId = jobId, ApplicantId = applicant.Id,
+            Status = status, AppliedAt = DateTimeOffset.UtcNow,
+        });
 
-        _userRepoMock.Setup(r => r.GetByIdAsync(reviewee.Id)).ReturnsAsync(reviewee);
-        _userRepoMock.Setup(r => r.GetByIdAsync(reviewer.Id)).ReturnsAsync(reviewer);
-        _reviewRepoMock.Setup(r => r.ExistsForJobAsync(request.JobId)).ReturnsAsync(false);
+    // Poster's completed job, with `hired` accepted and an unrelated applicant
+    // rejected, so tests prove the reviewee comes from the accepted application.
+    private Job SetupCompletedJob(User poster, User hired, string paymentStatus = "none")
+    {
+        var job = TestBuilders.MakeJob(poster.Id, status: "completed", paymentStatus: paymentStatus);
+        var other = TestBuilders.MakeUser("uid-other", "other@test.com");
+
+        _jobRepoMock.Setup(r => r.GetByIdRawAsync(job.Id)).ReturnsAsync(job);
+        _jobRepoMock.Setup(r => r.GetApplicantsAsync(job.Id)).ReturnsAsync(new List<(User, JobApplication)>
+        {
+            Application(job.Id, other, "rejected"),
+            Application(job.Id, hired, "accepted"),
+        });
+        _jobRepoMock.Setup(r => r.UpdateAsync(It.IsAny<Job>())).Returns(Task.CompletedTask);
+        _userRepoMock.Setup(r => r.GetByIdAsync(hired.Id)).ReturnsAsync(hired);
+        _userRepoMock.Setup(r => r.GetByIdAsync(poster.Id)).ReturnsAsync(poster);
+        _reviewRepoMock.Setup(r => r.ExistsForJobAsync(job.Id)).ReturnsAsync(false);
         _reviewRepoMock.Setup(r => r.CreateAsync(It.IsAny<Review>())).ReturnsAsync((Review r) => r);
-        _reviewRepoMock.Setup(r => r.GetAverageRatingAsync(reviewee.Id)).ReturnsAsync(4.5m);
-        _reviewRepoMock.Setup(r => r.GetReviewCountAsync(reviewee.Id)).ReturnsAsync(1);
+        _reviewRepoMock.Setup(r => r.GetAverageRatingAsync(hired.Id)).ReturnsAsync(4.5m);
+        _reviewRepoMock.Setup(r => r.GetReviewCountAsync(hired.Id)).ReturnsAsync(1);
         _userRepoMock.Setup(r => r.UpdateAsync(It.IsAny<User>())).Returns(Task.CompletedTask);
         _notificationRepoMock.Setup(r => r.CreateAsync(It.IsAny<Notification>())).ReturnsAsync((Notification n) => n);
+        return job;
+    }
 
-        var result = await _sut.SubmitReviewAsync(reviewer.Id, reviewee.Id, request);
+    [Fact]
+    public async Task SubmitReview_HappyPath_ReviewsTheAcceptedApplicantAndNotifies()
+    {
+        var poster = TestBuilders.MakeUser("uid-poster", "poster@test.com");
+        var hired = TestBuilders.MakeUser("uid-hired", "hired@test.com");
+        var job = SetupCompletedJob(poster, hired);
 
-        result.Should().NotBeNull();
-        result.RevieweeId.Should().Be(reviewee.Id);
-        result.ReviewerId.Should().Be(reviewer.Id);
-        result.Rating.Should().Be(request.Rating);
-        _reviewRepoMock.Verify(r => r.CreateAsync(It.IsAny<Review>()), Times.Once);
-        _notificationRepoMock.Verify(r => r.CreateAsync(It.IsAny<Notification>()), Times.Once);
+        var result = await _sut.SubmitReviewAsync(poster.Id, job.Id, MakeRequest());
+
+        result.RevieweeId.Should().Be(hired.Id);
+        result.ReviewerId.Should().Be(poster.Id);
+        result.JobId.Should().Be(job.Id);
+        _reviewRepoMock.Verify(r => r.CreateAsync(It.Is<Review>(rv =>
+            rv.RevieweeId == hired.Id && rv.JobId == job.Id)), Times.Once);
+        _notificationRepoMock.Verify(r => r.CreateAsync(It.Is<Notification>(n =>
+            n.UserId == hired.Id)), Times.Once);
     }
 
     [Fact]
     public async Task SubmitReview_RecalculatesRevieweeRatingAndCount()
     {
-        var reviewer = TestBuilders.MakeUser("uid-reviewer", "reviewer@test.com");
-        var reviewee = TestBuilders.MakeUser("uid-reviewee", "reviewee@test.com");
-        var request = MakeRequest();
+        var poster = TestBuilders.MakeUser("uid-poster", "poster@test.com");
+        var hired = TestBuilders.MakeUser("uid-hired", "hired@test.com");
+        var job = SetupCompletedJob(poster, hired);
+        _reviewRepoMock.Setup(r => r.GetAverageRatingAsync(hired.Id)).ReturnsAsync(3.8m);
+        _reviewRepoMock.Setup(r => r.GetReviewCountAsync(hired.Id)).ReturnsAsync(5);
 
-        _userRepoMock.Setup(r => r.GetByIdAsync(reviewee.Id)).ReturnsAsync(reviewee);
-        _userRepoMock.Setup(r => r.GetByIdAsync(reviewer.Id)).ReturnsAsync(reviewer);
-        _reviewRepoMock.Setup(r => r.ExistsForJobAsync(request.JobId)).ReturnsAsync(false);
-        _reviewRepoMock.Setup(r => r.CreateAsync(It.IsAny<Review>())).ReturnsAsync((Review r) => r);
-        _reviewRepoMock.Setup(r => r.GetAverageRatingAsync(reviewee.Id)).ReturnsAsync(3.8m);
-        _reviewRepoMock.Setup(r => r.GetReviewCountAsync(reviewee.Id)).ReturnsAsync(5);
-        _userRepoMock.Setup(r => r.UpdateAsync(It.IsAny<User>())).Returns(Task.CompletedTask);
-        _notificationRepoMock.Setup(r => r.CreateAsync(It.IsAny<Notification>())).ReturnsAsync((Notification n) => n);
-
-        await _sut.SubmitReviewAsync(reviewer.Id, reviewee.Id, request);
+        await _sut.SubmitReviewAsync(poster.Id, job.Id, MakeRequest());
 
         _userRepoMock.Verify(r => r.UpdateAsync(It.Is<User>(u =>
-            u.Id == reviewee.Id &&
+            u.Id == hired.Id &&
             u.Rating == 3.8m &&
             u.ReviewCount == 5)), Times.Once);
     }
@@ -93,24 +110,21 @@ public class ReviewServiceTests
     [Fact]
     public async Task SubmitReview_WhenDuplicateJob_ThrowsArgumentException()
     {
-        var reviewer = TestBuilders.MakeUser("uid-reviewer", "reviewer@test.com");
-        var reviewee = TestBuilders.MakeUser("uid-reviewee", "reviewee@test.com");
-        var request = MakeRequest();
+        var poster = TestBuilders.MakeUser("uid-poster", "poster@test.com");
+        var hired = TestBuilders.MakeUser("uid-hired", "hired@test.com");
+        var job = SetupCompletedJob(poster, hired);
+        _reviewRepoMock.Setup(r => r.ExistsForJobAsync(job.Id)).ReturnsAsync(true);
 
-        _userRepoMock.Setup(r => r.GetByIdAsync(reviewee.Id)).ReturnsAsync(reviewee);
-        _userRepoMock.Setup(r => r.GetByIdAsync(reviewer.Id)).ReturnsAsync(reviewer);
-        _reviewRepoMock.Setup(r => r.ExistsForJobAsync(request.JobId)).ReturnsAsync(true);
-
-        var act = () => _sut.SubmitReviewAsync(reviewer.Id, reviewee.Id, request);
+        var act = () => _sut.SubmitReviewAsync(poster.Id, job.Id, MakeRequest());
 
         await act.Should().ThrowAsync<ArgumentException>()
             .WithMessage("*already exists*");
     }
 
     [Fact]
-    public async Task SubmitReview_WhenRevieweeNotFound_ThrowsKeyNotFoundException()
+    public async Task SubmitReview_WhenJobNotFound_ThrowsKeyNotFoundException()
     {
-        _userRepoMock.Setup(r => r.GetByIdAsync(It.IsAny<Guid>())).ReturnsAsync((User?)null);
+        _jobRepoMock.Setup(r => r.GetByIdRawAsync(It.IsAny<Guid>())).ReturnsAsync((Job?)null);
 
         var act = () => _sut.SubmitReviewAsync(Guid.NewGuid(), Guid.NewGuid(), MakeRequest());
 
@@ -118,30 +132,85 @@ public class ReviewServiceTests
     }
 
     [Fact]
-    public async Task SubmitReview_WhenJobNotCompleted_DoesNotScheduleHangfire()
+    public async Task SubmitReview_WhenCallerIsNotThePoster_ThrowsAndCreatesNothing()
     {
-        // Job is in_progress (not "completed") — payout must NOT be scheduled.
-        var reviewer = TestBuilders.MakeUser("uid-reviewer", "reviewer@test.com");
-        var reviewee = TestBuilders.MakeUser("uid-reviewee", "reviewee@test.com");
-        var request = MakeRequest();
+        var poster = TestBuilders.MakeUser("uid-poster", "poster@test.com");
+        var hired = TestBuilders.MakeUser("uid-hired", "hired@test.com");
+        var job = SetupCompletedJob(poster, hired);
 
-        var job = TestBuilders.MakeJob(reviewer.Id, status: "in_progress");
-        job.Id = request.JobId;
-        job.PaymentStatus = "escrowed";
+        var act = () => _sut.SubmitReviewAsync(Guid.NewGuid(), job.Id, MakeRequest());
 
-        _userRepoMock.Setup(r => r.GetByIdAsync(reviewee.Id)).ReturnsAsync(reviewee);
-        _userRepoMock.Setup(r => r.GetByIdAsync(reviewer.Id)).ReturnsAsync(reviewer);
-        _reviewRepoMock.Setup(r => r.ExistsForJobAsync(request.JobId)).ReturnsAsync(false);
-        _reviewRepoMock.Setup(r => r.CreateAsync(It.IsAny<Review>())).ReturnsAsync((Review r) => r);
-        _reviewRepoMock.Setup(r => r.GetAverageRatingAsync(reviewee.Id)).ReturnsAsync(4m);
-        _reviewRepoMock.Setup(r => r.GetReviewCountAsync(reviewee.Id)).ReturnsAsync(1);
-        _userRepoMock.Setup(r => r.UpdateAsync(It.IsAny<User>())).Returns(Task.CompletedTask);
-        _notificationRepoMock.Setup(r => r.CreateAsync(It.IsAny<Notification>())).ReturnsAsync((Notification n) => n);
-        _jobRepoMock.Setup(r => r.GetByIdRawAsync(request.JobId)).ReturnsAsync(job);
+        await act.Should().ThrowAsync<UnauthorizedAccessException>();
+        _reviewRepoMock.Verify(r => r.CreateAsync(It.IsAny<Review>()), Times.Never);
+    }
 
-        await _sut.SubmitReviewAsync(reviewer.Id, reviewee.Id, request);
+    [Fact]
+    public async Task SubmitReview_WhenNoAcceptedApplicant_ThrowsAndCreatesNothing()
+    {
+        var poster = TestBuilders.MakeUser("uid-poster", "poster@test.com");
+        var hired = TestBuilders.MakeUser("uid-hired", "hired@test.com");
+        var job = SetupCompletedJob(poster, hired);
+        _jobRepoMock.Setup(r => r.GetApplicantsAsync(job.Id)).ReturnsAsync(new List<(User, JobApplication)>
+        {
+            Application(job.Id, hired, "interested"),
+        });
 
+        var act = () => _sut.SubmitReviewAsync(poster.Id, job.Id, MakeRequest());
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*no accepted tradesperson*");
+        _reviewRepoMock.Verify(r => r.CreateAsync(It.IsAny<Review>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task SubmitReview_WhenJobNotCompleted_ThrowsAndDoesNotScheduleHangfire()
+    {
+        var poster = TestBuilders.MakeUser("uid-poster", "poster@test.com");
+        var hired = TestBuilders.MakeUser("uid-hired", "hired@test.com");
+        var job = SetupCompletedJob(poster, hired, paymentStatus: "escrowed");
+        job.Status = "in_progress";
+
+        var act = () => _sut.SubmitReviewAsync(poster.Id, job.Id, MakeRequest());
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*completed jobs*");
+        _reviewRepoMock.Verify(r => r.CreateAsync(It.IsAny<Review>()), Times.Never);
         _backgroundJobsMock.Verify(b => b.Create(It.IsAny<HangfireJob>(), It.IsAny<Hangfire.States.IState>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task SubmitReview_WhenCompletedAndEscrowed_SchedulesPayoutOnHiredTradespersonsTier()
+    {
+        var poster = TestBuilders.MakeUser("uid-poster", "poster@test.com");
+        var hired = TestBuilders.MakeUser("uid-hired", "hired@test.com");
+        hired.Subscriptions = new List<Subscription>
+        {
+            new Subscription { Tier = "silver", IsActive = true, PayoutDays = 14, StartedAt = DateTimeOffset.UtcNow }
+        };
+        var job = SetupCompletedJob(poster, hired, paymentStatus: "escrowed");
+
+        await _sut.SubmitReviewAsync(poster.Id, job.Id, MakeRequest(5));
+
+        _backgroundJobsMock.Verify(
+            b => b.Create(It.IsAny<HangfireJob>(), It.IsAny<Hangfire.States.IState>()),
+            Times.Once);
+        job.PaymentStatus.Should().Be("payout_pending");
+        job.HangfireJobId.Should().Be("stub_hangfire_id");
+        job.PayoutScheduledAt.Should().BeCloseTo(DateTimeOffset.UtcNow.AddDays(14), TimeSpan.FromMinutes(1));
+    }
+
+    [Fact]
+    public async Task SubmitReview_WhenCompletedButNotEscrowed_DoesNotScheduleHangfire()
+    {
+        var poster = TestBuilders.MakeUser("uid-poster", "poster@test.com");
+        var hired = TestBuilders.MakeUser("uid-hired", "hired@test.com");
+        var job = SetupCompletedJob(poster, hired, paymentStatus: "paid");
+
+        await _sut.SubmitReviewAsync(poster.Id, job.Id, MakeRequest(3));
+
+        _backgroundJobsMock.Verify(
+            b => b.Create(It.IsAny<HangfireJob>(), It.IsAny<Hangfire.States.IState>()),
+            Times.Never);
     }
 
     [Fact]
@@ -159,130 +228,5 @@ public class ReviewServiceTests
         var result = await _sut.GetReviewsAsync(reviewee.Id);
 
         result.Should().HaveCount(2);
-    }
-}
-
-public class ReviewServicePayoutTests
-{
-    private readonly Mock<IReviewRepository> _reviewRepoMock = new();
-    private readonly Mock<IUserRepository> _userRepoMock = new();
-    private readonly Mock<INotificationRepository> _notificationRepoMock = new();
-    private readonly Mock<IJobRepository> _jobRepoMock = new();
-    private readonly Mock<IBackgroundJobClient> _backgroundJobsMock = new();
-    private readonly ReviewService _sut;
-
-    public ReviewServicePayoutTests()
-    {
-        _backgroundJobsMock
-            .Setup(b => b.Create(It.IsAny<HangfireJob>(), It.IsAny<Hangfire.States.IState>()))
-            .Returns("stub_hangfire_id");
-        _sut = new ReviewService(
-            _reviewRepoMock.Object,
-            _userRepoMock.Object,
-            _notificationRepoMock.Object,
-            _jobRepoMock.Object,
-            _backgroundJobsMock.Object);
-    }
-
-    private void SetupCommonReviewMocks(User reviewer, User reviewee, SubmitReviewRequest request)
-    {
-        _userRepoMock.Setup(r => r.GetByIdAsync(reviewee.Id)).ReturnsAsync(reviewee);
-        _userRepoMock.Setup(r => r.GetByIdAsync(reviewer.Id)).ReturnsAsync(reviewer);
-        _reviewRepoMock.Setup(r => r.ExistsForJobAsync(request.JobId)).ReturnsAsync(false);
-        _reviewRepoMock.Setup(r => r.CreateAsync(It.IsAny<Review>())).ReturnsAsync((Review r) => r);
-        _reviewRepoMock.Setup(r => r.GetAverageRatingAsync(reviewee.Id)).ReturnsAsync(4m);
-        _reviewRepoMock.Setup(r => r.GetReviewCountAsync(reviewee.Id)).ReturnsAsync(1);
-        _userRepoMock.Setup(r => r.UpdateAsync(It.IsAny<User>())).Returns(Task.CompletedTask);
-        _notificationRepoMock.Setup(r => r.CreateAsync(It.IsAny<Notification>())).ReturnsAsync((Notification n) => n);
-        _jobRepoMock.Setup(r => r.UpdateAsync(It.IsAny<Job>())).Returns(Task.CompletedTask);
-    }
-
-    [Fact]
-    public async Task SubmitReview_WhenJobCompletedAndEscrowed_SchedulesHangfireAndSetsPayout_Pending()
-    {
-        var reviewer = TestBuilders.MakeUser("uid-reviewer", "reviewer@test.com");
-        var reviewee = TestBuilders.MakeUser("uid-reviewee", "reviewee@test.com");
-        reviewee.Subscriptions = new List<Subscription>
-        {
-            new Subscription { Tier = "silver", IsActive = true, PayoutDays = 14, StartedAt = DateTimeOffset.UtcNow }
-        };
-
-        var request = new SubmitReviewRequest
-        {
-            JobId = Guid.NewGuid(),
-            Rating = 5,
-            Text = "Excellent work.",
-        };
-
-        var job = TestBuilders.MakeJob(reviewer.Id, status: "completed");
-        job.Id = request.JobId;
-        job.PaymentStatus = "escrowed";
-
-        SetupCommonReviewMocks(reviewer, reviewee, request);
-        _jobRepoMock.Setup(r => r.GetByIdRawAsync(request.JobId)).ReturnsAsync(job);
-
-        await _sut.SubmitReviewAsync(reviewer.Id, reviewee.Id, request);
-
-        _backgroundJobsMock.Verify(
-            b => b.Create(It.IsAny<HangfireJob>(), It.IsAny<Hangfire.States.IState>()),
-            Times.Once);
-
-        job.PaymentStatus.Should().Be("payout_pending");
-        job.HangfireJobId.Should().Be("stub_hangfire_id");
-        job.PayoutScheduledAt.Should().NotBeNull();
-    }
-
-    [Fact]
-    public async Task SubmitReview_WhenJobNotCompleted_DoesNotScheduleHangfire()
-    {
-        var reviewer = TestBuilders.MakeUser("uid-reviewer", "reviewer@test.com");
-        var reviewee = TestBuilders.MakeUser("uid-reviewee", "reviewee@test.com");
-
-        var request = new SubmitReviewRequest
-        {
-            JobId = Guid.NewGuid(),
-            Rating = 4,
-            Text = "Good job.",
-        };
-
-        var job = TestBuilders.MakeJob(reviewer.Id, status: "in_progress");
-        job.Id = request.JobId;
-        job.PaymentStatus = "escrowed";
-
-        SetupCommonReviewMocks(reviewer, reviewee, request);
-        _jobRepoMock.Setup(r => r.GetByIdRawAsync(request.JobId)).ReturnsAsync(job);
-
-        await _sut.SubmitReviewAsync(reviewer.Id, reviewee.Id, request);
-
-        _backgroundJobsMock.Verify(
-            b => b.Create(It.IsAny<HangfireJob>(), It.IsAny<Hangfire.States.IState>()),
-            Times.Never);
-    }
-
-    [Fact]
-    public async Task SubmitReview_WhenJobCompletedButNotEscrowed_DoesNotScheduleHangfire()
-    {
-        var reviewer = TestBuilders.MakeUser("uid-reviewer", "reviewer@test.com");
-        var reviewee = TestBuilders.MakeUser("uid-reviewee", "reviewee@test.com");
-
-        var request = new SubmitReviewRequest
-        {
-            JobId = Guid.NewGuid(),
-            Rating = 3,
-            Text = "Decent.",
-        };
-
-        var job = TestBuilders.MakeJob(reviewer.Id, status: "completed");
-        job.Id = request.JobId;
-        job.PaymentStatus = "paid"; // already paid — shouldn't schedule again
-
-        SetupCommonReviewMocks(reviewer, reviewee, request);
-        _jobRepoMock.Setup(r => r.GetByIdRawAsync(request.JobId)).ReturnsAsync(job);
-
-        await _sut.SubmitReviewAsync(reviewer.Id, reviewee.Id, request);
-
-        _backgroundJobsMock.Verify(
-            b => b.Create(It.IsAny<HangfireJob>(), It.IsAny<Hangfire.States.IState>()),
-            Times.Never);
     }
 }

@@ -10,7 +10,6 @@ public class SubmitReviewRequestValidatorTests
 
     private static SubmitReviewRequest MakeValidRequest() => new()
     {
-        JobId = Guid.NewGuid(),
         Rating = 4,
         Text = "Excellent work.",
     };
@@ -51,14 +50,6 @@ public class SubmitReviewRequestValidatorTests
         var req = MakeValidRequest();
         req.Rating = 5;
         _validator.TestValidate(req).ShouldNotHaveValidationErrorFor(x => x.Rating);
-    }
-
-    [Fact]
-    public void JobId_WhenEmpty_FailsWithError()
-    {
-        var req = MakeValidRequest();
-        req.JobId = Guid.Empty;
-        _validator.TestValidate(req).ShouldHaveValidationErrorFor(x => x.JobId);
     }
 
     [Fact]

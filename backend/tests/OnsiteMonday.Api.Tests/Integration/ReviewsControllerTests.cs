@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using FluentAssertions;
+using OnsiteMonday.Api.Domain;
 using OnsiteMonday.Api.DTOs.Reviews;
 using OnsiteMonday.Api.Tests.Infrastructure;
 
@@ -44,6 +45,11 @@ public class ReviewsControllerTests : IClassFixture<TestWebApplicationFactory>, 
             var poster = db.Users.First(u => u.CognitoSub == FakeAuthHandler.TestFirebaseUid);
             var job = TestBuilders.MakeJob(poster.Id, "completed");
             db.Jobs.Add(job);
+            db.JobApplications.Add(new JobApplication
+            {
+                Id = Guid.NewGuid(), JobId = job.Id, ApplicantId = reviewee.Id,
+                Status = "accepted", AppliedAt = DateTimeOffset.UtcNow, AcceptedAt = DateTimeOffset.UtcNow,
+            });
             await db.SaveChangesAsync();
             _jobId = job.Id;
         });
@@ -52,23 +58,48 @@ public class ReviewsControllerTests : IClassFixture<TestWebApplicationFactory>, 
     public Task DisposeAsync() => Task.CompletedTask;
 
     [Fact]
-    public async Task SubmitReview_WithValidRequest_Returns201()
+    public async Task SubmitReview_WithValidRequest_Returns201ForAcceptedApplicant()
     {
-        var request = new SubmitReviewRequest { JobId = _jobId, Rating = 5, Text = "Excellent work." };
+        var request = new SubmitReviewRequest { Rating = 5, Text = "Excellent work." };
 
-        var response = await _client.PostAsJsonAsync($"/api/users/{_revieweeId}/reviews", request);
+        var response = await _client.PostAsJsonAsync($"/api/jobs/{_jobId}/review", request);
 
         response.StatusCode.Should().Be(HttpStatusCode.Created);
         var dto = await response.Content.ReadFromJsonAsync<ReviewDto>();
         dto!.Rating.Should().Be(5);
+        dto.RevieweeId.Should().Be(_revieweeId);
+        dto.JobId.Should().Be(_jobId);
+    }
+
+    [Fact]
+    public async Task SubmitReview_ForSomeoneElsesJob_Returns403()
+    {
+        var otherJobId = Guid.NewGuid();
+        await _factory.SeedAsync(async db =>
+        {
+            var otherPoster = TestBuilders.MakeUser($"uid-other-poster-{otherJobId}", $"{otherJobId}@test.com");
+            db.Users.Add(otherPoster);
+            db.Jobs.Add(TestBuilders.MakeJob(otherPoster.Id, "completed", id: otherJobId));
+            db.JobApplications.Add(new JobApplication
+            {
+                Id = Guid.NewGuid(), JobId = otherJobId, ApplicantId = _revieweeId,
+                Status = "accepted", AppliedAt = DateTimeOffset.UtcNow, AcceptedAt = DateTimeOffset.UtcNow,
+            });
+            await db.SaveChangesAsync();
+        });
+
+        var request = new SubmitReviewRequest { Rating = 1 };
+        var response = await _client.PostAsJsonAsync($"/api/jobs/{otherJobId}/review", request);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
 
     [Fact]
     public async Task SubmitReview_WithInvalidRating_Returns400()
     {
-        var request = new SubmitReviewRequest { JobId = Guid.NewGuid(), Rating = 0 };
+        var request = new SubmitReviewRequest { Rating = 0 };
 
-        var response = await _client.PostAsJsonAsync($"/api/users/{_revieweeId}/reviews", request);
+        var response = await _client.PostAsJsonAsync($"/api/jobs/{_jobId}/review", request);
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
@@ -83,13 +114,18 @@ public class ReviewsControllerTests : IClassFixture<TestWebApplicationFactory>, 
             var reviewer = db.Users.First(u => u.CognitoSub == FakeAuthHandler.TestFirebaseUid);
             var job = TestBuilders.MakeJob(reviewer.Id, "completed", id: jobId);
             db.Jobs.Add(job);
+            db.JobApplications.Add(new JobApplication
+            {
+                Id = Guid.NewGuid(), JobId = jobId, ApplicantId = _revieweeId,
+                Status = "accepted", AppliedAt = DateTimeOffset.UtcNow, AcceptedAt = DateTimeOffset.UtcNow,
+            });
             var existingReview = TestBuilders.MakeReview(_revieweeId, reviewer.Id, jobId);
             db.Reviews.Add(existingReview);
             await db.SaveChangesAsync();
         });
 
-        var request = new SubmitReviewRequest { JobId = jobId, Rating = 4 };
-        var response = await _client.PostAsJsonAsync($"/api/users/{_revieweeId}/reviews", request);
+        var request = new SubmitReviewRequest { Rating = 4 };
+        var response = await _client.PostAsJsonAsync($"/api/jobs/{jobId}/review", request);
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }

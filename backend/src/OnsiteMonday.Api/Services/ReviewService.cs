@@ -28,23 +28,42 @@ public class ReviewService : IReviewService
         _backgroundJobs = backgroundJobs;
     }
 
-    public async Task<ReviewDto> SubmitReviewAsync(Guid reviewerId, Guid revieweeId, SubmitReviewRequest request)
+    public async Task<ReviewDto> SubmitReviewAsync(Guid reviewerId, Guid jobId, SubmitReviewRequest request)
     {
+        var job = await _jobRepo.GetByIdRawAsync(jobId)
+            ?? throw new KeyNotFoundException($"Job {jobId} not found.");
+
+        if (job.PostedById != reviewerId)
+            throw new UnauthorizedAccessException("Only the job poster can review the tradesperson for this job.");
+
+        if (job.Status != "completed")
+            throw new InvalidOperationException("Reviews can only be submitted for completed jobs.");
+
+        // The reviewee is always the hired applicant, never a client-supplied id,
+        // because this review gates the payout release.
+        var acceptedApp = (await _jobRepo.GetApplicantsAsync(jobId))
+            .FirstOrDefault(a => a.Application.Status == "accepted");
+
+        if (acceptedApp == default)
+            throw new InvalidOperationException("This job has no accepted tradesperson to review.");
+
+        var revieweeId = acceptedApp.Applicant.Id;
+
+        if (await _reviewRepo.ExistsForJobAsync(jobId))
+            throw new ArgumentException("A review already exists for this job.");
+
         var reviewee = await _userRepo.GetByIdAsync(revieweeId)
             ?? throw new KeyNotFoundException($"User {revieweeId} not found.");
 
         var reviewer = await _userRepo.GetByIdAsync(reviewerId)
             ?? throw new KeyNotFoundException("Reviewer not found.");
 
-        if (await _reviewRepo.ExistsForJobAsync(request.JobId))
-            throw new ArgumentException("A review already exists for this job.");
-
         var review = new Review
         {
             Id = Guid.NewGuid(),
             RevieweeId = revieweeId,
             ReviewerId = reviewerId,
-            JobId = request.JobId,
+            JobId = jobId,
             Rating = request.Rating,
             Text = request.Text,
             CreatedAt = DateTimeOffset.UtcNow,
@@ -70,15 +89,14 @@ public class ReviewService : IReviewService
         });
 
         // Gate payout on review: schedule Hangfire job if job is completed+escrowed
-        await MaybeSchedulePayoutAsync(reviewee, request.JobId);
+        await MaybeSchedulePayoutAsync(reviewee, job);
 
         return ToDto(review, reviewer);
     }
 
-    private async Task MaybeSchedulePayoutAsync(User tradesperson, Guid jobId)
+    private async Task MaybeSchedulePayoutAsync(User tradesperson, Job job)
     {
-        var job = await _jobRepo.GetByIdRawAsync(jobId);
-        if (job is null) return;
+        var jobId = job.Id;
         if (job.Status != "completed") return;
         if (job.PaymentStatus != "escrowed") return;
 

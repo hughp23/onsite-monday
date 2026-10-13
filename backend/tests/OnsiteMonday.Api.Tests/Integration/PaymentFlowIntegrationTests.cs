@@ -226,12 +226,11 @@ public class PaymentFlowIntegrationTests : IClassFixture<TestWebApplicationFacto
 
         var reviewRequest = new
         {
-            JobId = jobId,
             Rating = 5,
             Text = "Great work, highly recommend!"
         };
         var response = await _posterClient.PostAsJsonAsync(
-            $"/api/users/{_tradespersonId}/reviews", reviewRequest);
+            $"/api/jobs/{jobId}/review", reviewRequest);
 
         response.StatusCode.Should().Be(HttpStatusCode.Created);
 
