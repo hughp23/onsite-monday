@@ -156,6 +156,8 @@ This is wrong. Marking complete does **not** release payment — payment is gate
 
 ### BUG-11 · Review success modal shows poster's payout days, not tradesperson's
 
+**Status:** Fixed 2026-10-13. `ReviewDto.payoutScheduledAt` on the submit response carries the date the server scheduled on the tradesperson's tier; the success modal shows it, and shows nothing when no payout was scheduled.
+
 **File:** `frontend/app/review/[jobId].tsx:34`
 
 ```ts

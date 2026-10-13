@@ -182,6 +182,10 @@ public class ReviewServiceTests
     public async Task SubmitReview_WhenCompletedAndEscrowed_SchedulesPayoutOnHiredTradespersonsTier()
     {
         var poster = TestBuilders.MakeUser("uid-poster", "poster@test.com");
+        poster.Subscriptions = new List<Subscription>
+        {
+            new Subscription { Tier = "gold", IsActive = true, PayoutDays = 7, StartedAt = DateTimeOffset.UtcNow }
+        };
         var hired = TestBuilders.MakeUser("uid-hired", "hired@test.com");
         hired.Subscriptions = new List<Subscription>
         {
@@ -189,7 +193,7 @@ public class ReviewServiceTests
         };
         var job = SetupCompletedJob(poster, hired, paymentStatus: "escrowed");
 
-        await _sut.SubmitReviewAsync(poster.Id, job.Id, MakeRequest(5));
+        var result = await _sut.SubmitReviewAsync(poster.Id, job.Id, MakeRequest(5));
 
         _backgroundJobsMock.Verify(
             b => b.Create(It.IsAny<HangfireJob>(), It.IsAny<Hangfire.States.IState>()),
@@ -197,6 +201,7 @@ public class ReviewServiceTests
         job.PaymentStatus.Should().Be("payout_pending");
         job.HangfireJobId.Should().Be("stub_hangfire_id");
         job.PayoutScheduledAt.Should().BeCloseTo(DateTimeOffset.UtcNow.AddDays(14), TimeSpan.FromMinutes(1));
+        result.PayoutScheduledAt.Should().Be(job.PayoutScheduledAt);
     }
 
     [Fact]
@@ -206,11 +211,12 @@ public class ReviewServiceTests
         var hired = TestBuilders.MakeUser("uid-hired", "hired@test.com");
         var job = SetupCompletedJob(poster, hired, paymentStatus: "paid");
 
-        await _sut.SubmitReviewAsync(poster.Id, job.Id, MakeRequest(3));
+        var result = await _sut.SubmitReviewAsync(poster.Id, job.Id, MakeRequest(3));
 
         _backgroundJobsMock.Verify(
             b => b.Create(It.IsAny<HangfireJob>(), It.IsAny<Hangfire.States.IState>()),
             Times.Never);
+        result.PayoutScheduledAt.Should().BeNull();
     }
 
     [Fact]

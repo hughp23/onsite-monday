@@ -8,12 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useApp } from '@/context/AppContext';
 import StarRating from '@/components/StarRating';
 import { colors } from '@/constants/colors';
-
-const PAYOUT_DAYS: Record<string, number> = {
-  bronze: 30,
-  silver: 14,
-  gold: 7,
-};
+import { payoutReleaseText } from '@/src/utils/payoutRelease';
 
 export default function ReviewScreen() {
   const { jobId } = useLocalSearchParams<{ jobId: string }>();
@@ -24,21 +19,23 @@ export default function ReviewScreen() {
   const [reviewText, setReviewText] = useState('');
   const [showSuccess, setShowSuccess] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [payoutScheduledAt, setPayoutScheduledAt] = useState<string | null>(null);
 
   if (!currentUser) return null;
 
-  const payoutDays = PAYOUT_DAYS[currentUser.subscription];
   const totalPay = (job?.dayRate || 0) * (job?.duration || 1);
+  const payoutText = payoutReleaseText(payoutScheduledAt, totalPay);
 
   // The server attributes the review to the job's accepted tradesperson.
   const handleSubmit = async () => {
     if (rating === 0 || submitting) return;
     setSubmitting(true);
     try {
-      await submitReview(jobId, {
+      const review = await submitReview(jobId, {
         rating,
         text: reviewText || 'Great work, would recommend.',
       });
+      setPayoutScheduledAt(review.payoutScheduledAt ?? null);
       setShowSuccess(true);
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Failed to submit review';
@@ -122,6 +119,7 @@ export default function ReviewScreen() {
             <Text style={styles.modalDesc}>
               Thank you for your review. Your rating helps build trust on the platform.
             </Text>
+            {payoutText && <Text style={styles.tierNote}>{payoutText}</Text>}
             <TouchableOpacity
               style={styles.confirmBtn}
               onPress={() => { setShowSuccess(false); router.replace('/(tabs)/my-jobs'); }}
@@ -207,7 +205,6 @@ const styles = StyleSheet.create({
   },
   modalTitle: { fontSize: 22, fontWeight: '800', color: colors.text, marginTop: 12, marginBottom: 10 },
   modalDesc: { fontSize: 15, color: colors.text, textAlign: 'center', lineHeight: 22, marginBottom: 10 },
-  payAmount: { color: colors.primary, fontWeight: '800' },
   tierNote: { fontSize: 12, color: colors.textLight, textAlign: 'center', marginBottom: 24, lineHeight: 18 },
   confirmBtn: {
     backgroundColor: colors.primary,

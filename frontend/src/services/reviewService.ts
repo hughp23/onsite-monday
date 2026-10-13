@@ -10,6 +10,8 @@ export interface ReviewDto {
   rating: number;
   text?: string;
   createdAt: string;
+  // Only on the submit response; null when no payout was scheduled.
+  payoutScheduledAt?: string | null;
 }
 
 export interface SubmitReviewPayload {

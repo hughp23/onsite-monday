@@ -89,16 +89,18 @@ public class ReviewService : IReviewService
         });
 
         // Gate payout on review: schedule Hangfire job if job is completed+escrowed
-        await MaybeSchedulePayoutAsync(reviewee, job);
+        var payoutScheduledAt = await MaybeSchedulePayoutAsync(reviewee, job);
 
-        return ToDto(review, reviewer);
+        var dto = ToDto(review, reviewer);
+        dto.PayoutScheduledAt = payoutScheduledAt;
+        return dto;
     }
 
-    private async Task MaybeSchedulePayoutAsync(User tradesperson, Job job)
+    private async Task<DateTimeOffset?> MaybeSchedulePayoutAsync(User tradesperson, Job job)
     {
         var jobId = job.Id;
-        if (job.Status != "completed") return;
-        if (job.PaymentStatus != "escrowed") return;
+        if (job.Status != "completed") return null;
+        if (job.PaymentStatus != "escrowed") return null;
 
         var payoutDays = tradesperson.ActiveSubscription?.PayoutDays ?? 30;
         var scheduleAt = DateTimeOffset.UtcNow.AddDays(payoutDays);
@@ -112,6 +114,7 @@ public class ReviewService : IReviewService
         job.HangfireJobId = hangfireJobId;
 
         await _jobRepo.UpdateAsync(job);
+        return scheduleAt;
     }
 
     public async Task<List<ReviewDto>> GetReviewsAsync(Guid revieweeId)

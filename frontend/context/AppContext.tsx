@@ -7,7 +7,7 @@ import { jobService } from '@/src/services/jobService';
 import { conversationService } from '@/src/services/conversationService';
 import { notificationService } from '@/src/services/notificationService';
 import { subscriptionService, SubscriptionDto } from '@/src/services/subscriptionService';
-import { reviewService } from '@/src/services/reviewService';
+import { reviewService, ReviewDto } from '@/src/services/reviewService';
 import { signalRService } from '@/src/services/signalRService';
 import { usageService } from '@/src/services/usageService';
 import { Usage } from '@/src/utils/tierUsage';
@@ -58,7 +58,7 @@ interface AppContextType {
   applyToJob: (jobId: string, coverNote?: string) => Promise<void>;
   deleteJob: (jobId: string) => Promise<void>;
   cancelJob: (jobId: string, reason?: string) => Promise<void>;
-  submitReview: (jobId: string, review: { rating: number; text: string }) => Promise<void>;
+  submitReview: (jobId: string, review: { rating: number; text: string }) => Promise<ReviewDto>;
   submitTradesPersonReview: (jobId: string, review: { rating: number; text?: string }) => Promise<void>;
   startConversation: (participantId: string, relatedJobId?: string) => Promise<string>;
   sendMessage: (conversationId: string, text: string) => Promise<void>;
@@ -411,7 +411,7 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
   }, []);
 
   const submitReview = useCallback(async (jobId: string, review: { rating: number; text: string }) => {
-    await reviewService.submitReview(jobId, review);
+    return reviewService.submitReview(jobId, review);
   }, []);
 
   const submitTradesPersonReview = useCallback(async (jobId: string, review: { rating: number; text?: string }) => {

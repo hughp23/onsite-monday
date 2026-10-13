@@ -5,6 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 using OnsiteMonday.Api.Data;
 using OnsiteMonday.Api.Domain;
 using OnsiteMonday.Api.DTOs.Jobs;
+using OnsiteMonday.Api.DTOs.Reviews;
 using OnsiteMonday.Api.Jobs;
 using OnsiteMonday.Api.Tests.Infrastructure;
 
@@ -233,6 +234,8 @@ public class PaymentFlowIntegrationTests : IClassFixture<TestWebApplicationFacto
             $"/api/jobs/{jobId}/review", reviewRequest);
 
         response.StatusCode.Should().Be(HttpStatusCode.Created);
+        var dto = await response.Content.ReadFromJsonAsync<ReviewDto>();
+        dto!.PayoutScheduledAt.Should().NotBeNull();
 
         await _factory.SeedAsync(async db =>
         {

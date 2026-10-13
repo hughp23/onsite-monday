@@ -199,7 +199,7 @@ flowchart TD
     O --> OE{Server accepts\nthe review?}
     OE -->|No - not poster, not completed,\nno accepted applicant, duplicate| OEA[Alert with server message\nstays on review screen]
     N --> O2[Tradesperson reviews poster\n/review-poster/jobId]
-    OE -->|Yes| P[Funds released\nafter tier delay]
+    OE -->|Yes| P[Funds released\nafter tradesperson's tier delay\nsuccess modal shows scheduled date]
     H -->|No| Q[Delete job\nif no applicants]
     J --> R[Cancel job\nwith optional reason]
     R --> S[Refund to poster\nrefund_pending - handled manually]

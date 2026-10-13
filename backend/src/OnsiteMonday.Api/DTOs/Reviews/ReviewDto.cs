@@ -11,4 +11,8 @@ public class ReviewDto
     public int Rating { get; set; }
     public string? Text { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
+
+    // Set only on the submit response: when the payout this review released is
+    // scheduled, on the reviewed tradesperson's tier. Null when nothing was scheduled.
+    public DateTimeOffset? PayoutScheduledAt { get; set; }
 }
