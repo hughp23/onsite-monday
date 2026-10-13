@@ -142,7 +142,7 @@ flowchart TD
     L --> M[Poster marks job complete\nor autocompleted after 3 days\nvia JobCompletionScanJob]
     M --> JCP[job_completion_pending\nnotification]
     JCP -->|job not complete yet| J
-    M --> N[Poster reviews tradesperson\n/review/jobId]
+    M --> N[Poster reviews tradesperson\n/review/jobId\nreviewee = accepted applicant, set by server]
     M --> N2[Tradesperson reviews poster\n/review-poster/jobId]
     N --> P{Payout scheduled on\nposter's review}
     P --> Q[Payout triggered\nafter subscription-tier delay]
@@ -159,8 +159,7 @@ flowchart TD
 
     class A endpoint
     class P,LIM decision
-    class B,C,D,E,F,G,H,I,I1,I2,J,K,L,M,N2,T,FE,LM,PJ,INV,LK,LT,AR,AP,UP,SUB,IW,JCP done
-    class N partial
+    class B,C,D,E,F,G,H,I,I1,I2,J,K,L,M,N,N2,T,FE,LM,PJ,INV,LK,LT,AR,AP,UP,SUB,IW,JCP done
     class KE,Q,R,S flagged
   </div>
 </section>
@@ -196,9 +195,11 @@ flowchart TD
     L --> M[Job status: in_progress]
     K -.-> M
     M --> N[Mark Complete button\nor autocompleted after 3 days\nvia JobCompletionScanJob]
-    N --> O[Poster reviews tradesperson\n/review/jobId]
+    N --> O[Poster reviews tradesperson\n/review/jobId\nPOST /jobs/id/review · server picks\nthe accepted applicant]
+    O --> OE{Server accepts\nthe review?}
+    OE -->|No - not poster, not completed,\nno accepted applicant, duplicate| OEA[Alert with server message\nstays on review screen]
     N --> O2[Tradesperson reviews poster\n/review-poster/jobId]
-    O --> P[Funds released\nafter tier delay]
+    OE -->|Yes| P[Funds released\nafter tier delay]
     H -->|No| Q[Delete job\nif no applicants]
     J --> R[Cancel job\nwith optional reason]
     R --> S[Refund to poster\nrefund_pending - handled manually]
@@ -211,9 +212,9 @@ flowchart TD
     classDef flagged  fill:#fff3e0,stroke:#e65100,color:#bf360c
 
     class A endpoint
-    class H,CG,PL,PX decision
-    class B,C,D,E,F,G,I,J,K,M,N,O2,Q,R,PU,CI,PP,HN,HI,NT,RR,JC,PXE done
-    class CG1,O partial
+    class H,CG,PL,PX,OE decision
+    class B,C,D,E,F,G,I,J,K,M,N,O,O2,Q,R,PU,CI,PP,HN,HI,NT,RR,JC,PXE,OEA done
+    class CG1 partial
     class L,P,S flagged
   </div>
 </section>
@@ -231,7 +232,7 @@ flowchart TD
     D -->|No| F[Stay on accepted\nretry payment]
     E --> G[Job status: in_progress]
     G --> H[Poster marks job complete\nor autocompleted after 3 days]
-    H --> I[Poster reviews tradesperson\n/review/jobId\nknown gaps: reviewee chosen by trade;\nreviewer not authorised]
+    H --> I[Poster reviews tradesperson\nPOST /jobs/id/review\nposter-only · completed jobs only\nreviewee = accepted applicant]
     H --> I2[Tradesperson reviews poster\n/review-poster/jobId]
     I --> J{Poster review of\ntradesperson gates payout}
     J --> K[Payout countdown begins\nbased on subscription tier]
@@ -252,8 +253,7 @@ flowchart TD
 
     class A endpoint
     class D,J,L decision
-    class B,C,E,F,G,H,I2 done
-    class I partial
+    class B,C,E,F,G,H,I,I2 done
     class K,M,N,O,P partial
     class FLAG,Q,R flagged
   </div>

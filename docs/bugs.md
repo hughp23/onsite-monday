@@ -8,6 +8,8 @@ Audited 2026-05-18. Bugs are grouped by severity. Fix them in order — the crit
 
 ### BUG-01 · Review submitted against wrong tradesperson
 
+**Status:** Fixed 2026-10-13. The poster review is now `POST /api/jobs/{jobId}/review`; the server checks the caller is the poster and the job is completed, and reviews the accepted applicant. The review screen awaits the call and alerts on failure.
+
 **File:** `frontend/app/review/[jobId].tsx:28-40`
 
 The tradesperson to review is identified by `tradespeople.find(tp => tp.trade === job?.trade) || tradespeople[0]` — the first person in the public People list with a matching trade, falling back to index 0 of whoever happens to be loaded. It has no connection to the accepted applicant on the job. A poster could submit a review against a random user.
@@ -38,6 +40,8 @@ If the API call fails, the user lands on the review screen with the job still in
 
 ### BUG-03 · `submitReview` not awaited — success modal fires regardless of outcome
 
+**Status:** Fixed 2026-10-13. The poster review is now `POST /api/jobs/{jobId}/review`; the server checks the caller is the poster and the job is completed, and reviews the accepted applicant. The review screen awaits the call and alerts on failure.
+
 **File:** `frontend/app/review/[jobId].tsx:37-47`
 
 ```ts
@@ -56,6 +60,8 @@ If the API returns an error (duplicate review, job not completed, etc.) the user
 ---
 
 ### BUG-04 · Backend accepts a review for a non-completed job
+
+**Status:** Fixed 2026-10-13. The poster review is now `POST /api/jobs/{jobId}/review`; the server checks the caller is the poster and the job is completed, and reviews the accepted applicant. The review screen awaits the call and alerts on failure.
 
 **File:** `backend/src/OnsiteMonday.Api/Services/ReviewService.cs:39-50`
 
