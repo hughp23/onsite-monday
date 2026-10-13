@@ -1,10 +1,19 @@
-import * as Notifications from 'expo-notifications';
-import Constants from 'expo-constants';
+import type { EventSubscription } from 'expo-notifications';
+import Constants, { ExecutionEnvironment } from 'expo-constants';
 import { Platform } from 'react-native';
 import { router } from 'expo-router';
 import { apiRequest } from './api';
 
-Notifications.setNotificationHandler({
+// Expo Go on Android throws as soon as expo-notifications is imported (remote push was
+// removed from Expo Go in SDK 53), so only load it in development and EAS builds.
+const pushUnsupported =
+  Platform.OS === 'android' && Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
+
+const Notifications: typeof import('expo-notifications') | null = pushUnsupported
+  ? null
+  : require('expo-notifications');
+
+Notifications?.setNotificationHandler({
   handleNotification: async () => ({
     shouldShowAlert: true,
     shouldPlaySound: true,
@@ -15,6 +24,7 @@ Notifications.setNotificationHandler({
 });
 
 export async function requestNotificationPermissions(): Promise<boolean> {
+  if (!Notifications) return false;
   const { status: existing } = await Notifications.getPermissionsAsync();
   if (existing === 'granted') return true;
   const { status } = await Notifications.requestPermissionsAsync();
@@ -22,6 +32,7 @@ export async function requestNotificationPermissions(): Promise<boolean> {
 }
 
 export async function registerDeviceToken(): Promise<void> {
+  if (!Notifications) return;
   try {
     const projectId = Constants.expoConfig?.extra?.eas?.projectId as string | undefined;
     if (!projectId) {
@@ -37,10 +48,11 @@ export async function registerDeviceToken(): Promise<void> {
   }
 }
 
-let responseSubscription: Notifications.EventSubscription | null = null;
-let receivedSubscription: Notifications.EventSubscription | null = null;
+let responseSubscription: EventSubscription | null = null;
+let receivedSubscription: EventSubscription | null = null;
 
 export function setupNotificationHandlers(onNotificationReceived?: () => void): void {
+  if (!Notifications) return;
   responseSubscription?.remove();
   receivedSubscription?.remove();
 
