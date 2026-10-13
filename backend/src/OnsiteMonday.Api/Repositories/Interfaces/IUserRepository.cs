@@ -5,6 +5,8 @@ namespace OnsiteMonday.Api.Repositories;
 public interface IUserRepository
 {
     Task<User?> GetByIdAsync(Guid id);
+    // Payout delay of the user's active subscription, or null when they have none.
+    Task<int?> GetActivePayoutDaysAsync(Guid userId);
     Task<User?> GetByCognitoSubAsync(string cognitoSub);
     Task<User> GetOrCreateByCognitoSubAsync(string cognitoSub, string email, string? firstName = null, string? lastName = null, string? profileImageUrl = null);
     Task<List<User>> GetTradespeopleAsync(string? trade, string? location, int page, int pageSize);

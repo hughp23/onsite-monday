@@ -18,6 +18,12 @@ public class UserRepository : IUserRepository
     public Task<User?> GetByIdAsync(Guid id) =>
         _db.Users.Include(u => u.Subscriptions).FirstOrDefaultAsync(u => u.Id == id);
 
+    public Task<int?> GetActivePayoutDaysAsync(Guid userId) =>
+        _db.Subscriptions
+            .Where(s => s.UserId == userId && s.IsActive)
+            .Select(s => (int?)s.PayoutDays)
+            .FirstOrDefaultAsync();
+
     public Task<User?> GetByCognitoSubAsync(string cognitoSub) =>
         _db.Users.Include(u => u.Subscriptions).FirstOrDefaultAsync(u => u.CognitoSub == cognitoSub);
 

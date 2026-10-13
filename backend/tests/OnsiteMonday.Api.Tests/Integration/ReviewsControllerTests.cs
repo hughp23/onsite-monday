@@ -72,6 +72,41 @@ public class ReviewsControllerTests : IClassFixture<TestWebApplicationFactory>, 
     }
 
     [Fact]
+    public async Task SubmitReview_OnEscrowedJob_SchedulesPayoutOnTradespersonsActiveTier()
+    {
+        var jobId = Guid.NewGuid();
+        await _factory.SeedAsync(async db =>
+        {
+            var poster = db.Users.First(u => u.CognitoSub == FakeAuthHandler.TestFirebaseUid);
+            var hired = TestBuilders.MakeUser($"uid-gold-{jobId}", $"gold-{jobId}@test.com");
+            db.Users.Add(hired);
+            db.Subscriptions.Add(new Subscription
+            {
+                Id = Guid.NewGuid(), UserId = hired.Id, Tier = "silver", PayoutDays = 14,
+                IsActive = false, StartedAt = DateTimeOffset.UtcNow.AddMonths(-2),
+            });
+            db.Subscriptions.Add(new Subscription
+            {
+                Id = Guid.NewGuid(), UserId = hired.Id, Tier = "gold", PayoutDays = 7,
+                IsActive = true, StartedAt = DateTimeOffset.UtcNow,
+            });
+            db.Jobs.Add(TestBuilders.MakeJob(poster.Id, "completed", id: jobId, paymentStatus: "escrowed"));
+            db.JobApplications.Add(new JobApplication
+            {
+                Id = Guid.NewGuid(), JobId = jobId, ApplicantId = hired.Id,
+                Status = "accepted", AppliedAt = DateTimeOffset.UtcNow, AcceptedAt = DateTimeOffset.UtcNow,
+            });
+            await db.SaveChangesAsync();
+        });
+
+        var response = await _client.PostAsJsonAsync($"/api/jobs/{jobId}/review", new SubmitReviewRequest { Rating = 5 });
+
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+        var dto = await response.Content.ReadFromJsonAsync<ReviewDto>();
+        dto!.PayoutScheduledAt.Should().BeCloseTo(DateTimeOffset.UtcNow.AddDays(7), TimeSpan.FromMinutes(1));
+    }
+
+    [Fact]
     public async Task SubmitReview_ForSomeoneElsesJob_Returns403()
     {
         var otherJobId = Guid.NewGuid();

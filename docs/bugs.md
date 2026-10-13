@@ -188,6 +188,8 @@ There is also a dead `TierByPayoutDays` dictionary (lines 98–103) that is neve
 
 ### BUG-13 · `MaybeSchedulePayoutAsync` loads job without navigation properties — fragile
 
+**Status:** Fixed 2026-10-13. `MaybeSchedulePayoutAsync` now takes the tradesperson's id and reads the delay with `IUserRepository.GetActivePayoutDaysAsync`, a direct query on active subscriptions, so it no longer depends on how the reviewee `User` was loaded. No active subscription still means the 30-day Bronze delay.
+
 **File:** `backend/src/OnsiteMonday.Api/Services/ReviewService.cs:78-97`
 
 The job is loaded via `GetByIdRawAsync` (no `Include`). `tradesperson.ActiveSubscription` relies on the `Subscriptions` collection being populated. This works today because `reviewee` is loaded via `_userRepo.GetByIdAsync` which includes subscriptions, but if that query is changed the payout days will silently default to 30 regardless of tier with no error.

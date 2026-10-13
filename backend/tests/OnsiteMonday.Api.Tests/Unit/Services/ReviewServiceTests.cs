@@ -186,12 +186,12 @@ public class ReviewServiceTests
         {
             new Subscription { Tier = "gold", IsActive = true, PayoutDays = 7, StartedAt = DateTimeOffset.UtcNow }
         };
+        // The loaded User deliberately has no subscriptions: the delay must come
+        // from the explicit active-subscription lookup, not the navigation property.
         var hired = TestBuilders.MakeUser("uid-hired", "hired@test.com");
-        hired.Subscriptions = new List<Subscription>
-        {
-            new Subscription { Tier = "silver", IsActive = true, PayoutDays = 14, StartedAt = DateTimeOffset.UtcNow }
-        };
         var job = SetupCompletedJob(poster, hired, paymentStatus: "escrowed");
+        _userRepoMock.Setup(r => r.GetActivePayoutDaysAsync(hired.Id)).ReturnsAsync(14);
+        _userRepoMock.Setup(r => r.GetActivePayoutDaysAsync(poster.Id)).ReturnsAsync(7);
 
         var result = await _sut.SubmitReviewAsync(poster.Id, job.Id, MakeRequest(5));
 
@@ -202,6 +202,19 @@ public class ReviewServiceTests
         job.HangfireJobId.Should().Be("stub_hangfire_id");
         job.PayoutScheduledAt.Should().BeCloseTo(DateTimeOffset.UtcNow.AddDays(14), TimeSpan.FromMinutes(1));
         result.PayoutScheduledAt.Should().Be(job.PayoutScheduledAt);
+    }
+
+    [Fact]
+    public async Task SubmitReview_WhenTradespersonHasNoActiveSubscription_UsesBronzeDelay()
+    {
+        var poster = TestBuilders.MakeUser("uid-poster", "poster@test.com");
+        var hired = TestBuilders.MakeUser("uid-hired", "hired@test.com");
+        var job = SetupCompletedJob(poster, hired, paymentStatus: "escrowed");
+        _userRepoMock.Setup(r => r.GetActivePayoutDaysAsync(hired.Id)).ReturnsAsync((int?)null);
+
+        var result = await _sut.SubmitReviewAsync(poster.Id, job.Id, MakeRequest());
+
+        result.PayoutScheduledAt.Should().BeCloseTo(DateTimeOffset.UtcNow.AddDays(30), TimeSpan.FromMinutes(1));
     }
 
     [Fact]

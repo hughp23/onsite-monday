@@ -89,20 +89,23 @@ public class ReviewService : IReviewService
         });
 
         // Gate payout on review: schedule Hangfire job if job is completed+escrowed
-        var payoutScheduledAt = await MaybeSchedulePayoutAsync(reviewee, job);
+        var payoutScheduledAt = await MaybeSchedulePayoutAsync(revieweeId, job);
 
         var dto = ToDto(review, reviewer);
         dto.PayoutScheduledAt = payoutScheduledAt;
         return dto;
     }
 
-    private async Task<DateTimeOffset?> MaybeSchedulePayoutAsync(User tradesperson, Job job)
+    private async Task<DateTimeOffset?> MaybeSchedulePayoutAsync(Guid tradespersonId, Job job)
     {
         var jobId = job.Id;
         if (job.Status != "completed") return null;
         if (job.PaymentStatus != "escrowed") return null;
 
-        var payoutDays = tradesperson.ActiveSubscription?.PayoutDays ?? 30;
+        // Queried explicitly rather than read from a loaded User, so the delay
+        // can't silently fall back to Bronze if a caller's query stops including
+        // subscriptions. No active subscription means the Bronze delay.
+        var payoutDays = await _userRepo.GetActivePayoutDaysAsync(tradespersonId) ?? 30;
         var scheduleAt = DateTimeOffset.UtcNow.AddDays(payoutDays);
 
         var hangfireJobId = _backgroundJobs.Schedule<IPayoutReleaseJob>(
