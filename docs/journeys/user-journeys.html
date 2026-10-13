@@ -195,10 +195,12 @@ flowchart TD
     L --> M[Job status: in_progress]
     K -.-> M
     M --> N[Mark Complete button\nor autocompleted after 3 days\nvia JobCompletionScanJob]
-    N --> O[Poster reviews tradesperson\n/review/jobId\nPOST /jobs/id/review · server picks\nthe accepted applicant]
+    N --> NX{Server marks\nthe job complete?}
+    NX -->|No| NXE[Alert with server message\nmodal stays open to retry]
+    NX -->|Yes| O[Poster reviews tradesperson\n/review/jobId\nPOST /jobs/id/review · server picks\nthe accepted applicant]
     O --> OE{Server accepts\nthe review?}
     OE -->|No - not poster, not completed,\nno accepted applicant, duplicate| OEA[Alert with server message\nstays on review screen]
-    N --> O2[Tradesperson reviews poster\n/review-poster/jobId]
+    NX -->|Yes| O2[Tradesperson reviews poster\n/review-poster/jobId]
     OE -->|Yes| P[Funds released\nafter tradesperson's tier delay\nsuccess modal shows scheduled date]
     H -->|No| Q[Delete job\nif no applicants]
     J --> R[Cancel job\nwith optional reason]
@@ -212,8 +214,8 @@ flowchart TD
     classDef flagged  fill:#fff3e0,stroke:#e65100,color:#bf360c
 
     class A endpoint
-    class H,CG,PL,PX,OE decision
-    class B,C,D,E,F,G,I,J,K,M,N,O,O2,Q,R,PU,CI,PP,HN,HI,NT,RR,JC,PXE,OEA done
+    class H,CG,PL,PX,OE,NX decision
+    class B,C,D,E,F,G,I,J,K,M,N,O,O2,Q,R,PU,CI,PP,HN,HI,NT,RR,JC,PXE,OEA,NXE done
     class CG1 partial
     class L,P,S flagged
   </div>

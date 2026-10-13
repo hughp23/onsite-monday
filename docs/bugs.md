@@ -20,6 +20,8 @@ The tradesperson to review is identified by `tradespeople.find(tp => tp.trade ==
 
 ### BUG-02 · `confirmComplete` doesn't await the API call before navigating
 
+**Status:** Fixed 2026-10-13. `confirmComplete` awaits `markJobComplete` and only opens the review screen on success; on failure it alerts with the server message and keeps the modal open, with the buttons disabled while the request is in flight.
+
 **File:** `frontend/app/(tabs)/my-jobs.tsx:86-91`
 
 ```ts
@@ -141,6 +143,8 @@ When an escrowed job is cancelled, `paymentStatus` is set to `"refund_pending"` 
 ---
 
 ### BUG-10 · "Mark as Complete" confirmation modal has inverted copy
+
+**Status:** Fixed 2026-10-13. The escrow copy now says marking complete leads to the poster's review and the held payment is released after that review, on the tradesperson's payout schedule. (The fix text below was also slightly off: payout is gated on the poster's review of the tradesperson, not on a review from the tradesperson.)
 
 **File:** `frontend/app/(tabs)/my-jobs.tsx:374-376`
 

@@ -44,6 +44,7 @@ export default function MyJobsScreen() {
   const insets = useSafeAreaInsets();
   const [activeTab, setActiveTab] = useState<TabType>('liked');
   const [completeModalJob, setCompleteModalJob] = useState<Job | null>(null);
+  const [completing, setCompleting] = useState(false);
   const [startModalJob, setStartModalJob] = useState<Job | null>(null);
   const [deleteModalJob, setDeleteModalJob] = useState<Job | null>(null);
   const [cancelModalJob, setCancelModalJob] = useState<Job | null>(null);
@@ -99,12 +100,26 @@ export default function MyJobsScreen() {
     flex: 1,
   }));
 
-  const confirmComplete = () => {
-    if (completeModalJob) {
-      markJobComplete(completeModalJob.id);
+  // Only move on to the review once the server has marked the job complete;
+  // on failure the modal stays open so the poster can retry or cancel.
+  const confirmComplete = async () => {
+    if (!completeModalJob || completing) return;
+    const jobId = completeModalJob.id;
+    setCompleting(true);
+    try {
+      await markJobComplete(jobId);
       setCompleteModalJob(null);
-      router.push(`/review/${completeModalJob.id}`);
+      router.push(`/review/${jobId}`);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Failed to mark the job complete';
+      Alert.alert('Job not marked complete', msg);
+    } finally {
+      setCompleting(false);
     }
+  };
+
+  const dismissCompleteModal = () => {
+    if (!completing) setCompleteModalJob(null);
   };
 
   const confirmStart = () => {
@@ -577,19 +592,25 @@ export default function MyJobsScreen() {
 
       {/* Mark Complete confirmation modal */}
       <Modal visible={!!completeModalJob} transparent animationType="fade">
-        <Pressable style={styles.overlay} onPress={() => setCompleteModalJob(null)}>
+        <Pressable style={styles.overlay} onPress={dismissCompleteModal}>
           <View style={styles.modal}>
             <MaterialCommunityIcons name="check-circle" size={48} color={colors.success} />
             <Text style={styles.modalTitle}>Mark as Complete?</Text>
             <Text style={styles.modalDesc}>
               {ESCROW_ENABLED
-                ? `Marking "${completeModalJob?.title}" as complete will release the escrowed payment and trigger a review.`
+                ? `Marking "${completeModalJob?.title}" as complete takes you to review the tradesperson. The held payment is released after your review, on their payout schedule.`
                 : `Marking "${completeModalJob?.title}" as complete will notify both parties to submit their reviews.`}
             </Text>
-            <TouchableOpacity style={styles.confirmBtn} onPress={confirmComplete}>
-              <Text style={styles.confirmBtnText}>Yes, Mark Complete</Text>
+            <TouchableOpacity
+              style={[styles.confirmBtn, completing && styles.confirmBtnDisabled]}
+              onPress={confirmComplete}
+              disabled={completing}
+            >
+              {completing
+                ? <ActivityIndicator color={colors.white} />
+                : <Text style={styles.confirmBtnText}>Yes, Mark Complete</Text>}
             </TouchableOpacity>
-            <TouchableOpacity onPress={() => setCompleteModalJob(null)} style={styles.cancelBtn}>
+            <TouchableOpacity onPress={dismissCompleteModal} disabled={completing} style={styles.cancelBtn}>
               <Text style={styles.cancelBtnText}>Cancel</Text>
             </TouchableOpacity>
           </View>
@@ -760,6 +781,7 @@ const styles = StyleSheet.create({
     width: '100%',
     marginBottom: 10,
   },
+  confirmBtnDisabled: { opacity: 0.6 },
   confirmBtnText: { fontFamily: fonts.bodyBold, color: colors.white, fontSize: 15 },
   cancelBtn: { paddingVertical: 10 },
   cancelBtnText: { fontFamily: fonts.body, color: colors.textMuted, fontSize: 14 },
