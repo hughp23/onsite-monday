@@ -136,6 +136,8 @@ Every Mangopay natural user is created with the same DOB. Mangopay will reject K
 
 ### BUG-09 · Job cancellation doesn't trigger a Mangopay refund
 
+**Status:** Fixed 2026-10-13, restated for Stripe Connect. As written this could not happen: `CancelJobAsync` only accepted `accepted` jobs, and payment is only taken when Start Job moves a job to `in_progress`, so the `refund_pending` branch was unreachable. The real gap was that an `in_progress` job could not be cancelled at all, paid or not. `CancelJobAsync` now also accepts `in_progress` jobs: an unpaid one (`payin_pending`) has its Checkout Session expired first (refused if the poster has just paid); a paid one (`escrowed`) gets a full Stripe refund (idempotent per job) and becomes `refunded`, or `refund_pending` if Stripe fails so it can be retried. Either party may cancel a paid job before its start date; on or after it, only the tradesperson. The My Jobs cancel button follows the same rule.
+
 **File:** `backend/src/OnsiteMonday.Api/Services/JobService.cs:344-346`
 
 When an escrowed job is cancelled, `paymentStatus` is set to `"refund_pending"` but no Mangopay refund API call is made. Funds stay in the platform wallet indefinitely until someone manually identifies and processes the `refund_pending` row.

@@ -2,6 +2,7 @@ using AutoMapper;
 using FluentAssertions;
 using Hangfire;
 using HangfireJob = Hangfire.Common.Job;
+using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using OnsiteMonday.Api.Domain;
 using OnsiteMonday.Api.DTOs.Jobs;
@@ -36,7 +37,7 @@ public class JobServiceTests
         _backgroundJobsMock
             .Setup(b => b.Create(It.IsAny<HangfireJob>(), It.IsAny<Hangfire.States.IState>()))
             .Returns("stub_hangfire_job_id");
-        _sut = new JobService(_jobRepoMock.Object, _userRepoMock.Object, _notificationRepoMock.Object, _stripeConnectMock.Object, _backgroundJobsMock.Object, _usageMock.Object, _mapper);
+        _sut = new JobService(_jobRepoMock.Object, _userRepoMock.Object, _notificationRepoMock.Object, _stripeConnectMock.Object, _backgroundJobsMock.Object, _usageMock.Object, _mapper, NullLogger<JobService>.Instance);
     }
 
     [Fact]

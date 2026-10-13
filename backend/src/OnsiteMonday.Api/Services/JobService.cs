@@ -5,6 +5,7 @@ using OnsiteMonday.Api.DTOs.Jobs;
 using OnsiteMonday.Api.Jobs;
 using OnsiteMonday.Api.Repositories;
 using OnsiteMonday.Api.Services.Interfaces;
+using Microsoft.Extensions.Logging;
 
 namespace OnsiteMonday.Api.Services;
 
@@ -17,6 +18,7 @@ public class JobService : IJobService
     private readonly IBackgroundJobClient _backgroundJobs;
     private readonly IUsageService _usage;
     private readonly IMapper _mapper;
+    private readonly ILogger<JobService> _logger;
 
     public JobService(
         IJobRepository jobRepo,
@@ -25,7 +27,8 @@ public class JobService : IJobService
         IStripeConnectService stripeConnect,
         IBackgroundJobClient backgroundJobs,
         IUsageService usage,
-        IMapper mapper)
+        IMapper mapper,
+        ILogger<JobService> logger)
     {
         _jobRepo = jobRepo;
         _userRepo = userRepo;
@@ -34,6 +37,7 @@ public class JobService : IJobService
         _backgroundJobs = backgroundJobs;
         _usage = usage;
         _mapper = mapper;
+        _logger = logger;
     }
 
     public async Task<List<JobDto>> GetJobsAsync(Guid currentUserId, string? trade, string? location, string? status, int page, int pageSize)
@@ -438,6 +442,11 @@ public class JobService : IJobService
         await _jobRepo.DeleteAsync(result.Job);
     }
 
+    private static readonly TimeZoneInfo UkTimeZone = TimeZoneInfo.FindSystemTimeZoneById("Europe/London");
+
+    private static DateOnly UkToday() =>
+        DateOnly.FromDateTime(TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, UkTimeZone));
+
     public async Task<JobDto> CancelJobAsync(Guid jobId, Guid userId, string? reason)
     {
         var result = await _jobRepo.GetByIdAsync(jobId, userId)
@@ -445,8 +454,8 @@ public class JobService : IJobService
 
         var job = result.Job;
 
-        if (job.Status != "accepted")
-            throw new InvalidOperationException("Only accepted jobs can be cancelled.");
+        if (job.Status != "accepted" && job.Status != "in_progress")
+            throw new InvalidOperationException("Only accepted or in-progress jobs can be cancelled.");
 
         // Check caller is poster or accepted tradesperson
         var applicants = await _jobRepo.GetApplicantsAsync(jobId);
@@ -456,9 +465,31 @@ public class JobService : IJobService
         if (job.PostedById != userId && acceptedTradespersonId != userId)
             throw new UnauthorizedAccessException("Only the job poster or the hired tradesperson can cancel this job.");
 
-        // Payment refund is handled manually for now; set status so ops can identify affected jobs
-        if (job.PaymentStatus == "escrowed")
-            job.PaymentStatus = "refund_pending";
+        var refunded = false;
+        switch (job.PaymentStatus)
+        {
+            case "payin_pending":
+                // Close the checkout first, so the poster can't pay for a cancelled job.
+                if (!string.IsNullOrEmpty(job.StripeCheckoutSessionId) &&
+                    !await _stripeConnect.TryExpireCheckoutSessionAsync(job.StripeCheckoutSessionId))
+                {
+                    throw new InvalidOperationException(
+                        "Payment for this job has just gone through. Refresh and try again.");
+                }
+                job.PaymentStatus = "none";
+                break;
+
+            case "escrowed":
+                // Once work has started, a poster cancelling to reclaim the money is a dispute,
+                // not a cancellation; the tradesperson can still give up the job (and their pay).
+                if (job.PostedById == userId && UkToday() >= job.StartDate)
+                    throw new UnauthorizedAccessException(
+                        "Work on this job has started, so only the tradesperson can cancel it now. " +
+                        "Contact support if there is a problem with the job.");
+
+                refunded = await TryRefundAsync(job);
+                break;
+        }
 
         job.Status = "cancelled";
         job.CancellationReason = reason;
@@ -470,13 +501,16 @@ public class JobService : IJobService
         var otherPartyId = job.PostedById == userId ? acceptedTradespersonId : (Guid?)job.PostedById;
         if (otherPartyId.HasValue)
         {
+            var refundNote = otherPartyId == job.PostedById && refunded
+                ? " Your payment has been refunded in full."
+                : string.Empty;
             await _notificationRepo.CreateAsync(new Notification
             {
                 Id = Guid.NewGuid(),
                 UserId = otherPartyId.Value,
                 Type = "cancelled",
                 Title = "Job cancelled",
-                Description = $"The job \"{job.Title}\" has been cancelled.",
+                Description = $"The job \"{job.Title}\" has been cancelled.{refundNote}",
                 LinkedId = jobId,
                 CreatedAt = DateTimeOffset.UtcNow,
             });
@@ -484,6 +518,32 @@ public class JobService : IJobService
 
         var count = await _jobRepo.GetApplicationCountAsync(jobId);
         return ToDto(job, result.IsInterested, count);
+    }
+
+    // Full refund of an escrowed job. On failure the job is left refund_pending so
+    // the refund can be retried; the cancellation itself still goes ahead.
+    private async Task<bool> TryRefundAsync(Job job)
+    {
+        if (string.IsNullOrEmpty(job.StripePaymentIntentId))
+        {
+            _logger.LogError("Cancel job {JobId}: escrowed but no PaymentIntent recorded; refund needs manual handling", job.Id);
+            job.PaymentStatus = "refund_pending";
+            return false;
+        }
+
+        try
+        {
+            await _stripeConnect.RefundJobPaymentAsync(job.Id, job.StripePaymentIntentId);
+            job.PaymentStatus = "refunded";
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Cancel job {JobId}: Stripe refund of {PiId} failed; left refund_pending for retry",
+                job.Id, job.StripePaymentIntentId);
+            job.PaymentStatus = "refund_pending";
+            return false;
+        }
     }
 
     private static JobDto ToDto(Job job, bool isInterested, int interestedCount) => new()
@@ -508,6 +568,7 @@ public class JobService : IJobService
         PostedByBusiness = job.PostedBy?.BusinessName,
         PaymentTerms = job.PaymentTerms,
         Status = job.Status,
+        PaymentStatus = job.PaymentStatus,
         Photos = job.Photos,
         CreatedAt = job.CreatedAt,
         IsInterested = isInterested,

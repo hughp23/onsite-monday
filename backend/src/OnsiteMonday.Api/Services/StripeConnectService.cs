@@ -119,4 +119,46 @@ public class StripeConnectService : IStripeConnectService
 
         return transfer.Id;
     }
+
+    public async Task<bool> TryExpireCheckoutSessionAsync(string sessionId)
+    {
+        var service = new SessionService(_client);
+        var session = await service.GetAsync(sessionId);
+        if (session.Status == "open")
+        {
+            try
+            {
+                session = await service.ExpireAsync(sessionId);
+            }
+            catch (StripeException ex)
+            {
+                // The poster may have completed payment between the read and the expire.
+                _logger.LogWarning(ex, "Stripe Connect: Could not expire Checkout Session {SessionId}; re-reading status", sessionId);
+                session = await service.GetAsync(sessionId);
+            }
+        }
+
+        _logger.LogInformation("Stripe Connect: Checkout Session {SessionId} status={Status}", sessionId, session.Status);
+        return session.Status == "expired";
+    }
+
+    public async Task<string> RefundJobPaymentAsync(Guid jobId, string paymentIntentId)
+    {
+        var service = new RefundService(_client);
+        var refund = await service.CreateAsync(
+            new RefundCreateOptions
+            {
+                PaymentIntent = paymentIntentId,
+                Reason = "requested_by_customer",
+                Metadata = new Dictionary<string, string> { ["jobId"] = jobId.ToString() },
+            },
+            // A retried cancellation returns the same refund instead of refunding twice.
+            new RequestOptions { IdempotencyKey = $"job-cancel-refund-{jobId}" });
+
+        _logger.LogInformation(
+            "Stripe Connect: Refund {RefundId} of PaymentIntent {PiId} for job {JobId}, status={Status}",
+            refund.Id, paymentIntentId, jobId, refund.Status);
+
+        return refund.Id;
+    }
 }

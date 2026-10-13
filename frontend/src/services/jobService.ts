@@ -37,6 +37,7 @@ interface ApiJob {
   postedByBusiness?: string;
   paymentTerms: string;
   status: string;
+  paymentStatus?: string;
   photos: string[];
   createdAt: string;
   isInterested: boolean;
@@ -64,6 +65,7 @@ function toJob(j: ApiJob): Job {
     postedByBusiness: j.postedByBusiness ?? '',
     paymentTerms: j.paymentTerms,
     status: j.status as Job['status'],
+    paymentStatus: (j.paymentStatus ?? 'none') as Job['paymentStatus'],
     photos: j.photos,
     createdAt: j.createdAt,
     isInterested: j.isInterested,

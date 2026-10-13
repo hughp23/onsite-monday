@@ -204,7 +204,8 @@ flowchart TD
     OE -->|Yes| P[Funds released\nafter tradesperson's tier delay\nsuccess modal shows scheduled date]
     H -->|No| Q[Delete job\nif no applicants\nalert + modal stays open on failure]
     J --> R[Cancel job\nwith optional reason\nalert + modal stays open on failure]
-    R --> S[Refund to poster\nrefund_pending - handled manually]
+    M --> R
+    R --> S[Unpaid: checkout closed\nPaid: full refund to poster\nposter only before start date]
 
     classDef done     fill:#c8e6c9,stroke:#4caf50,color:#1b5e20
     classDef partial  fill:#fff9c4,stroke:#f9a825,color:#5d4037
@@ -243,8 +244,11 @@ flowchart TD
     L -->|Silver| N[Released after\n14 days]
     L -->|Gold| O[Released after\n7 days]
     M & N & O --> P[Funds in\ntradesperson wallet]
-    A --> Q[Job cancelled while accepted\nbefore start or payment]
-    Q --> R[Refund to poster\nrefund_pending - handled manually]
+    A --> Q[Job cancelled while accepted\nno payment taken]
+    C --> QU[Cancelled before checkout completes\nCheckout Session expired · nothing charged]
+    G --> QP{Paid job cancelled:\nwho, and when?}
+    QP -->|Either party before start date\nor tradesperson any time| R[Full Stripe refund to poster\nrefund_pending if Stripe fails]
+    QP -->|Poster on/after start date| QD[Refused · contact support\ndispute handled manually]
 
     classDef done     fill:#c8e6c9,stroke:#4caf50,color:#1b5e20
     classDef partial  fill:#fff9c4,stroke:#f9a825,color:#5d4037
@@ -254,10 +258,12 @@ flowchart TD
     classDef flagged  fill:#fff3e0,stroke:#e65100,color:#bf360c
 
     class A endpoint
-    class D,J,L decision
+    class D,J,L,QP decision
     class B,C,E,F,G,H,I,I2 done
     class K,M,N,O,P partial
-    class FLAG,Q,R flagged
+    class Q,QU,R done
+    class QD partial
+    class FLAG flagged
   </div>
 </section>
 

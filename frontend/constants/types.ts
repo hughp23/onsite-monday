@@ -9,6 +9,9 @@ export interface WalletDto {
   autoWithdraw: boolean;
 }
 export type JobStatus = 'open' | 'applied' | 'accepted' | 'in_progress' | 'completed' | 'cancelled';
+export type PaymentStatus =
+  | 'none' | 'payin_pending' | 'escrowed' | 'refunded' | 'refund_pending'
+  | 'payout_pending' | 'payout_complete';
 export type DayLetter = 'M' | 'T' | 'W' | 'Th' | 'F' | 'S' | 'Su';
 export type NotificationType =
   | 'application' | 'accepted' | 'payment' | 'review' | 'profile_view'
@@ -91,6 +94,7 @@ export interface Job {
   postedByBusiness: string;
   paymentTerms: string;
   status: JobStatus;
+  paymentStatus?: PaymentStatus;
   interestedCount: number;
   isInterested: boolean;
   applicantCount: number;

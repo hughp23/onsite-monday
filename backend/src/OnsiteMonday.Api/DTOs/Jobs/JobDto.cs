@@ -20,6 +20,7 @@ public class JobDto
     public string? PostedByBusiness { get; set; }
     public string PaymentTerms { get; set; } = null!;
     public string Status { get; set; } = null!;
+    public string PaymentStatus { get; set; } = "none";
     public List<string> Photos { get; set; } = new();
     public DateTimeOffset CreatedAt { get; set; }
 

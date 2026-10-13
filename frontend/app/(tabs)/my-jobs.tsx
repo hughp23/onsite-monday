@@ -26,6 +26,7 @@ import { colors } from '@/constants/colors';
 import { fonts } from '@/constants/typography';
 import { Job } from '@/constants/types';
 import { ESCROW_ENABLED } from '@/constants/featureFlags';
+import { canCancelJob, cancelJobDescription } from '@/src/utils/jobCancellation';
 
 type TabType = 'liked' | 'applied' | 'accepted' | 'posted';
 
@@ -334,7 +335,7 @@ export default function MyJobsScreen() {
               onPress={() => router.push(`/job/${item.id}`)}
               showStatus
             />
-            {item.status === 'accepted' && (
+            {canCancelJob(item, 'tradesperson') && (
               <TouchableOpacity
                 style={styles.cancelJobBtn}
                 onPress={() => setCancelModalJob(item)}
@@ -418,8 +419,8 @@ export default function MyJobsScreen() {
               </TouchableOpacity>
             )}
 
-            {/* Cancel Job — shown when a tradesperson has been accepted (before work starts) */}
-            {item.status === 'accepted' && (
+            {/* Cancel Job — accepted, or in progress (a paid job only before its start date) */}
+            {canCancelJob(item, 'poster') && (
               <TouchableOpacity
                 style={styles.cancelJobBtn}
                 onPress={() => setCancelModalJob(item)}
@@ -597,9 +598,7 @@ export default function MyJobsScreen() {
             <MaterialCommunityIcons name="close-circle" size={48} color={colors.error} />
             <Text style={styles.modalTitle}>Cancel Job?</Text>
             <Text style={styles.modalDesc}>
-              {ESCROW_ENABLED
-                ? 'This cannot be undone. If payment was made, it will be refunded to the job poster.'
-                : 'This cannot be undone. The tradesperson will be notified that the job has been cancelled.'}
+              {cancelJobDescription(cancelModalJob, ESCROW_ENABLED)}
             </Text>
             <TextInput
               style={styles.cancelReasonInput}

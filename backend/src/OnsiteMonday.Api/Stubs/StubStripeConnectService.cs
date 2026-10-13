@@ -53,4 +53,17 @@ public class StubStripeConnectService : IStripeConnectService
             netAmountPence / 100m, destinationAccountId, jobId, transferId, sourceTransaction ?? "none");
         return Task.FromResult(transferId);
     }
+
+    public Task<bool> TryExpireCheckoutSessionAsync(string sessionId)
+    {
+        _logger.LogInformation("[STUB] Stripe Connect: Expire Checkout Session {SessionId} → expired", sessionId);
+        return Task.FromResult(true);
+    }
+
+    public Task<string> RefundJobPaymentAsync(Guid jobId, string paymentIntentId)
+    {
+        var refundId = "stub_re_" + Guid.NewGuid().ToString("N")[..8];
+        _logger.LogInformation("[STUB] Stripe Connect: Refund {PiId} for job {JobId} → {RefundId}", paymentIntentId, jobId, refundId);
+        return Task.FromResult(refundId);
+    }
 }

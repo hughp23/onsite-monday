@@ -317,4 +317,42 @@ public class PaymentFlowIntegrationTests : IClassFixture<TestWebApplicationFacto
             job.StripeTransferId.Should().BeNull(); // no transfer was made
         });
     }
+
+    // ── Cancelling a paid job before its start date refunds the poster ──
+
+    [Fact]
+    public async Task CancelJob_EscrowedBeforeStartDate_RefundsAndCancels()
+    {
+        var jobId = Guid.NewGuid();
+        var tradespersonId = _tradespersonId;
+        await _factory.SeedAsync(async db =>
+        {
+            var poster = db.Users.First(u => u.CognitoSub == FakeAuthHandler.TestFirebaseUid);
+            var job = TestBuilders.MakeJob(poster.Id, status: "in_progress", id: jobId,
+                paymentStatus: "escrowed", stripeCheckoutSessionId: "cs_test_cancel_001",
+                stripePaymentIntentId: "pi_test_cancel_001");
+            job.StartDate = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(3);
+            job.EndDate = job.StartDate.AddDays(4);
+            db.Jobs.Add(job);
+            db.JobApplications.Add(new JobApplication
+            {
+                Id = Guid.NewGuid(), JobId = jobId, ApplicantId = tradespersonId,
+                Status = "accepted", AppliedAt = DateTimeOffset.UtcNow, AcceptedAt = DateTimeOffset.UtcNow,
+            });
+            await db.SaveChangesAsync();
+        });
+
+        var response = await _posterClient.PutAsJsonAsync($"/api/jobs/{jobId}/cancel", new { reason = "Plans changed" });
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var dto = await response.Content.ReadFromJsonAsync<JobDto>();
+        dto!.Status.Should().Be("cancelled");
+        dto.PaymentStatus.Should().Be("refunded");
+        await _factory.SeedAsync(async db =>
+        {
+            var job = await db.Jobs.FindAsync(jobId);
+            job!.Status.Should().Be("cancelled");
+            job.PaymentStatus.Should().Be("refunded");
+        });
+    }
 }

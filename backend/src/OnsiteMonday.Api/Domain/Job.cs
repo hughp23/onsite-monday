@@ -30,7 +30,7 @@ public class Job
     public string? StripePaymentIntentId { get; set; }
     public string? StripeTransferId { get; set; }
     public DateTimeOffset? PayoutScheduledAt { get; set; }
-    public string PaymentStatus { get; set; } = "none"; // none|payin_pending|escrowed|refund_pending|payout_pending|paid
+    public string PaymentStatus { get; set; } = "none"; // none|payin_pending|escrowed|refunded|refund_pending|payout_pending|payout_complete
     public string? HangfireJobId { get; set; }
 
     // Set when the end-of-job notification is first sent; used by autocomplete scan
