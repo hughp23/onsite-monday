@@ -103,6 +103,8 @@ The 9-slide onboarding flow has no identity verification step. A new user comple
 
 ### BUG-07 · `subscription.tsx` violates React Rules of Hooks
 
+**Status:** Fixed 2026-09-15 in `c89d145`. The `useEffect` now runs before the `if (!currentUser) return null;` guard, and no hook follows the guard (re-checked 2026-10-13).
+
 **File:** `frontend/app/subscription.tsx:26-29`
 
 ```tsx
