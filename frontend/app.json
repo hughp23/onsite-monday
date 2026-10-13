@@ -13,7 +13,6 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
-    "newArchEnabled": true,
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
@@ -35,7 +34,6 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#8B2020"
       },
-      "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "package": "com.onsitemonday.app",
       "permissions": [
@@ -64,7 +62,9 @@
       ],
       "@react-native-community/datetimepicker",
       "expo-secure-store",
-      "expo-web-browser"
+      "expo-web-browser",
+      "expo-asset",
+      "expo-font"
     ],
     "experiments": {
       "typedRoutes": true
