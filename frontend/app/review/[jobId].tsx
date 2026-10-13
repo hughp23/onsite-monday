@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import {
-  View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Modal, Pressable,
+  View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Modal, Pressable, Alert,
 } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -17,33 +17,35 @@ const PAYOUT_DAYS: Record<string, number> = {
 
 export default function ReviewScreen() {
   const { jobId } = useLocalSearchParams<{ jobId: string }>();
-  const { getJob, submitReview, currentUser, tradespeople } = useApp();
+  const { getJob, submitReview, currentUser } = useApp();
   const job = getJob(jobId);
   const insets = useSafeAreaInsets();
   const [rating, setRating] = useState(0);
   const [reviewText, setReviewText] = useState('');
   const [showSuccess, setShowSuccess] = useState(false);
-
-  // Find the tradesperson for this job (first in list for demo, or by matching)
-  const tradesperson = tradespeople.find(tp =>
-    tp.trade === job?.trade
-  ) || tradespeople[0];
+  const [submitting, setSubmitting] = useState(false);
 
   if (!currentUser) return null;
 
   const payoutDays = PAYOUT_DAYS[currentUser.subscription];
   const totalPay = (job?.dayRate || 0) * (job?.duration || 1);
 
-  const handleSubmit = () => {
-    if (rating === 0) return;
-    if (tradesperson) {
-      submitReview(tradesperson.id, {
+  // The server attributes the review to the job's accepted tradesperson.
+  const handleSubmit = async () => {
+    if (rating === 0 || submitting) return;
+    setSubmitting(true);
+    try {
+      await submitReview(jobId, {
         rating,
         text: reviewText || 'Great work, would recommend.',
-        jobId: jobId,
       });
+      setShowSuccess(true);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Failed to submit review';
+      Alert.alert('Review not submitted', msg);
+    } finally {
+      setSubmitting(false);
     }
-    setShowSuccess(true);
   };
 
   return (
@@ -101,9 +103,9 @@ export default function ReviewScreen() {
         </View>
 
         <TouchableOpacity
-          style={[styles.submitBtn, rating === 0 && styles.submitBtnDisabled]}
+          style={[styles.submitBtn, (rating === 0 || submitting) && styles.submitBtnDisabled]}
           onPress={handleSubmit}
-          disabled={rating === 0}
+          disabled={rating === 0 || submitting}
           activeOpacity={0.85}
         >
           <MaterialCommunityIcons name="send-check" size={20} color={colors.white} />

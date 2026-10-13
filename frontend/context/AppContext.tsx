@@ -58,7 +58,7 @@ interface AppContextType {
   applyToJob: (jobId: string, coverNote?: string) => Promise<void>;
   deleteJob: (jobId: string) => Promise<void>;
   cancelJob: (jobId: string, reason?: string) => Promise<void>;
-  submitReview: (tradespersonId: string, review: { rating: number; text: string; jobId: string }) => Promise<void>;
+  submitReview: (jobId: string, review: { rating: number; text: string }) => Promise<void>;
   submitTradesPersonReview: (jobId: string, review: { rating: number; text?: string }) => Promise<void>;
   startConversation: (participantId: string, relatedJobId?: string) => Promise<string>;
   sendMessage: (conversationId: string, text: string) => Promise<void>;
@@ -410,8 +410,8 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
     }));
   }, []);
 
-  const submitReview = useCallback(async (tradespersonId: string, review: { rating: number; text: string; jobId: string }) => {
-    await reviewService.submitReview(tradespersonId, review);
+  const submitReview = useCallback(async (jobId: string, review: { rating: number; text: string }) => {
+    await reviewService.submitReview(jobId, review);
   }, []);
 
   const submitTradesPersonReview = useCallback(async (jobId: string, review: { rating: number; text?: string }) => {

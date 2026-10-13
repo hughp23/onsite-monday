@@ -15,7 +15,6 @@ export interface ReviewDto {
 export interface SubmitReviewPayload {
   rating: number;
   text?: string;
-  jobId: string;
 }
 
 export interface SubmitTradesPersonReviewPayload {
@@ -28,8 +27,9 @@ export const reviewService = {
     return apiRequest<ReviewDto[]>('GET', `/users/${userId}/reviews`);
   },
 
-  submitReview: async (userId: string, payload: SubmitReviewPayload): Promise<ReviewDto> => {
-    return apiRequest<ReviewDto>('POST', `/users/${userId}/reviews`, payload);
+  // The server reviews the job's accepted tradesperson, so no reviewee id is sent.
+  submitReview: async (jobId: string, payload: SubmitReviewPayload): Promise<ReviewDto> => {
+    return apiRequest<ReviewDto>('POST', `/jobs/${jobId}/review`, payload);
   },
 
   submitTradesPersonReview: async (jobId: string, payload: SubmitTradesPersonReviewPayload): Promise<void> => {
