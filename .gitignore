@@ -159,3 +159,6 @@ expo-env.d.ts
 # @end expo-cli
 trello-import.csv
 .DS_Store
+
+# Claude Code worktrees (EAS archives ignore .git/info/exclude)
+.claude/worktrees/
