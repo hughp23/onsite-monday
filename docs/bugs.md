@@ -121,6 +121,8 @@ When `currentUser` transitions null → non-null, React hooks are called in a di
 
 ### BUG-08 · Mangopay user accounts created with hardcoded birthday 1970-01-01
 
+**Status:** Obsolete as of 2026-09-10 (`e137464`, Mangopay code removed). `MangopayService.cs` no longer exists and nothing references Mangopay. Payouts now go through Stripe Connect Express accounts, created with only email and country; Stripe's hosted onboarding collects date of birth and ID verification itself, so the app has no DOB to collect or pass on.
+
 **File:** `backend/src/OnsiteMonday.Api/Services/MangopayService.cs:38-43`
 
 ```csharp
