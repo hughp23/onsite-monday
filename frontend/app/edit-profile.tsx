@@ -375,7 +375,7 @@ const styles = StyleSheet.create({
   },
   photoInitials: { color: colors.white, fontSize: 32, fontWeight: '800' },
   uploadOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: 'rgba(0,0,0,0.45)',
     alignItems: 'center',
     justifyContent: 'center',

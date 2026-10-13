@@ -833,7 +833,7 @@ const styles = StyleSheet.create({
   },
   googleBtnText: { fontSize: 15, fontWeight: '600', color: colors.text },
   confirmationOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'center',
     alignItems: 'center',
