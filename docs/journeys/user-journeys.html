@@ -190,7 +190,7 @@ flowchart TD
     G --> H{Accept a\ntradesperson?}
     H -->|Yes| I[Accept applicant\nconfirmation modal]
     I --> J[Job status: accepted]
-    J --> K[Start Job button]
+    J --> K[Start Job button\nalert + modal stays open on failure]
     K --> L[Stripe Checkout\nfunds held in escrow]
     L --> M[Job status: in_progress]
     K -.-> M
@@ -202,8 +202,8 @@ flowchart TD
     OE -->|No - not poster, not completed,\nno accepted applicant, duplicate| OEA[Alert with server message\nstays on review screen]
     NX -->|Yes| O2[Tradesperson reviews poster\n/review-poster/jobId]
     OE -->|Yes| P[Funds released\nafter tradesperson's tier delay\nsuccess modal shows scheduled date]
-    H -->|No| Q[Delete job\nif no applicants]
-    J --> R[Cancel job\nwith optional reason]
+    H -->|No| Q[Delete job\nif no applicants\nalert + modal stays open on failure]
+    J --> R[Cancel job\nwith optional reason\nalert + modal stays open on failure]
     R --> S[Refund to poster\nrefund_pending - handled manually]
 
     classDef done     fill:#c8e6c9,stroke:#4caf50,color:#1b5e20
