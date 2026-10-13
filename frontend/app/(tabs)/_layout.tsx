@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { Tabs, router } from 'expo-router';
-import { TouchableOpacity, View, Text, StyleSheet } from 'react-native';
+import { TouchableOpacity, View, Text, StyleSheet, ColorValue } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useApp } from '@/context/AppContext';
@@ -23,7 +23,7 @@ function NotificationBell() {
   );
 }
 
-function MessagesTabIcon({ color, size }: { color: string; size: number }) {
+function MessagesTabIcon({ color, size }: { color: ColorValue; size: number }) {
   const { getUnreadMessageCount } = useApp();
   const unread = getUnreadMessageCount();
   return (
