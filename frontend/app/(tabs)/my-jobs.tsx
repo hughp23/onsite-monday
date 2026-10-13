@@ -44,11 +44,11 @@ export default function MyJobsScreen() {
   const insets = useSafeAreaInsets();
   const [activeTab, setActiveTab] = useState<TabType>('liked');
   const [completeModalJob, setCompleteModalJob] = useState<Job | null>(null);
-  const [completing, setCompleting] = useState(false);
   const [startModalJob, setStartModalJob] = useState<Job | null>(null);
   const [deleteModalJob, setDeleteModalJob] = useState<Job | null>(null);
   const [cancelModalJob, setCancelModalJob] = useState<Job | null>(null);
   const [cancelReason, setCancelReason] = useState('');
+  const [modalPending, setModalPending] = useState(false);
   const [segWidth, setSegWidth] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
   const [showArchived, setShowArchived] = useState(false);
@@ -100,47 +100,65 @@ export default function MyJobsScreen() {
     flex: 1,
   }));
 
-  // Only move on to the review once the server has marked the job complete;
-  // on failure the modal stays open so the poster can retry or cancel.
-  const confirmComplete = async () => {
-    if (!completeModalJob || completing) return;
-    const jobId = completeModalJob.id;
-    setCompleting(true);
+  // Runs a modal's confirm action. While it is in flight the modal's controls
+  // are disabled; on failure the server message is shown and the modal stays
+  // open so the poster can retry or back out. Resolves true on success.
+  const runModalAction = async (action: () => Promise<void>, failTitle: string, fallback: string) => {
+    if (modalPending) return false;
+    setModalPending(true);
     try {
-      await markJobComplete(jobId);
-      setCompleteModalJob(null);
-      router.push(`/review/${jobId}`);
+      await action();
+      return true;
     } catch (e) {
-      const msg = e instanceof Error ? e.message : 'Failed to mark the job complete';
-      Alert.alert('Job not marked complete', msg);
+      Alert.alert(failTitle, e instanceof Error ? e.message : fallback);
+      return false;
     } finally {
-      setCompleting(false);
+      setModalPending(false);
     }
   };
 
-  const dismissCompleteModal = () => {
-    if (!completing) setCompleteModalJob(null);
+  const dismissModal = (close: () => void) => () => {
+    if (!modalPending) close();
   };
 
-  const confirmStart = () => {
-    if (startModalJob) {
-      startJob(startModalJob.id);
+  // Only move on to the review once the server has marked the job complete.
+  const confirmComplete = async () => {
+    if (!completeModalJob) return;
+    const jobId = completeModalJob.id;
+    const ok = await runModalAction(() => markJobComplete(jobId), 'Job not marked complete', 'Failed to mark the job complete');
+    if (ok) {
+      setCompleteModalJob(null);
+      router.push(`/review/${jobId}`);
+    }
+  };
+
+  const confirmStart = async () => {
+    if (!startModalJob) return;
+    const jobId = startModalJob.id;
+    if (await runModalAction(() => startJob(jobId), 'Job not started', 'Failed to start the job')) {
       setStartModalJob(null);
     }
   };
 
   const confirmDelete = async () => {
-    if (deleteModalJob) {
-      await deleteJob(deleteModalJob.id);
+    if (!deleteModalJob) return;
+    const jobId = deleteModalJob.id;
+    if (await runModalAction(() => deleteJob(jobId), 'Job not deleted', 'Failed to delete the job')) {
       setDeleteModalJob(null);
     }
   };
 
+  const closeCancelModal = () => {
+    setCancelModalJob(null);
+    setCancelReason('');
+  };
+
   const confirmCancel = async () => {
-    if (cancelModalJob) {
-      await cancelJob(cancelModalJob.id, cancelReason.trim() || undefined);
-      setCancelModalJob(null);
-      setCancelReason('');
+    if (!cancelModalJob) return;
+    const jobId = cancelModalJob.id;
+    const reason = cancelReason.trim() || undefined;
+    if (await runModalAction(() => cancelJob(jobId, reason), 'Job not cancelled', 'Failed to cancel the job')) {
+      closeCancelModal();
     }
   };
 
@@ -522,7 +540,7 @@ export default function MyJobsScreen() {
 
       {/* Start Job confirmation modal */}
       <Modal visible={!!startModalJob} transparent animationType="fade">
-        <Pressable style={styles.overlay} onPress={() => setStartModalJob(null)}>
+        <Pressable style={styles.overlay} onPress={dismissModal(() => setStartModalJob(null))}>
           <View style={styles.modal}>
             <MaterialCommunityIcons name="play-circle" size={48} color={colors.primary} />
             <Text style={styles.modalTitle}>Start Job?</Text>
@@ -531,10 +549,16 @@ export default function MyJobsScreen() {
                 ? `Starting "${startModalJob?.title}" requires a payment of £${((startModalJob?.dayRate ?? 0) * (startModalJob?.duration ?? 1)).toLocaleString()} to be held securely until the job is complete. You will be redirected to complete payment.`
                 : `Starting "${startModalJob?.title}" will notify the tradesperson to begin work. Payment is arranged directly between you.`}
             </Text>
-            <TouchableOpacity style={styles.confirmBtn} onPress={confirmStart}>
-              <Text style={styles.confirmBtnText}>{ESCROW_ENABLED ? 'Yes, Proceed to Payment' : 'Yes, Start Job'}</Text>
+            <TouchableOpacity
+              style={[styles.confirmBtn, modalPending && styles.confirmBtnDisabled]}
+              onPress={confirmStart}
+              disabled={modalPending}
+            >
+              {modalPending
+                ? <ActivityIndicator color={colors.white} />
+                : <Text style={styles.confirmBtnText}>{ESCROW_ENABLED ? 'Yes, Proceed to Payment' : 'Yes, Start Job'}</Text>}
             </TouchableOpacity>
-            <TouchableOpacity onPress={() => setStartModalJob(null)} style={styles.cancelBtn}>
+            <TouchableOpacity onPress={dismissModal(() => setStartModalJob(null))} disabled={modalPending} style={styles.cancelBtn}>
               <Text style={styles.cancelBtnText}>Cancel</Text>
             </TouchableOpacity>
           </View>
@@ -543,17 +567,23 @@ export default function MyJobsScreen() {
 
       {/* Delete Job confirmation modal */}
       <Modal visible={!!deleteModalJob} transparent animationType="fade">
-        <Pressable style={styles.overlay} onPress={() => setDeleteModalJob(null)}>
+        <Pressable style={styles.overlay} onPress={dismissModal(() => setDeleteModalJob(null))}>
           <View style={styles.modal}>
             <MaterialCommunityIcons name="delete" size={48} color={colors.error} />
             <Text style={styles.modalTitle}>Delete Job?</Text>
             <Text style={styles.modalDesc}>
               This will permanently remove "{deleteModalJob?.title}" and cannot be undone.
             </Text>
-            <TouchableOpacity style={styles.destructiveBtn} onPress={confirmDelete}>
-              <Text style={styles.confirmBtnText}>Yes, Delete</Text>
+            <TouchableOpacity
+              style={[styles.destructiveBtn, modalPending && styles.confirmBtnDisabled]}
+              onPress={confirmDelete}
+              disabled={modalPending}
+            >
+              {modalPending
+                ? <ActivityIndicator color={colors.white} />
+                : <Text style={styles.confirmBtnText}>Yes, Delete</Text>}
             </TouchableOpacity>
-            <TouchableOpacity onPress={() => setDeleteModalJob(null)} style={styles.cancelBtn}>
+            <TouchableOpacity onPress={dismissModal(() => setDeleteModalJob(null))} disabled={modalPending} style={styles.cancelBtn}>
               <Text style={styles.cancelBtnText}>Go Back</Text>
             </TouchableOpacity>
           </View>
@@ -562,7 +592,7 @@ export default function MyJobsScreen() {
 
       {/* Cancel Job confirmation modal */}
       <Modal visible={!!cancelModalJob} transparent animationType="fade">
-        <Pressable style={styles.overlay} onPress={() => { setCancelModalJob(null); setCancelReason(''); }}>
+        <Pressable style={styles.overlay} onPress={dismissModal(closeCancelModal)}>
           <View style={styles.modal}>
             <MaterialCommunityIcons name="close-circle" size={48} color={colors.error} />
             <Text style={styles.modalTitle}>Cancel Job?</Text>
@@ -577,13 +607,20 @@ export default function MyJobsScreen() {
               placeholderTextColor={colors.textMuted}
               value={cancelReason}
               onChangeText={setCancelReason}
+              editable={!modalPending}
               multiline
               numberOfLines={3}
             />
-            <TouchableOpacity style={styles.destructiveBtn} onPress={confirmCancel}>
-              <Text style={styles.confirmBtnText}>Yes, Cancel Job</Text>
+            <TouchableOpacity
+              style={[styles.destructiveBtn, modalPending && styles.confirmBtnDisabled]}
+              onPress={confirmCancel}
+              disabled={modalPending}
+            >
+              {modalPending
+                ? <ActivityIndicator color={colors.white} />
+                : <Text style={styles.confirmBtnText}>Yes, Cancel Job</Text>}
             </TouchableOpacity>
-            <TouchableOpacity onPress={() => { setCancelModalJob(null); setCancelReason(''); }} style={styles.cancelBtn}>
+            <TouchableOpacity onPress={dismissModal(closeCancelModal)} disabled={modalPending} style={styles.cancelBtn}>
               <Text style={styles.cancelBtnText}>Go Back</Text>
             </TouchableOpacity>
           </View>
@@ -592,7 +629,7 @@ export default function MyJobsScreen() {
 
       {/* Mark Complete confirmation modal */}
       <Modal visible={!!completeModalJob} transparent animationType="fade">
-        <Pressable style={styles.overlay} onPress={dismissCompleteModal}>
+        <Pressable style={styles.overlay} onPress={dismissModal(() => setCompleteModalJob(null))}>
           <View style={styles.modal}>
             <MaterialCommunityIcons name="check-circle" size={48} color={colors.success} />
             <Text style={styles.modalTitle}>Mark as Complete?</Text>
@@ -602,15 +639,15 @@ export default function MyJobsScreen() {
                 : `Marking "${completeModalJob?.title}" as complete will notify both parties to submit their reviews.`}
             </Text>
             <TouchableOpacity
-              style={[styles.confirmBtn, completing && styles.confirmBtnDisabled]}
+              style={[styles.confirmBtn, modalPending && styles.confirmBtnDisabled]}
               onPress={confirmComplete}
-              disabled={completing}
+              disabled={modalPending}
             >
-              {completing
+              {modalPending
                 ? <ActivityIndicator color={colors.white} />
                 : <Text style={styles.confirmBtnText}>Yes, Mark Complete</Text>}
             </TouchableOpacity>
-            <TouchableOpacity onPress={dismissCompleteModal} disabled={completing} style={styles.cancelBtn}>
+            <TouchableOpacity onPress={dismissModal(() => setCompleteModalJob(null))} disabled={modalPending} style={styles.cancelBtn}>
               <Text style={styles.cancelBtnText}>Cancel</Text>
             </TouchableOpacity>
           </View>
