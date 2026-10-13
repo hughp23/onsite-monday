@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using OnsiteMonday.Api.Data;
+using OnsiteMonday.Api.Domain;
 using OnsiteMonday.Api.Services;
 using Stripe;
 using StripeCheckoutSession = Stripe.Checkout.Session;
@@ -159,13 +160,6 @@ public class StripeWebhookController : ControllerBase
         }
     }
 
-    private static readonly Dictionary<string, string> TierByPayoutDays = new()
-    {
-        { "price_bronze", "bronze" },
-        { "price_silver", "silver" },
-        { "price_gold",   "gold"   },
-    };
-
     private async Task HandleSubscriptionUpdated(Stripe.Subscription stripeSub)
     {
         var sub = await _db.Subscriptions
@@ -173,25 +167,17 @@ public class StripeWebhookController : ControllerBase
 
         if (sub == null) return;
 
-        // Derive tier from the price nickname/metadata on the subscription item
-        var priceId = stripeSub.Items?.Data?.FirstOrDefault()?.Price?.Id ?? string.Empty;
-        var nickname = (stripeSub.Items?.Data?.FirstOrDefault()?.Price?.Nickname ?? string.Empty).ToLowerInvariant();
+        var price = stripeSub.Items?.Data?.FirstOrDefault()?.Price;
+        var tier = StripeTierResolver.Resolve(price, _options.Prices);
 
-        string? tier = nickname switch
+        if (tier == null || !TierLimits.TryGetPayoutDays(tier, out var payoutDays))
         {
-            var n when n.Contains("bronze") => "bronze",
-            var n when n.Contains("silver") => "silver",
-            var n when n.Contains("gold")   => "gold",
-            _ => null,
-        };
-
-        if (tier == null)
-        {
-            _logger.LogWarning("Stripe: subscription.updated for {SubId} — could not determine tier from price {PriceId}", stripeSub.Id, priceId);
+            _logger.LogWarning(
+                "Stripe: subscription.updated for {SubId}: price {PriceId} matches no configured Stripe:Prices entry and has no valid metadata[\"tier\"]; local tier left unchanged",
+                stripeSub.Id, price?.Id ?? "(none)");
             return;
         }
 
-        var payoutDays = tier switch { "silver" => 14, "gold" => 7, _ => 30 };
         sub.Tier = tier;
         sub.PayoutDays = payoutDays;
         await _db.SaveChangesAsync();

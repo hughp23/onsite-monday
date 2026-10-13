@@ -40,4 +40,18 @@ public class TierLimitsTests
         // 00:30 on 1 Nov in UTC+1 is still 31 Oct in UTC
         TierLimits.CurrentPeriodStart(new DateTimeOffset(2026, 11, 1, 0, 30, 0, TimeSpan.FromHours(1)))
             .Should().Be(new DateTimeOffset(2026, 10, 1, 0, 0, 0, TimeSpan.Zero));
+
+    [Theory]
+    [InlineData("bronze", 30)]
+    [InlineData("silver", 14)]
+    [InlineData("gold", 7)]
+    public void TryGetPayoutDays_KnownTier_ReturnsDelay(string tier, int expected)
+    {
+        TierLimits.TryGetPayoutDays(tier, out var days).Should().BeTrue();
+        days.Should().Be(expected);
+    }
+
+    [Fact]
+    public void TryGetPayoutDays_UnknownTier_IsFalse() =>
+        TierLimits.TryGetPayoutDays("platinum", out _).Should().BeFalse();
 }

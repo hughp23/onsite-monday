@@ -87,8 +87,17 @@ public class TestWebApplicationFactory : WebApplicationFactory<Program>
             services.AddScoped<IStripeConnectService>(_ => connectMock.Object);
 
             // Set test Stripe webhook secret so StripeWebhookHelper-signed payloads validate
+            // and fixed price IDs so subscription webhooks can resolve a tier.
             services.Configure<StripeOptions>(opts =>
-                opts.WebhookSecret = StripeWebhookHelper.TestWebhookSecret);
+            {
+                opts.WebhookSecret = StripeWebhookHelper.TestWebhookSecret;
+                opts.Prices = new Dictionary<string, string>
+                {
+                    ["Bronze"] = TestPriceIds.Bronze,
+                    ["Silver"] = TestPriceIds.Silver,
+                    ["Gold"]   = TestPriceIds.Gold,
+                };
+            });
 
             // Override IStorageService — integration tests must not need real AWS credentials
             var storageMock = new Mock<IStorageService>();
@@ -164,4 +173,11 @@ public class TestWebApplicationFactory : WebApplicationFactory<Program>
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         await seed(db);
     }
+}
+
+public static class TestPriceIds
+{
+    public const string Bronze = "price_test_bronze";
+    public const string Silver = "price_test_silver";
+    public const string Gold   = "price_test_gold";
 }

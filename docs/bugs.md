@@ -176,6 +176,8 @@ const payoutDays = PAYOUT_DAYS[currentUser.subscription];
 
 ### BUG-12 · Stripe webhook tier detection is fragile; dead code present
 
+**Status:** Fixed 2026-10-13. `customer.subscription.updated` now resolves the tier with `StripeTierResolver`: the price ID is matched against the configured `Stripe:Prices` IDs (the ones checkout and upgrades use), with the price's `metadata["tier"]` as a fallback for a price swapped in the dashboard. Nicknames are no longer read. Payout days come from `TierLimits.TryGetPayoutDays`, now shared with `SubscriptionService`. The dead `TierByPayoutDays` dictionary is gone.
+
 **File:** `backend/src/OnsiteMonday.Api/Controllers/StripeWebhookController.cs:98-127`
 
 `HandleSubscriptionUpdated` derives the tier from `Price.Nickname` using a case-insensitive `Contains` check. If Stripe price nicknames don't contain "bronze", "silver", or "gold", the webhook silently skips the update — the local subscription record's tier and `PayoutDays` are never synced.

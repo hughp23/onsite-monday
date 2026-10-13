@@ -1,7 +1,7 @@
 namespace OnsiteMonday.Api.Domain;
 
 /// <summary>
-/// Single source of truth for per-tier monthly usage limits.
+/// Single source of truth for per-tier rules: monthly usage limits and payout delay.
 /// null = unlimited. Unknown or missing tier falls back to bronze.
 /// </summary>
 public static class TierLimits
@@ -18,6 +18,17 @@ public static class TierLimits
 
     public static int? PostsPerMonth(string? tier) => For(tier).Posts;
     public static int? ApplicationsPerMonth(string? tier) => For(tier).Applications;
+
+    private static readonly Dictionary<string, int> PayoutDaysByTier = new()
+    {
+        ["bronze"] = 30,
+        ["silver"] = 14,
+        ["gold"]   = 7,
+    };
+
+    /// <summary>Payout delay for a known tier (lower-case). False for an unknown tier.</summary>
+    public static bool TryGetPayoutDays(string tier, out int payoutDays) =>
+        PayoutDaysByTier.TryGetValue(tier, out payoutDays);
 
     /// <summary>
     /// The tier whose limits apply to a subscription. A paid tier only counts once Stripe has

@@ -11,13 +11,6 @@ public class SubscriptionService : ISubscriptionService
     private readonly AppDbContext _db;
     private readonly IStripeBillingService _stripe;
 
-    private static readonly Dictionary<string, int> PayoutDaysByTier = new()
-    {
-        { "bronze", 30 },
-        { "silver", 14 },
-        { "gold",    7 },
-    };
-
     public SubscriptionService(AppDbContext db, IStripeBillingService stripe)
     {
         _db = db;
@@ -35,7 +28,7 @@ public class SubscriptionService : ISubscriptionService
     {
         tier = tier.ToLowerInvariant();
 
-        if (!PayoutDaysByTier.TryGetValue(tier, out var payoutDays))
+        if (!TierLimits.TryGetPayoutDays(tier, out var payoutDays))
             throw new ArgumentException($"Invalid tier '{tier}'. Must be bronze, silver, or gold.");
 
         var user = await _db.Users.FindAsync(userId);

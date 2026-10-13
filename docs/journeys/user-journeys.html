@@ -324,6 +324,7 @@ flowchart TD
     L -->|Yes| M[Upgrade now\nusing saved card]
     L -->|No| N[Update card\nthen upgrade]
     M & N --> J
+    J --> WU[customer.subscription.updated\nwebhook syncs tier + payout days\nby configured price ID]
     J --> O{Payout speed\nby tier}
     O -->|Bronze 29/mo| P[30-day payout]
     O -->|Silver 59/mo| Q[14-day payout]
@@ -343,7 +344,7 @@ flowchart TD
 
     class A endpoint
     class D,G,L,O,LR decision
-    class B,C,E,F,H,I,J,K,M,N,U,UP,U2,WH done
+    class B,C,E,F,H,I,J,K,M,N,U,UP,U2,WH,WU done
     class P,Q,R flagged
     class S todo
     class T todo
